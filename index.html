@@ -203,5 +203,13 @@ details.det summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ac
 </style>
 </head>
 <body><div id="app"></div><div id="form"></div><div id="toast"></div>
-<script type="module" src="app.js?v=20261107k"></script>
+<script>
+// Laedt die aktuelle Version: version.json wird immer frisch geholt, damit Updates sofort erscheinen.
+(async () => {
+  let v = '';
+  try { const r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' }); v = (await r.json()).v; try { localStorage.setItem('womo-v', v); } catch (e) {} }
+  catch (e) { try { v = localStorage.getItem('womo-v') || ''; } catch (e2) {} }
+  const s = document.createElement('script'); s.type = 'module'; s.src = 'app.js?v=' + encodeURIComponent(v || '0'); document.body.appendChild(s);
+})();
+</script>
 </body></html>

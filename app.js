@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, addJahre, chf,
-} from './regeln.js';
-import * as S from './speicher.js';
+} from './regeln.js?v=20261107l';
+import * as S from './speicher.js?v=20261107l';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
