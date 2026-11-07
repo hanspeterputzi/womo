@@ -1,9 +1,11 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
-// Ohne Code: lokaler Testmodus im Browser. Mit ?emulator: Firestore-Emulator (nur Tests).
+// Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
+export const SAMMLUNGEN = ['buchungen', 'uebergaben', 'kosten', 'einzahlungen', 'termine', 'zahlstatus'];
+
 // Code aus dem Link; wird auf dem Geraet gemerkt, falls der Startbildschirm-Icon ohne Code oeffnet.
 const KEY_CODE = 'womo-code';
 const imLink = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
@@ -34,6 +36,7 @@ const sauber = (o) => JSON.parse(JSON.stringify(o)); // entfernt undefined
 // ---------- lokal (Testmodus) ----------
 function lesen() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
 function schreiben(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} }
+function ergaenzen(d) { for (const s of SAMMLUNGEN) d[s] = d[s] || {}; d.start = d.start || ''; return d; }
 
 export async function laden() {
   if (!online && !lokalerTest) throw new Error('Bitte die Womo-App über den Link mit dem Code öffnen.');
@@ -41,9 +44,9 @@ export async function laden() {
     await fsInit();
     const fam = await fs.getDoc(fs.doc(db, 'familien', code));
     if (!fam.exists()) throw new Error('Dieser Link ist ungültig.');
-    const d = { personen: {}, buchungen: {}, adminId: fam.data().adminId };
+    const d = ergaenzen({ personen: {}, adminId: fam.data().adminId, start: fam.data().start || '' });
     (await fs.getDocs(fs.collection(db, 'familien', code, 'personen'))).forEach((x) => { d.personen[x.id] = x.data(); });
-    (await fs.getDocs(fs.collection(db, 'familien', code, 'buchungen'))).forEach((x) => { d.buchungen[x.id] = { ...x.data(), id: x.id }; });
+    for (const s of SAMMLUNGEN) (await fs.getDocs(fs.collection(db, 'familien', code, s))).forEach((x) => { d[s][x.id] = { ...x.data(), id: x.id }; });
     return d;
   }
   let d = lesen();
@@ -52,35 +55,48 @@ export async function laden() {
     d = { personen: {
       hp: { name: 'HP', konto: 'eltern', pinHash: h }, fr: { name: 'Nora', konto: 'eltern', pinHash: h },
       t: { name: 'Nanouk', konto: 'kind-1', pinHash: h }, s: { name: 'Nene', konto: 'kind-2', pinHash: h } },
-      buchungen: {}, adminId: 'hp' };
-    schreiben(d);
+      adminId: 'hp' };
+    ergaenzen(d); schreiben(d);
   }
-  return d;
+  return ergaenzen(d);
 }
 
 // Live-Updates: gleiche Familie auf anderen Handys. cb() wird bei Aenderungen gerufen.
 export async function abonnieren(d, cb) {
   if (!online) return;
   await fsInit();
-  fs.onSnapshot(fs.collection(db, 'familien', code, 'buchungen'), (snap) => {
-    const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; });
-    d.buchungen = neu; cb();
-  });
+  for (const s of SAMMLUNGEN) {
+    fs.onSnapshot(fs.collection(db, 'familien', code, s), (snap) => {
+      const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu; cb();
+    });
+  }
+  fs.onSnapshot(fs.doc(db, 'familien', code), (x) => { if (x.exists()) { d.start = x.data().start || ''; d.adminId = x.data().adminId; cb(); } });
 }
 
-export async function buchungSpeichern(d, b) {
-  const id = b.id || 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const voll = sauber({ ...b, id, erfasstAm: b.erfasstAm || new Date().toISOString() });
-  if (online) await fs.setDoc(fs.doc(db, 'familien', code, 'buchungen', id), voll);
-  d.buchungen[id] = voll;
+// Allgemein: Dokument in einer Sammlung speichern / loeschen.
+export async function speichern(d, sammlung, id, daten) {
+  const neuId = id || sammlung.slice(0, 1) + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const voll = sauber({ ...daten, id: neuId, erfasstAm: daten.erfasstAm || new Date().toISOString() });
+  if (online) await fs.setDoc(fs.doc(db, 'familien', code, sammlung, neuId), voll);
+  d[sammlung][neuId] = voll;
   if (!online) schreiben(d);
-  return id;
+  return neuId;
 }
-export async function buchungLoeschen(d, id) {
-  if (online) await fs.deleteDoc(fs.doc(db, 'familien', code, 'buchungen', id));
-  delete d.buchungen[id];
+export async function loeschen(d, sammlung, id) {
+  if (online) await fs.deleteDoc(fs.doc(db, 'familien', code, sammlung, id));
+  delete d[sammlung][id];
   if (!online) schreiben(d);
 }
+// Uebergabedatum des Fahrzeugs (Beginn Vertragsjahr 1)
+export async function startSetzen(d, iso) {
+  if (online) await fs.updateDoc(fs.doc(db, 'familien', code), { start: iso });
+  d.start = iso;
+  if (!online) schreiben(d);
+}
+
+// Kurzformen fuer Buchungen (Version 1)
+export const buchungSpeichern = (d, b) => speichern(d, 'buchungen', b.id, b);
+export const buchungLoeschen = (d, id) => loeschen(d, 'buchungen', id);
 
 // Einrichtung (nur einrichtung.html): Person mit PIN anlegen.
 export async function personAnlegen(id, name, konto, pin) {
