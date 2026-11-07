@@ -13,7 +13,7 @@
 :root{
   --bg:#f2f4f8;--card:#ffffff;--fg:#121722;--muted:#667085;--line:#e4e8ef;--soft:#f6f8fb;
   --bar:#121722;--barfg:#ffffff;--acc:#2f6fed;--accfg:#ffffff;
-  --eltern:#3b82f6;--kind-1:#e0529c;--kind-2:#14b8a6;
+  --eltern:#3b82f6;--nora:#7dd3fc;--kind-1:#e0529c;--kind-2:#14b8a6;
   --gelb:#f59e0b;--rot:#e5484d;--ok:#16a34a;
   --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);
   --r:18px;
@@ -35,6 +35,7 @@ a{color:inherit}
 .keil{width:26px;height:16px;background:#fff;clip-path:polygon(0 100%,100% 0,100% 100%)}
 .chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:0;color:#fff;
   padding:6px 12px 6px 6px;border-radius:999px;font:inherit;font-size:14px;font-weight:600}
+.av.nora{color:#0b3b5c}
 .av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;color:#fff}
 main{max-width:620px;margin:0 auto;padding:16px 14px 0}
 
@@ -68,12 +69,12 @@ main{max-width:620px;margin:0 auto;padding:16px 14px 0}
 .tag.heute .nr{background:var(--acc);color:var(--accfg);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;margin-top:-2px}
 .tag .streifen{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column}
 .tag .streifen i{display:block;height:7px}
-.tag .streifen i.eltern{background:var(--eltern)}.tag .streifen i.kind-1{background:var(--kind-1)}.tag .streifen i.kind-2{background:var(--kind-2)}
+.tag .streifen i.eltern{background:var(--eltern)}.tag .streifen i.nora{background:var(--nora)}.tag .streifen i.kind-1{background:var(--kind-1)}.tag .streifen i.kind-2{background:var(--kind-2)}
 .tag.koll{box-shadow:inset 0 0 0 2px var(--rot)}
 .legende{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--muted)}
 .legende span{display:flex;align-items:center;gap:6px}
 .punkt{width:10px;height:10px;border-radius:50%;display:inline-block}
-.punkt.eltern{background:var(--eltern)}.punkt.kind-1{background:var(--kind-1)}.punkt.kind-2{background:var(--kind-2)}
+.punkt.eltern{background:var(--eltern)}.punkt.nora{background:var(--nora)}.punkt.kind-1{background:var(--kind-1)}.punkt.kind-2{background:var(--kind-2)}
 
 /* Buchungen */
 .b{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}

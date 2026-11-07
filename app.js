@@ -15,7 +15,9 @@ const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<':
 const iso = (j, m, t) => `${j}-${String(m + 1).padStart(2, '0')}-${String(t).padStart(2, '0')}`;
 const fmt = (s) => s.split('-').reverse().join('.');
 const zahl = (n) => Number(n).toLocaleString('de-CH');
-const FARBE = { 'eltern': 'var(--eltern)', 'kind-1': 'var(--kind-1)', 'kind-2': 'var(--kind-2)' };
+const FARBE = { 'eltern': 'var(--eltern)', 'nora': 'var(--nora)', 'kind-1': 'var(--kind-1)', 'kind-2': 'var(--kind-2)' };
+// Farbe je Person: HP blau, Nora hellblau, Nanouk rosa, Nene tuerkis.
+const PERSON_FARBE = { hp: 'eltern', fr: 'nora', t: 'kind-1', s: 'kind-2' };
 const val = (id) => document.getElementById(id).value;
 const heute = () => { const d = new Date(); return iso(d.getFullYear(), d.getMonth(), d.getDate()); };
 
@@ -24,9 +26,15 @@ let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().ge
 // Buchhaltung: HP fuehrt sie, die Tochter ist Stellvertreterin (Vertrag Ziffer 11).
 const buchhalter = () => ich === D.adminId || ich === 't';
 const liste = () => Object.values(D.buchungen);
-const farbKonto = (b) => konten(b, D.personen)[0] || 'eltern';
+// Farbe einer Reservierung: sitzt nur Nora von den Eltern im Fahrzeug, hellblau, sonst die Farbe des Kontos.
+function farbKonto(b) {
+  const k = konten(b, D.personen)[0] || 'eltern';
+  if (k !== 'eltern') return k;
+  const eltern = [b.fahrerId, ...(b.mitreisende || [])].filter((i) => D.personen[i]?.konto === 'eltern');
+  return eltern.length && eltern.every((i) => i === 'fr') ? 'nora' : 'eltern';
+}
 const initial = (name) => h((name || '?').trim().charAt(0).toUpperCase());
-const avatar = (id) => { const p = D.personen[id]; return `<span class="av" style="background:${FARBE[p?.konto] || 'var(--muted)'}">${initial(p?.name)}</span>`; };
+const avatar = (id) => { const p = D.personen[id]; const f = PERSON_FARBE[id] || p?.konto; return `<span class="av ${f === 'nora' ? 'nora' : ''}" style="background:${FARBE[f] || 'var(--muted)'}">${initial(p?.name)}</span>`; };
 const idsGeordnet = () => { const i = Object.keys(D.personen); return [...REIHENFOLGE.filter((x) => i.includes(x)), ...i.filter((x) => !REIHENFOLGE.includes(x))]; };
 const rang = (id) => { const i = REIHENFOLGE.indexOf(id); return i < 0 ? 99 : i; };
 function personenGeordnet() { return Object.entries(D.personen).sort((a, b) => rang(a[0]) - rang(b[0]) || a[1].name.localeCompare(b[1].name)); }
@@ -139,7 +147,7 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${Object.keys(KONTO_NAME).map((k) => `<span><i class="punkt ${k}"></i>${KONTO_NAME[k]}</span>`).join('')}</div>
+    <div class="legende">${[['eltern', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>`) +
