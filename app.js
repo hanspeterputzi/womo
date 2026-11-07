@@ -15,9 +15,9 @@ const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<':
 const iso = (j, m, t) => `${j}-${String(m + 1).padStart(2, '0')}-${String(t).padStart(2, '0')}`;
 const fmt = (s) => s.split('-').reverse().join('.');
 const zahl = (n) => Number(n).toLocaleString('de-CH');
-const FARBE = { 'eltern': 'var(--eltern)', 'nora': 'var(--nora)', 'kind-1': 'var(--kind-1)', 'kind-2': 'var(--kind-2)' };
+const FARBE = { 'hp': 'var(--hp)', 'eltern': 'var(--eltern)', 'nora': 'var(--nora)', 'kind-1': 'var(--kind-1)', 'kind-2': 'var(--kind-2)' };
 // Farbe je Person: HP blau, Nora hellblau, Nanouk rosa, Nene tuerkis.
-const PERSON_FARBE = { hp: 'eltern', fr: 'nora', t: 'kind-1', s: 'kind-2' };
+const PERSON_FARBE = { hp: 'hp', fr: 'nora', t: 'kind-1', s: 'kind-2' };
 const val = (id) => document.getElementById(id).value;
 const heute = () => { const d = new Date(); return iso(d.getFullYear(), d.getMonth(), d.getDate()); };
 
@@ -34,7 +34,8 @@ function farbKonto(b) {
   const k = konten(b, D.personen)[0] || 'eltern';
   if (k !== 'eltern') return k;
   const eltern = [b.fahrerId, ...(b.mitreisende || [])].filter((i) => D.personen[i]?.konto === 'eltern');
-  return eltern.length && eltern.every((i) => i === 'fr') ? 'nora' : 'eltern';
+  const nur = (id) => eltern.length > 0 && eltern.every((i) => i === id);
+  return nur('fr') ? 'nora' : nur('hp') ? 'hp' : 'eltern';
 }
 const initial = (name) => h((name || '?').trim().charAt(0).toUpperCase());
 const avatar = (id) => { const p = D.personen[id]; const f = PERSON_FARBE[id] || p?.konto; return `<span class="av ${f === 'nora' ? 'nora' : ''}" style="background:${FARBE[f] || 'var(--muted)'}">${initial(p?.name)}</span>`; };
@@ -165,9 +166,9 @@ function ringe(J) {
   return `<div class="karte"><p class="titel">Tageskonto ${J}</p><div class="ringe">` +
     Object.keys(SCHWELLE).map((k) => {
       const t = st[k], s = stufe(t, k), pr = Math.min(1, t / SCHWELLE[k]);
-      const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : FARBE[k];
+      const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
       const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${SCHWELLE[k]} Tagen`;
-      return `<div class="ring ${s}"><svg viewBox="0 0 76 76"><circle class="bg" cx="38" cy="38" r="32"/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
+      return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
       <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div></div>`;
     }).join('') + '</div></div>';
 }
@@ -193,7 +194,7 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['eltern', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['eltern', 'HP und Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>`) +
