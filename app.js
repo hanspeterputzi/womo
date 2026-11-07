@@ -136,7 +136,7 @@ const VERTRAG_REGELN = [
 ];
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
-    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags, nur mit den Angaben zum Reisen. Bei Widerspruch gilt der Vertrag.</p>
+    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags. Bei Widerspruch gilt der Vertrag.</p>
     ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>`);
   bindRahmen();
 }
