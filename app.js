@@ -58,7 +58,7 @@ async function start() {
 
 function zeige() {
   if (!ich) return anmeldung();
-  ({ kalender, fahrten, kosten, termine })[tab]();
+  ({ kalender, fahrten, kosten, termine, vertrag })[tab]();
 }
 
 function anmeldung() {
@@ -84,8 +84,25 @@ const ICON = {
   fahrten: '<rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 4v2h6V4M9 13l2 2 4-4"/>',
   kosten: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.500 0-2.500.8-2.500 2s1 1.700 2.500 2 2.500.8 2.500 2-1 2-2.500 2c-1 0-2-.5-2.500-1.500M12 6v2M12 16v2"/>',
   termine: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/>',
+  vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
 };
-const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine']];
+const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine'], ['vertrag', 'Vertrag']];
+const VERTRAG_REGELN = [
+  ['Eigentum', ['Das Fahrzeug gehört den vier Eigentümern zu gleichen Teilen, je ein Viertel.', 'Der Vater ist Halter und Versicherungsnehmer. Das Fahrzeug wird nicht verliehen oder vermietet.']],
+  ['Nutzung (Ziffer 7)', ['Jeder Eigentümer hat ein Viertel der Nutzungszeit. Vater und Mutter zusammen haben die Hälfte, Tochter und Sohn je ein Viertel.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übergabe und Rückgabe immer zu Hause in Chur, mit der Checkliste.']],
+  ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit.']],
+  ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten. Keine höheren Lagen mit Schneewahrscheinlichkeit.', 'Rauchen und Tiere im Fahrzeug sind verboten.', 'Das Fahrzeug wird sauber zurückgegeben (Ziffer 10).']],
+  ['Zahlungsverzug (Ziffer 4)', ['Wer eine fällige Zahlung nicht leistet, erhält eine Erinnerung und 10 Tage Zeit zum Nachzahlen.', 'Danach gilt ein Nutzungsverbot, bis die Zahlung erfolgt ist. Die Regel gilt für alle Eigentümer.']],
+  ['Kosten und Schäden (Ziffern 5, 11, 12)', ['Laufende Kosten tragen die Eigentümer je zu einem Viertel. Jeder zahlt zudem in die Rücklage ein.', 'Der Vater organisiert Service, MFK, Reifenwechsel und Winterlager und führt die Buchhaltung, die Tochter ist Stellvertreterin. Jeder Eigentümer hat Einsicht in Konto und Buchhaltung.', 'Selbstbehalt trägt der Verursacher. Bonusverlust und höhere Prämien: die Hälfte der Verursacher, die andere Hälfte alle vier je zu einem Viertel.']],
+  ['Beschlüsse (Ziffer 13)', ['Jeder Eigentümer hat eine Stimme, es entscheidet die Mehrheit. Bei 2 zu 2 entscheidet der Halter.', 'Vertragsänderung, Verlängerung, Verkauf und neue Eigentümer brauchen alle Stimmen ausser einer, ohne Stichentscheid.']],
+  ['Dauer (Ziffer 14)', ['Der Vertrag läuft 8 Jahre ab Übergabe, ein vorzeitiger Ausstieg ist ausgeschlossen.', 'Danach: verlängern, oder Tochter und/oder Sohn steigen aus und erhalten ein Viertel des Restwerts.']],
+];
+function vertrag() {
+  app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
+    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags (Entwurf vom 27.10.) ohne Namen und Beträge. Bei Widerspruch gilt der Vertrag. Den vollständigen Vertrag hat HP.</p>
+    ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 1 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>`);
+  bindRahmen();
+}
 function rahmen(inhalt) {
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
     <button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div>
