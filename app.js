@@ -92,13 +92,14 @@ const ICON = {
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
 };
 const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
-  ['1. Campingplätze', 'TCS Camping, ACSI, camping.info, PiNCAMP', 'Sicher, Strom und Sanitär vorhanden.'],
-  ['2. Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze. Platzregeln vor Ort beachten.'],
-  ['3. Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen. Oft gratis bei Konsumation.'],
-  ['4. Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab buchen oder anfragen.'],
+  ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'TCS Camping, ACSI, camping.info, PiNCAMP', 'Sicher, Strom und Sanitär vorhanden'],
+  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten'],
+  ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation'],
+  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen'],
 ];
-const LAENDER = [['Frankreich', 'Aires de camping-car'], ['Italien', 'Aree di sosta, Agricamper'], ['Spanien', 'Áreas de autocaravanas'], ['Deutschland', 'Wohnmobilstellplätze'], ['Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz']];
+const LAENDER = [['🇫🇷', 'Frankreich', 'Aires de camping-car'], ['🇮🇹', 'Italien', 'Aree di sosta, Agricamper'], ['🇪🇸', 'Spanien', 'Áreas de autocaravanas'], ['🇩🇪', 'Deutschland', 'Wohnmobilstellplätze'], ['🇭🇷', 'Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz', true]];
 const PLATTFORMEN = [
   ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
   ['Schweiz: Höfe und Private', ['Nomady', 'Landcamp.ch', 'schweizerbauern.ch', 'Swiss Hosts (ungeprüft)', 'Myfarm.ch (ungeprüft)']],
@@ -110,14 +111,20 @@ const PLATTFORMEN = [
   ['Freistehen, nur als Zusatz', ['park4night (nicht alles erlaubt)']],
 ];
 function unterwegs() {
-  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n.replace(/\s*\(.*\)\s*$/, '') + ' Stellplatz');
-  app.innerHTML = rahmen(`<div class="hinweiskarte rot">Auf Autobahnraststätten wird nicht übernachtet (Vertrag Ziffer 9, Anhang C). Stattdessen diese Möglichkeiten.</div>
-  <div class="karte"><p class="titel">Wo übernachten?</p><div class="zeilen">${ORTE.map(([t, w, hin]) => `<div class="z"><div class="l"><strong>${h(t)}</strong><div class="meta">${h(w)}</div><div class="meta">${h(hin)}</div></div></div>`).join('')}</div></div>
-  <div class="karte"><p class="titel">Nach Land</p><div class="zeilen">${LAENDER.map(([l, t]) => `<div class="z"><div class="l"><strong>${h(l)}</strong></div><div class="r" style="white-space:normal;font-weight:600;font-size:14px">${h(t)}</div></div>`).join('')}</div></div>
+  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Stellplatz');
+  const chip = (n) => {
+    const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
+    return `<a class="u-chip" href="${such(name)}" target="_blank" rel="noopener">${h(name)}${note ? `<em class="${note === 'ungeprüft' ? 'u-un' : ''}">${h(note)}</em>` : ''}</a>`;
+  };
+  app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
+    <div><strong>Keine Übernachtung auf Autobahnraststätten</strong><span>Vertrag Ziffer 9 und Anhang C. Stattdessen:</span></div></div>
+  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin]) => `<div class="u-ort"><span class="u-ic ${c}">${SVG(ic)}</span>
+    <div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div></div>`).join('')}</div>
+  <div class="karte"><p class="titel">Nach Land</p><div class="u-laender">${LAENDER.map(([f, l, t, v]) => `<div class="u-land${v ? ' verbot' : ''}"><span class="u-flag">${f}</span><strong>${h(l)}</strong><span>${h(t)}</span></div>`).join('')}</div></div>
   <div class="karte"><p class="titel">Apps und Plattformen</p>
-    ${PLATTFORMEN.map(([g, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${h(g)}</summary><div class="btnzeile">${l.map((n) => `<a class="btn" href="${such(n)}" target="_blank" rel="noopener" style="text-decoration:none">${h(n)}</a>`).join('')}</div></details>`).join('')}
-    <p class="info">Tippen öffnet eine Websuche. «ungeprüft» heisst: Quelle nicht abrufbar oder nur erwähnt.</p></div>
-  <p class="info" style="text-align:center">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
+    ${PLATTFORMEN.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}
+    <p class="info">Tippen öffnet eine Websuche. «ungeprüft»: Quelle nicht abrufbar oder nur erwähnt.</p></div>
+  <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
   bindRahmen();
 }
 const VERTRAG_REGELN = [

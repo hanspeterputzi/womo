@@ -166,8 +166,42 @@ details.det summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ac
 .nein-t{color:var(--rot);font-weight:700}
 .info{font-size:13px;color:var(--muted);margin:8px 0 0}
 .zeilen .meta{font-size:13px;color:var(--muted);line-height:1.4}
+
+/* Tab Unterwegs */
+.u-ban{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#e5484d,#b4232a);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.u-ban strong{display:block;font-size:17px;line-height:1.25;margin-bottom:3px}.u-ban span{font-size:13px;opacity:.9}
+.u-bic{flex:none;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center}
+.u-bic svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+.u-ort{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.u-ort:first-of-type{border-top:0;padding-top:2px}
+.u-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center}
+.u-ic svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.u1{background:rgba(47,111,237,.13);color:#2f6fed}.u2{background:rgba(20,184,166,.15);color:#0f9488}.u3{background:rgba(245,158,11,.16);color:#b45309}.u4{background:rgba(22,163,74,.14);color:#15803d}
+@media(prefers-color-scheme:dark){.u1{color:#8db1ff}.u2{color:#5eead4}.u3{color:#fbbf24}.u4{color:#4ade80}}
+.u-tx{min-width:0;display:flex;flex-direction:column;gap:3px}
+.u-tx strong{font-size:16px;line-height:1.25}.u-tx>span{font-size:13px;color:var(--muted);line-height:1.4}
+.u-hint{align-self:flex-start;margin-top:4px;font-size:12px!important;font-weight:700;padding:4px 11px;border-radius:12px;line-height:1.35}
+.u-hint.u1,.u-hint.u2,.u-hint.u3,.u-hint.u4{width:auto;height:auto;display:inline-block}
+.u-hint.u1{color:#2f6fed!important}.u-hint.u2{color:#0f9488!important}.u-hint.u3{color:#b45309!important}.u-hint.u4{color:#15803d!important}
+@media(prefers-color-scheme:dark){.u-hint.u1{color:#8db1ff!important}.u-hint.u2{color:#5eead4!important}.u-hint.u3{color:#fbbf24!important}.u-hint.u4{color:#4ade80!important}}
+.u-laender{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.u-land{background:var(--soft);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.u-land .u-flag{font-size:24px;line-height:1.1}.u-land strong{font-size:15px}.u-land span:last-child{font-size:12.5px;color:var(--muted);line-height:1.35}
+.u-land.verbot{grid-column:1/-1;background:rgba(229,72,77,.1);box-shadow:inset 0 0 0 1.5px rgba(229,72,77,.45)}
+.u-land.verbot strong{color:var(--rot)}
+.u-det{border-top:1px solid var(--line)}.u-det:first-of-type{border-top:0}
+.u-det summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;font-weight:700;font-size:15px;cursor:pointer}
+.u-det summary::-webkit-details-marker{display:none}
+.u-det summary b{margin-left:auto;font-size:12px;background:var(--soft);color:var(--muted);padding:2px 9px;border-radius:999px}
+.u-det summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:-4px 4px 0 2px;transition:transform .2s}
+.u-det[open] summary::after{transform:rotate(-135deg);margin-top:4px}
+.u-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 14px}
+.u-chip{display:inline-flex;align-items:baseline;gap:6px;background:var(--soft);color:var(--fg);text-decoration:none;font-size:14px;font-weight:600;padding:8px 13px;border-radius:999px}
+.u-chip:active{background:var(--line)}
+.u-chip em{font-style:normal;font-size:11px;font-weight:600;color:var(--muted)}.u-chip em.u-un{color:#b45309;background:rgba(245,158,11,.16);padding:1px 7px;border-radius:999px}
+@media(prefers-color-scheme:dark){.u-chip em.u-un{color:#fbbf24}}
 </style>
 </head>
 <body><div id="app"></div><div id="form"></div><div id="toast"></div>
-<script type="module" src="app.js?v=20261107i"></script>
+<script type="module" src="app.js?v=20261107j"></script>
 </body></html>
