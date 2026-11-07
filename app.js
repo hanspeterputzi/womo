@@ -61,7 +61,7 @@ async function start() {
 
 function zeige() {
   if (!ich) return anmeldung();
-  ({ kalender, fahrten, kosten, termine, vertrag })[tab]();
+  ({ kalender, fahrten, kosten, termine, vertrag, unterwegs })[tab]();
 }
 
 function anmeldung() {
@@ -87,16 +87,44 @@ const ICON = {
   fahrten: '<rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 4v2h6V4M9 13l2 2 4-4"/>',
   kosten: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.500 0-2.500.8-2.500 2s1 1.700 2.500 2 2.500.8 2.500 2-1 2-2.500 2c-1 0-2-.5-2.500-1.500M12 6v2M12 16v2"/>',
   termine: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/>',
+  unterwegs: '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>',
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
 };
-const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine'], ['vertrag', 'Vertrag']];
+const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+const ORTE = [
+  ['1. Campingplätze', 'TCS Camping, ACSI, camping.info, PiNCAMP', 'Sicher, Strom und Sanitär vorhanden.'],
+  ['2. Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze. Platzregeln vor Ort beachten.'],
+  ['3. Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen. Oft gratis bei Konsumation.'],
+  ['4. Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab buchen oder anfragen.'],
+];
+const LAENDER = [['Frankreich', 'Aires de camping-car'], ['Italien', 'Aree di sosta, Agricamper'], ['Spanien', 'Áreas de autocaravanas'], ['Deutschland', 'Wohnmobilstellplätze'], ['Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz']];
+const PLATTFORMEN = [
+  ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
+  ['Schweiz: Höfe und Private', ['Nomady', 'Landcamp.ch', 'schweizerbauern.ch', 'Swiss Hosts (ungeprüft)', 'Myfarm.ch (ungeprüft)']],
+  ['Schweiz: Campingplätze', ['PiNCAMP', 'swisscamps.ch', 'camping.ch']],
+  ['Europa: Stellplätze', ['Campercontact', 'Stellplatz-Radar', 'camping.info', 'ADAC Camping', 'CaraMaps', 'Camping-App.eu', 'TopPlatz', 'Stellplatz Europe', 'SPF-Mobil (Android)', 'Searchforsites', 'iOverlander', 'NorCamp (Skandinavien)']],
+  ['Europa: Camping-Rabatt', ['ACSI CampingCard', 'ACSI Eurocampings', 'ADAC Campcard']],
+  ['Europa: Höfe und Private', ['AlpacaCamping', 'Hinterland', 'MyCabin', 'VanSite', 'Roadsurfer Spots', 'StayFree', 'Camperland', 'LandReise.de', 'Landvergnügen', 'Bauernleben (AT)', 'Schau aufs Land (AT, IT, SI)', 'France Passion (ungeprüft)', 'Campspace (ungeprüft)', 'Hipcamp (ungeprüft)']],
+  ['Parkplatz-Apps (nur, wo erlaubt)', ['EasyPark', 'Camppa']],
+  ['Freistehen, nur als Zusatz', ['park4night (nicht alles erlaubt)']],
+];
+function unterwegs() {
+  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n.replace(/\s*\(.*\)\s*$/, '') + ' Stellplatz');
+  app.innerHTML = rahmen(`<div class="hinweiskarte rot">Auf Autobahnraststätten wird nicht übernachtet (Vertrag Ziffer 9, Anhang C). Stattdessen diese Möglichkeiten.</div>
+  <div class="karte"><p class="titel">Wo übernachten?</p><div class="zeilen">${ORTE.map(([t, w, hin]) => `<div class="z"><div class="l"><strong>${h(t)}</strong><div class="meta">${h(w)}</div><div class="meta">${h(hin)}</div></div></div>`).join('')}</div></div>
+  <div class="karte"><p class="titel">Nach Land</p><div class="zeilen">${LAENDER.map(([l, t]) => `<div class="z"><div class="l"><strong>${h(l)}</strong></div><div class="r" style="white-space:normal;font-weight:600;font-size:14px">${h(t)}</div></div>`).join('')}</div></div>
+  <div class="karte"><p class="titel">Apps und Plattformen</p>
+    ${PLATTFORMEN.map(([g, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${h(g)}</summary><div class="btnzeile">${l.map((n) => `<a class="btn" href="${such(n)}" target="_blank" rel="noopener" style="text-decoration:none">${h(n)}</a>`).join('')}</div></details>`).join('')}
+    <p class="info">Tippen öffnet eine Websuche. «ungeprüft» heisst: Quelle nicht abrufbar oder nur erwähnt.</p></div>
+  <p class="info" style="text-align:center">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
+  bindRahmen();
+}
 const VERTRAG_REGELN = [
   ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übergabe und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.', 'Kinder reisen nur auf zugelassenen Sitzplätzen mit passendem Rückhaltesystem.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten, wenn immer möglich.', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
   ['Sauberkeit und Übergabe (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
   ['Übergabe-Checkliste (Anhang B)', ['Bei jeder Übergabe und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
-  ['Übernachten unterwegs (Anhang C)', ['Auf Autobahnraststätten wird nicht übernachtet.', 'Möglich: Campingplätze, offizielle Stellplätze, Parkplätze von Gasthöfen und Restaurants (vorher fragen), Bauernhöfe, Winzer und Private (vorab anfragen).', 'Kroatien: Wildcampen verboten, nur Camping oder Stellplatz.', 'Angebote und Regeln ändern sich, vor der Reise prüfen.']],
 ];
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
