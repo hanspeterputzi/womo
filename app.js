@@ -129,7 +129,7 @@ const VERTRAG_REGELN = [
 ];
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
-    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags (Entwurf vom 27.10.), nur mit den Angaben zum Reisen. Bei Widerspruch gilt der Vertrag.</p>
+    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags, nur mit den Angaben zum Reisen. Bei Widerspruch gilt der Vertrag.</p>
     ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>`);
   bindRahmen();
 }
@@ -194,7 +194,7 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['eltern', 'HP und Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>`) +
