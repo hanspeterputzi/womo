@@ -26,6 +26,9 @@ let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().ge
 // Buchhaltung: HP fuehrt sie, die Tochter ist Stellvertreterin (Vertrag Ziffer 11).
 const buchhalter = () => ich === D.adminId || ich === 't';
 const liste = () => Object.values(D.buchungen);
+// Regel (HP, 07.11.2026): Niemand aendert oder loescht einen Eintrag, den jemand anders erfasst hat. Auch HP nicht.
+const eigener = (x) => !!x && !!ich && x.erfasstVon === ich;
+const nurEigene = () => hinweis('Das ist ein Eintrag von ' + 'jemand anderem. Den kann nur die Person ändern, die ihn erfasst hat.');
 // Farbe einer Reservierung: sitzt nur Nora von den Eltern im Fahrzeug, hellblau, sonst die Farbe des Kontos.
 function farbKonto(b) {
   const k = konten(b, D.personen)[0] || 'eltern';
@@ -172,8 +175,9 @@ function kalender() {
   document.getElementById('hj').onclick = () => { ansicht = new Date(); kalender(); };
   document.getElementById('neu').onclick = () => formularZeigen('');
   app.querySelectorAll('.tag[data-d]').forEach((el) => el.onclick = () => formularZeigen(el.dataset.d));
-  app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => formularZeigen('', D.buchungen[el.dataset.edit]));
+  app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => { const x = D.buchungen[el.dataset.edit]; if (!eigener(x)) return nurEigene(); formularZeigen('', x); });
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
+    if (!eigener(D.buchungen[el.dataset.del])) return nurEigene();
     if (confirm('Reservierung löschen?')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
   });
 }
@@ -181,7 +185,7 @@ function kalender() {
 function buchungHtml(b) {
   const wer = D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?';
   const mit = (b.mitreisende || []).map((i) => D.personen[i]?.name).filter(Boolean);
-  const darf = b.erfasstVon === ich || ich === D.adminId;
+  const darf = eigener(b);
   const zaehlt = konten(b, D.personen).map((k) => KONTO_NAME[k]).join(' und ');
   const av = b.fahrerId ? avatar(b.fahrerId) : `<span class="av" style="background:var(--muted)">${initial(wer)}</span>`;
   return `<div class="b">${av}<div class="inhalt">
@@ -192,6 +196,7 @@ function buchungHtml(b) {
 }
 
 function formularZeigen(tag, ex) {
+  if (ex && !eigener(ex)) return nurEigene();
   const ids = idsGeordnet();
   const fahrerWahl = ex ? (ex.fahrerId || '') : ich;
   const aus = ex && !ex.fahrerId ? ex.ausnahmeFahrer || {} : null;
@@ -270,7 +275,7 @@ function fahrtHtml(b, st) {
 function uebergabeForm(bid, phase) {
   const b = D.buchungen[bid]; if (!b) return;
   const id = bid + '_' + phase, ex = D.uebergaben[id], ab = D.uebergaben[bid + '_ab'];
-  const darf = !ex || ex.erfasstVon === ich || ich === D.adminId;
+  const darf = !ex || eigener(ex);
   const pad = (n) => String(n).padStart(2, '0');
   const jetzt = new Date(), lokal = `${jetzt.getFullYear()}-${pad(jetzt.getMonth() + 1)}-${pad(jetzt.getDate())}T${pad(jetzt.getHours())}:${pad(jetzt.getMinutes())}`;
   const dis = darf ? '' : 'disabled';
@@ -353,17 +358,17 @@ function kosten() {
   <div class="karte"><p class="titel">Zahlungsstatus</p><div class="zeilen">${status}</div>
     <p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p></div>
   <div class="karte"><div class="kopfzeile"><p class="titel">Kosten ${J}</p>${buch ? '<button class="btn pri" id="kneu">＋ Kosten</button>' : ''}</div>
-    ${kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch ? `<button class="kl" data-dk="${k.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>'}</div>
+    ${kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${k.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>'}</div>
   <div class="karte"><div class="kopfzeile"><p class="titel">Einzahlungen ${J}</p>${buch ? '<button class="btn pri" id="eneu">＋ Einzahlung</button>' : ''}</div>
-    ${ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch ? `<button class="kl" data-de="${e.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>'}
+    ${ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${e.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>'}
     ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}</div>`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
   const kn = document.getElementById('kneu'); if (kn) kn.onclick = kostenForm;
   const en = document.getElementById('eneu'); if (en) en.onclick = einzahlungForm;
-  app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = async () => { if (confirm('Kosteneintrag löschen?')) await sicher(async () => { await S.loeschen(D, 'kosten', b.dataset.dk); kosten(); }); });
-  app.querySelectorAll('[data-de]').forEach((b) => b.onclick = async () => { if (confirm('Einzahlung löschen?')) await sicher(async () => { await S.loeschen(D, 'einzahlungen', b.dataset.de); kosten(); }); });
+  app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = async () => { if (!eigener(D.kosten[b.dataset.dk])) return nurEigene(); if (confirm('Kosteneintrag löschen?')) await sicher(async () => { await S.loeschen(D, 'kosten', b.dataset.dk); kosten(); }); });
+  app.querySelectorAll('[data-de]').forEach((b) => b.onclick = async () => { if (!eigener(D.einzahlungen[b.dataset.de])) return nurEigene(); if (confirm('Einzahlung löschen?')) await sicher(async () => { await S.loeschen(D, 'einzahlungen', b.dataset.de); kosten(); }); });
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
@@ -431,13 +436,13 @@ function termine() {
     ${L.length ? L.map((x) => { const s = terminStufe(x, t), [c, txt] = CHIP[s];
       return `<div class="b" style="padding:12px 0"><div class="inhalt"><div class="zeit" style="font-size:16px">${h(x.titel)}</div>
         <div class="meta">${x.erledigtAm ? 'erledigt am ' + fmt(x.erledigtAm) : 'fällig am ' + fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span>${x.art && x.art !== x.titel ? ' · ' + h(x.art) : ''}</div>${x.notiz ? `<div class="meta">${h(x.notiz)}</div>` : ''}
-        <div class="btnzeile">${x.erledigtAm ? `<button class="btn" data-tw="${x.id}">Wieder öffnen</button>` : `<button class="btn pri" data-te="${x.id}">Erledigt</button>`}<button class="btn rot" data-td="${x.id}">Löschen</button></div></div></div>`; }).join('') : '<p class="leer-t">Noch keine Termine. Trage zum Beispiel den MFK-Termin ein.</p>'}</div>`);
+        ${eigener(x) ? `<div class="btnzeile">${x.erledigtAm ? `<button class="btn" data-tw="${x.id}">Wieder öffnen</button>` : `<button class="btn pri" data-te="${x.id}">Erledigt</button>`}<button class="btn rot" data-td="${x.id}">Löschen</button></div>` : `<div class="meta">erfasst von ${h(D.personen[x.erfasstVon]?.name || '?')}</div>`}</div></div>`; }).join('') : '<p class="leer-t">Noch keine Termine. Trage zum Beispiel den MFK-Termin ein.</p>'}</div>`);
   bindRahmen();
   document.getElementById('tneu').onclick = terminForm;
-  const upd = (id, aend) => sicher(async () => { await S.speichern(D, 'termine', id, { ...D.termine[id], ...aend }); termine(); });
+  const upd = (id, aend) => !eigener(D.termine[id]) ? nurEigene() : sicher(async () => { await S.speichern(D, 'termine', id, { ...D.termine[id], ...aend }); termine(); });
   app.querySelectorAll('[data-te]').forEach((b) => b.onclick = () => upd(b.dataset.te, { erledigtAm: heute() }));
   app.querySelectorAll('[data-tw]').forEach((b) => b.onclick = () => upd(b.dataset.tw, { erledigtAm: '' }));
-  app.querySelectorAll('[data-td]').forEach((b) => b.onclick = async () => { if (confirm('Termin löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', b.dataset.td); termine(); }); });
+  app.querySelectorAll('[data-td]').forEach((b) => b.onclick = async () => { if (!eigener(D.termine[b.dataset.td])) return nurEigene(); if (confirm('Termin löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', b.dataset.td); termine(); }); });
 }
 
 function terminForm() {
