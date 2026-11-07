@@ -28,17 +28,24 @@ async function start() {
 
 function zeige() { ich ? kalender() : anmeldung(); }
 
+const REIHENFOLGE = ['hp', 'fr', 't', 's'];
+function personenGeordnet() {
+  const rang = (id) => { const i = REIHENFOLGE.indexOf(id); return i < 0 ? 99 : i; };
+  return Object.entries(D.personen).sort((a, b) => rang(a[0]) - rang(b[0]) || a[1].name.localeCompare(b[1].name));
+}
+
 function anmeldung() {
+  let zuletzt = ''; try { zuletzt = localStorage.getItem('womo-person') || ''; } catch {}
   app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Wer bist du?</p>
   <label for="p">Name</label>
-  <select id="p">${Object.entries(D.personen).map(([i, p]) => `<option value="${i}">${h(p.name)}</option>`).join('')}</select>
+  <select id="p">${personenGeordnet().map(([i, p]) => `<option value="${i}"${i === zuletzt ? ' selected' : ''}>${h(p.name)}</option>`).join('')}</select>
   <label for="pin">PIN (4 Ziffern)</label><input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" type="password">
   <div id="msg"></div><button id="ok">Weiter</button>
   <p class="klein-t" style="margin-top:14px">Der PIN zeigt nur, wer eine Buchung erfasst. Er schützt keine Daten.</p></div>`;
   const los = async () => {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
-    if (await S.pinPasst(D.personen[id], pin)) { ich = id; try { sessionStorage.setItem('womo-ich', id); } catch {} zeige(); }
-    else document.getElementById('msg').innerHTML = '<div class="fehler">PIN falsch.</div>';
+    if (await S.pinPasst(D.personen[id], pin)) { ich = id; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} zeige(); }
+    else document.getElementById('msg').innerHTML = `<div class="fehler">PIN für ${h(D.personen[id].name)} falsch. Name oben richtig gewählt?</div>`;
   };
   document.getElementById('ok').onclick = los;
   document.getElementById('pin').onkeydown = (e) => { if (e.key === 'Enter') los(); };
