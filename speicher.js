@@ -4,8 +4,14 @@ import { firebaseConfig } from './firebase-config.js';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
-export const code = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+// Code aus dem Link; wird auf dem Geraet gemerkt, falls der Startbildschirm-Icon ohne Code oeffnet.
+const KEY_CODE = 'womo-code';
+const imLink = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
+let gemerkt = '';
+try { if (imLink) localStorage.setItem(KEY_CODE, imLink); else gemerkt = localStorage.getItem(KEY_CODE) || ''; } catch {}
+export const code = imLink || gemerkt;
 export const online = code.length > 0;
+const lokalerTest = ['localhost', '127.0.0.1'].includes(location.hostname);
 const emulator = new URLSearchParams(location.search).has('emulator');
 
 async function hash(pin) {
@@ -30,6 +36,7 @@ function lesen() { try { return JSON.parse(localStorage.getItem(KEY)); } catch {
 function schreiben(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} }
 
 export async function laden() {
+  if (!online && !lokalerTest) throw new Error('Bitte die Womo-App über den Link mit dem Code öffnen.');
   if (online) {
     await fsInit();
     const fam = await fs.getDoc(fs.doc(db, 'familien', code));
