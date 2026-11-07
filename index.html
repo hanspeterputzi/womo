@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Womo</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Womo">
+<meta name="theme-color" content="#1f4e79">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#f6f5f1;--fg:#1d1d1b;--card:#fff;--line:#ddd9cf;--ok:#2e7d32;--gelb:#d99a00;--rot:#c62828;
+--eltern:#4a7fb5;--kind-1:#c0628a;--kind-2:#5a9a6a;--acc:#1f4e79}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--fg:#eee;--card:#222220;--line:#3a3a36;--acc:#7db3e6}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 -apple-system,system-ui,sans-serif;padding:12px max(12px,env(safe-area-inset-left)) 40px}
+main{max-width:560px;margin:0 auto}h1{font-size:20px;margin:4px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+button,select,input{font:inherit;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+button{cursor:pointer}button.primaer{background:var(--acc);color:#fff;border-color:var(--acc)}
+button.klein{padding:4px 10px;font-size:14px}
+.zeile{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.zeile.mitte{justify-content:space-between}
+.monat{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.kopf{font-size:12px;text-align:center;opacity:.6}
+.tag{min-height:54px;border:1px solid var(--line);border-radius:6px;padding:2px;font-size:12px;position:relative;cursor:pointer;overflow:hidden}
+.tag.leer{border:none;cursor:default}.tag.heute{outline:2px solid var(--acc)}
+.bal{display:block;font-size:10px;color:#fff;border-radius:3px;padding:0 3px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bal.eltern{background:var(--eltern)}.bal.kind-1{background:var(--kind-1)}.bal.kind-2{background:var(--kind-2)}
+.tag.koll{border-color:var(--rot);border-width:2px}
+.konto{margin:6px 0}.balken{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.balken i{display:block;height:100%}
+.ok i{background:var(--ok)}.gelb i{background:var(--gelb)}.rot i{background:var(--rot)}
+.gelbtxt{color:var(--gelb);font-weight:600}.rottxt{color:var(--rot);font-weight:600}
+label{display:block;margin:8px 0 2px;font-size:14px}.chk{display:inline-flex;gap:4px;margin-right:12px;align-items:center}
+.fehler{background:#fdecea;color:#611a15;border-radius:8px;padding:8px;margin:8px 0}
+.warn{background:#fff4d6;color:#5c4400;border-radius:8px;padding:8px;margin:8px 0}
+.b{border-top:1px solid var(--line);padding:8px 0}.klein-t{font-size:13px;opacity:.7}
+.versteckt{display:none}
+</style>
+</head>
+<body><main id="app"></main>
+<script type="module" src="app.js"></script>
+</body></html>
