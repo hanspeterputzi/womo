@@ -72,11 +72,26 @@ export function kollision(a, b) {
   return a.von <= b.bis && b.von <= a.bis;
 }
 
+// Eine Reservierung darf nie ueber ein Datum laufen, das schon belegt ist (beide Randtage zaehlen).
+// Rueckgabe: die bereits vorhandenen Reservierungen, die sich mit b ueberschneiden (ohne b selbst).
+export function ueberschneidungen(b, buchungen) {
+  return buchungen.filter((x) => x.id !== b.id && kollision(x, b));
+}
+
+// Alle Tage von bis (inklusive) als Datumstexte. Grundlage der Tagessperre in der Datenbank.
+export const MAX_TAGE = 300;   // technische Grenze: eine Reservierung belegt pro Tag ein Sperr-Dokument
+export function tageListe(von, bis) {
+  const out = [];
+  for (let n = tagNr(von); n <= tagNr(bis); n++) out.push(new Date(n * MS_TAG).toISOString().slice(0, 10));
+  return out;
+}
+
 // Pruefung vor dem Speichern. Liefert { ok, fehler: [Text] }.
 export function pruefeBuchung(b, personen) {
   const fehler = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.von || '') || !/^\d{4}-\d{2}-\d{2}$/.test(b.bis || '')) fehler.push('Datum fehlt oder hat ein falsches Format.');
   else if (b.von > b.bis) fehler.push('Die Rückkehr liegt vor der Abreise.');
+  else if (dauer(b) > MAX_TAGE) fehler.push(`Eine Reservierung darf höchstens ${MAX_TAGE} Tage dauern.`);
   const eig = eigentuemer(b, personen);
   if (eig.length === 0) fehler.push('Mindestens ein Eigentümer muss im Fahrzeug sitzen.');
   if (!b.fahrerId) {

@@ -1,6 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
+import { tageListe } from './regeln.js';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -94,9 +95,42 @@ export async function startSetzen(d, iso) {
   if (!online) schreiben(d);
 }
 
-// Kurzformen fuer Buchungen (Version 1)
-export const buchungSpeichern = (d, b) => speichern(d, 'buchungen', b.id, b);
-export const buchungLoeschen = (d, id) => loeschen(d, 'buchungen', id);
+// Reservierungen mit Tagessperre: pro belegtem Tag gibt es ein Dokument tage/{Datum}. Es kann nur neu angelegt, nie
+// ueberschrieben werden (Datenbankregel). Belegt jemand denselben Tag gleichzeitig, schlaegt der ganze Schreibvorgang fehl.
+// Reservierung und Tagessperren werden in einem Schritt geschrieben (alles oder nichts).
+function tageVon(b) { return b ? tageListe(b.von, b.bis) : []; }
+
+export async function buchungSpeichern(d, b) {
+  const id = b.id || 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const voll = sauber({ ...b, id, erfasstAm: b.erfasstAm || new Date().toISOString() });
+  const neu = tageVon(voll), alt = tageVon(d.buchungen[id]);
+  if (online) {
+    await fsInit();
+    const batch = fs.writeBatch(db);
+    for (const t of alt) if (!neu.includes(t)) batch.delete(fs.doc(db, 'familien', code, 'tage', t));
+    for (const t of neu) if (!alt.includes(t)) batch.set(fs.doc(db, 'familien', code, 'tage', t), { buchungId: id });
+    batch.set(fs.doc(db, 'familien', code, 'buchungen', id), voll);
+    try { await batch.commit(); }
+    catch (e) {
+      if (e && e.code === 'permission-denied') throw new Error('Dieser Zeitraum wurde soeben von jemand anderem reserviert. Bitte ein anderes Datum wählen.');
+      throw e;
+    }
+  }
+  d.buchungen[id] = voll;
+  if (!online) schreiben(d);
+  return id;
+}
+export async function buchungLoeschen(d, id) {
+  if (online) {
+    await fsInit();
+    const batch = fs.writeBatch(db);
+    for (const t of tageVon(d.buchungen[id])) batch.delete(fs.doc(db, 'familien', code, 'tage', t));
+    batch.delete(fs.doc(db, 'familien', code, 'buchungen', id));
+    await batch.commit();
+  }
+  delete d.buchungen[id];
+  if (!online) schreiben(d);
+}
 
 // Einrichtung (nur einrichtung.html): Person mit PIN anlegen.
 export async function personAnlegen(id, name, konto, pin) {

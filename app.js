@@ -1,5 +1,5 @@
 import {
-  SCHWELLE, dauer, konten, kontostaende, stufe, kollision, pruefeBuchung,
+  SCHWELLE, dauer, konten, kontostaende, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, addJahre, chf,
 } from './regeln.js';
@@ -158,6 +158,7 @@ function kalender() {
   document.getElementById('hj').onclick = () => { ansicht = new Date(); kalender(); };
   document.getElementById('neu').onclick = () => formularZeigen('');
   app.querySelectorAll('.tag[data-d]').forEach((el) => el.onclick = () => formularZeigen(el.dataset.d));
+  app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => formularZeigen('', D.buchungen[el.dataset.edit]));
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
     if (confirm('Reservierung löschen?')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
   });
@@ -173,43 +174,52 @@ function buchungHtml(b) {
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)}</div>
     <div class="meta"><span class="tagetxt">${dauer(b)} Tage</span> · ${h(wer)}${mit.length ? ' mit ' + h(mit.join(', ')) : ''}${b.gaeste ? ` · ${b.gaeste} Gast/Gäste` : ''}${b.ziel ? ' · ' + h(b.ziel) : ''}</div>
     <div class="meta">Zählt für ${h(zaehlt)} · erfasst von ${h(D.personen[b.erfasstVon]?.name || '?')}</div></div>
-    ${darf ? `<button class="kl" data-del="${b.id}">Löschen</button>` : ''}</div>`;
+    ${darf ? `<div style="display:flex;flex-direction:column;gap:6px;align-self:flex-start"><button class="kl" style="color:var(--acc)" data-edit="${b.id}">Ändern</button><button class="kl" data-del="${b.id}">Löschen</button></div>` : ''}</div>`;
 }
 
-function formularZeigen(tag) {
+function formularZeigen(tag, ex) {
   const ids = idsGeordnet();
-  sheet(`<h3>Neue Reservierung</h3>
-  <div class="zwei"><div><label for="von">Abreise</label><input type="date" id="von" value="${tag}"></div>
-  <div><label for="bis">Rückkehr</label><input type="date" id="bis" value="${tag}"></div></div>
-  <label for="fahrer">Fahrer</label><select id="fahrer">${ids.map((i) => `<option value="${i}"${i === ich ? ' selected' : ''}>${h(D.personen[i].name)}</option>`).join('')}<option value="">Ausnahme: kein Eigentümer</option></select>
-  <div id="ausn" class="versteckt"><label for="an">Name des Fahrers</label><input id="an"><label for="af">Freigabe Familienrat am</label><input type="date" id="af"><label for="av">Verantwortlicher Eigentümer</label><select id="av">${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select></div>
-  <label>Mitreisende Eigentümer</label><div class="mitw" id="mit">${ids.map((i) => `<span class="chk"><input type="checkbox" value="${i}" id="m${i}"><label for="m${i}">${h(D.personen[i].name)}</label></span>`).join('')}</div>
-  <div class="zwei"><div><label for="gaeste">Gäste (ohne Eigentum)</label><input type="number" id="gaeste" min="0" max="3" value="0" inputmode="numeric"></div>
-  <div><label for="ziel">Ziel</label><input id="ziel" maxlength="80" placeholder="optional"></div></div>
+  const fahrerWahl = ex ? (ex.fahrerId || '') : ich;
+  const aus = ex && !ex.fahrerId ? ex.ausnahmeFahrer || {} : null;
+  sheet(`<h3>${ex ? 'Reservierung ändern' : 'Neue Reservierung'}</h3>
+  <div class="zwei"><div><label for="von">Abreise</label><input type="date" id="von" value="${h(ex ? ex.von : tag)}"></div>
+  <div><label for="bis">Rückkehr</label><input type="date" id="bis" value="${h(ex ? ex.bis : tag)}"></div></div>
+  <label for="fahrer">Fahrer</label><select id="fahrer">${ids.map((i) => `<option value="${i}"${i === fahrerWahl ? ' selected' : ''}>${h(D.personen[i].name)}</option>`).join('')}<option value=""${fahrerWahl === '' ? ' selected' : ''}>Ausnahme: kein Eigentümer</option></select>
+  <div id="ausn" class="${aus ? '' : 'versteckt'}"><label for="an">Name des Fahrers</label><input id="an" value="${h(aus?.name || '')}"><label for="af">Freigabe Familienrat am</label><input type="date" id="af" value="${h(aus?.freigabeAm || '')}"><label for="av">Verantwortlicher Eigentümer</label><select id="av">${ids.map((i) => `<option value="${i}"${i === aus?.verantwortlichId ? ' selected' : ''}>${h(D.personen[i].name)}</option>`).join('')}</select></div>
+  <label>Mitreisende Eigentümer</label><div class="mitw" id="mit">${ids.map((i) => `<span class="chk"><input type="checkbox" value="${i}" id="m${i}"${ex?.mitreisende?.includes(i) ? ' checked' : ''}><label for="m${i}">${h(D.personen[i].name)}</label></span>`).join('')}</div>
+  <div class="zwei"><div><label for="gaeste">Gäste (ohne Eigentum)</label><input type="number" id="gaeste" min="0" max="3" value="${ex ? ex.gaeste || 0 : 0}" inputmode="numeric"></div>
+  <div><label for="ziel">Ziel</label><input id="ziel" maxlength="80" placeholder="optional" value="${h(ex?.ziel || '')}"></div></div>
   <div id="msg"></div>
-  <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
+  <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">${ex ? 'Änderung speichern' : 'Speichern'}</button></div>`);
   const f = document.getElementById('fahrer');
   f.onchange = () => document.getElementById('ausn').classList.toggle('versteckt', f.value !== '');
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
     const b = { von: val('von'), bis: val('bis'), fahrerId: f.value || null,
       mitreisende: ids.filter((i) => document.getElementById('m' + i).checked && i !== f.value),
-      gaeste: parseInt(val('gaeste') || '0', 10), ziel: val('ziel').trim(), erfasstVon: ich };
+      gaeste: parseInt(val('gaeste') || '0', 10), ziel: val('ziel').trim(), erfasstVon: ex ? ex.erfasstVon : ich };
+    if (ex) { b.id = ex.id; if (ex.erfasstAm) b.erfasstAm = ex.erfasstAm; }
     if (!f.value) b.ausnahmeFahrer = { name: val('an').trim(), freigabeAm: val('af'), verantwortlichId: val('av') };
     const p = pruefeBuchung(b, D.personen);
     const fehlerListe = [...p.fehler];
+    // Doppelbelegung ist nicht erlaubt: jedes Datum gehoert nur einer Reservierung.
+    if (p.ok) {
+      for (const x of ueberschneidungen(b, liste())) {
+        const wer = D.personen[x.fahrerId]?.name || x.ausnahmeFahrer?.name || '?';
+        fehlerListe.push(`Vom ${fmt(x.von)} bis ${fmt(x.bis)} ist das Fahrzeug schon für ${wer} reserviert. Ein Datum kann nur einmal vergeben werden. Bitte ein anderes Datum wählen.`);
+      }
+    }
     // Zahlungsverzug (Vertrag Ziffer 4): wer gesperrt ist, darf nicht fahren oder mitreisen.
     for (const id of [b.fahrerId, ...b.mitreisende].filter(Boolean)) {
       const sp = zahlungsSperre(D.zahlstatus[id], heute());
       if (sp.stufe === 'gesperrt') fehlerListe.push(`${D.personen[id]?.name} hat ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4). Bitte zuerst die Zahlung klären.`);
     }
     if (fehlerListe.length) { fehler(fehlerListe); return; }
-    const koll = liste().filter((x) => kollision(x, b));
     await sicher(async () => {
       await S.buchungSpeichern(D, b);
       ansicht = new Date(b.von + 'T12:00:00');
       schliessen(); kalender();
-      hinweis(koll.length ? `Gespeichert. Überschneidung mit ${koll.map((x) => fmt(x.von) + '–' + fmt(x.bis)).join(', ')}. Bitte im Gespräch lösen.` : 'Reservierung gespeichert.');
+      hinweis(ex ? 'Reservierung geändert.' : 'Reservierung gespeichert.');
     });
   };
 }
