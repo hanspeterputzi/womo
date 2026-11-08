@@ -57,7 +57,7 @@ main{max-width:620px;margin:0 auto;padding:16px 14px 0}
 
 /* Kalender */
 .monatskopf{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.monatskopf h2{margin:0;font-size:20px;font-weight:800}
+.monatskopf h2{margin:0;font-size:18px;font-weight:800;white-space:nowrap}
 .nav{display:flex;gap:6px}
 .nav button{width:44px;height:44px;border-radius:12px;border:0;background:var(--soft);color:var(--fg);font-size:18px;font-weight:700}
 .nav button.heute-b{width:auto;padding:0 14px;font-size:14px}
@@ -69,7 +69,7 @@ main{max-width:620px;margin:0 auto;padding:16px 14px 0}
 .tag.we{color:var(--muted)}
 .tag.heute .nr{background:var(--acc);color:var(--accfg);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;margin-top:-2px}
 .tag .streifen{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column}
-.tag .streifen i{display:block;height:9px}
+.tag .streifen i{display:block;height:15px;line-height:15px;font-size:11px;font-weight:800;font-style:normal;color:#fff;text-align:center}
 .tag .streifen i.hp{background:var(--hp)}.tag .streifen i.eltern{background:var(--mix)}.tag .streifen i.nora{background:var(--nora)}.tag .streifen i.kind-1{background:var(--kind-1)}.tag .streifen i.kind-2{background:var(--kind-2)}
 .tag .tm{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--muted)}
 .tm.offen{background:var(--muted)}.tm.bald{background:var(--gelb)}.tm.ueberfaellig{background:var(--rot)}.tm.erledigt{background:var(--ok);opacity:.55}

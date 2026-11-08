@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108p';
-import * as S from './speicher.js?v=20261108p';
+} from './regeln.js?v=20261108q';
+import * as S from './speicher.js?v=20261108q';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -51,6 +51,7 @@ const avatar = (id) => { const p = D.personen[id]; const f = PERSON_FARBE[id] ||
 const idsGeordnet = () => { const i = Object.keys(D.personen); return [...REIHENFOLGE.filter((x) => i.includes(x)), ...i.filter((x) => !REIHENFOLGE.includes(x))]; };
 const rang = (id) => { const i = REIHENFOLGE.indexOf(id); return i < 0 ? 99 : i; };
 function personenGeordnet() { return Object.entries(D.personen).sort((a, b) => rang(a[0]) - rang(b[0]) || a[1].name.localeCompare(b[1].name)); }
+toast.onclick = () => { toast.textContent = ''; };
 function hinweis(text) { toast.textContent = text; clearTimeout(hinweis.t); hinweis.t = setTimeout(() => { toast.textContent = ''; }, 6000); }
 function rappen(txt) { const t = String(txt).trim().replace(/['’\s]/g, '').replace(',', '.'); return /^\d+(\.\d{1,2})?$/.test(t) ? Math.round(parseFloat(t) * 100) : NaN; }
 function schliessen() { formEl.innerHTML = ''; }
@@ -66,6 +67,7 @@ async function sicher(fn) {
 }
 
 async function start() {
+  app.innerHTML = '<div class="login"><p class="gross">Womo</p><p class="sub">Daten werden geladen …</p></div>';
   try { D = await S.laden(); }
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div></div>`; return; }
   try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
@@ -250,7 +252,7 @@ function kalender() {
     const wd = (versatz + t - 1) % 7;
     const cls = ['tag', wd >= 5 ? 'we' : '', hier.length > 1 ? 'koll' : '',
       d === tT ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}"></i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
@@ -436,7 +438,7 @@ function uebergabeForm(bid, phase) {
   <div class="tankanz" id="tankanz"></div>
   <div id="tankw"></div>
   <label>Checkliste (Anhang B)</label>
-  ${darf ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
+  ${darf && phase === 'ab' ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
   <label for="u_bem">Bemerkung (bei Nein: den Mangel beschreiben)</label><textarea id="u_bem" ${dis}>${h(ex?.bemerkung || '')}</textarea>
   <label for="u_sch">Neue Schäden oder Mängel</label><textarea id="u_sch" ${dis}>${h(ex?.schaeden || '')}</textarea>
@@ -454,7 +456,7 @@ function uebergabeForm(bid, phase) {
   const eltRei = !(b.fahrerId && D.personen[b.fahrerId]?.konto === 'eltern') && !(b.mitreisende || []).some((i) => D.personen[i]?.konto === 'eltern');
   const tw = () => { const el = formEl.querySelector('input[name="u_tank"]:checked'); document.getElementById('tankw').innerHTML = el && TANK[+el.value] !== 'voll' ? `<div class="hinweiskarte rot">Achtung: Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Speichern geht nur mit einer Bemerkung.${phase === 'ab' && eltRei ? ' Vor einer Ferienreise der Kinder sind die Eltern fürs Volltanken verantwortlich.' : ''}</div>` : ''; };
   formEl.querySelectorAll('input[name="u_tank"]').forEach((i) => i.onchange = tw); tw();
-  document.getElementById('alleja').onclick = () => CHECKPUNKTE.forEach(([k]) => { document.getElementById(`p_${k}_ja`).checked = true; });
+  if (phase === 'ab') document.getElementById('alleja').onclick = () => CHECKPUNKTE.forEach(([k]) => { document.getElementById(`p_${k}_ja`).checked = true; });
   document.getElementById('spei').onclick = async () => {
     const punkte = {}; for (const [k] of CHECKPUNKTE) { const el = formEl.querySelector(`input[name="p_${k}"]:checked`); if (el) punkte[k] = el.value; }
     const tankEl = formEl.querySelector('input[name="u_tank"]:checked');
