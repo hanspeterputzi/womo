@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261109a';
-import * as S from './speicher.js?v=20261109a';
+} from './regeln.js?v=20261109b';
+import * as S from './speicher.js?v=20261109b';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -122,7 +122,8 @@ const ORTE = [
     ['Rabattkarten und Führer', [['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/']]],
     ['Suchportale', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['camping.ch (CH)', 'https://camping.ch/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]]]],
   ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
-    ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]],
+    ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Bordatlas (Europa)', 'https://bordatlas.de/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]],
+    ['Autohöfe in Deutschland', [['Artikel: Übernachten auf Autohöfen (promobil)', 'https://www.promobil.de/uebernachtungstipps/auf-vielen-deutschen-autohoefen-kann-man-mit-dem-camper-guenstig-uebernachten/'], ['Websuche: Autohof Wohnmobil übernachten', 'https://www.google.com/search?q=' + encodeURIComponent('Autohof Wohnmobil übernachten Stellplatz')]], 'In Deutschland gibt es rund 230 Autohöfe direkt an Autobahnausfahrten, etwa die Hälfte erlaubt Wohnmobilen das Übernachten. Kosten: 0 bis 25 Euro pro Nacht, bezahlt wird meist an der Tankstelle, Strom gibt es selten. In stellplatz.info und Campercontact (oben) einfach nach «Autohof» suchen.'],
     ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]]]],
   ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation', null],
   ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [
@@ -213,7 +214,7 @@ function unterwegs() {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       const kopfLink = `<a class="u-ortlink u-kopf" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
       return gruppen ? `<div class="u-ort" style="flex-direction:column;gap:0">${kopfLink}
-        <div style="margin-top:4px">${gruppen.map(([g, l]) => `<details class="u-det"><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
+        <div style="margin-top:4px">${gruppen.map(([g, l, hin2]) => `<details class="u-det"><summary><span>${h(g)}</span><b>${l.length}</b></summary>${hin2 ? `<p class="info" style="margin:0 0 8px">${h(hin2)}</p>` : ''}<div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
         : `<div class="u-ort">${kopfLink}</div>`;
     }).join('')}<p class="info" style="margin:6px 0 0">Ein Tipp auf einen Namen öffnet direkt die Webseite (am 08.11.2026 geprüft: Seite erreichbar, Qualität der Angebote nicht). Ein Tipp auf das Symbol oder den Titel einer Kategorie öffnet eine Google-Suche.</p></div>
   <div class="karte"><p class="titel">Nach Land</p>
