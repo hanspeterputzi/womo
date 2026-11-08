@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108o';
-import * as S from './speicher.js?v=20261108o';
+} from './regeln.js?v=20261108p';
+import * as S from './speicher.js?v=20261108p';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -68,7 +68,8 @@ async function sicher(fn) {
 async function start() {
   try { D = await S.laden(); }
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div></div>`; return; }
-  S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); });
+  try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
+  catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div><button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
   try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id]) ich = id; } catch {}
   zeige();
 }
@@ -89,8 +90,10 @@ function anmeldung() {
   <p class="klein-t" style="margin-top:14px">Der PIN zeigt nur, wer eine Eintragung erfasst. Er schützt keine Daten.</p></div>`;
   const los = async () => {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
-    if (await S.pinPasst(D.personen[id], pin)) { ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} zeige(); }
-    else document.getElementById('msg').innerHTML = `<div class="fehler">PIN für ${h(D.personen[id].name)} falsch. Name oben richtig gewählt?</div>`;
+    let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
+    if (Date.now() < sp.bis) { document.getElementById('msg').innerHTML = `<div class="fehler">Zu viele Fehlversuche. Bitte ${Math.ceil((sp.bis - Date.now()) / 1000)} Sekunden warten.</div>`; return; }
+    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} zeige(); }
+    else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">PIN für ${h(D.personen[id].name)} falsch. Name oben richtig gewählt?</div>`; }
   };
   document.getElementById('ok').onclick = los;
   document.getElementById('pin').onkeydown = (e) => { if (e.key === 'Enter') los(); };
@@ -331,6 +334,7 @@ function formularZeigen(tag, ex) {
       if (sp.stufe === 'gesperrt') fehlerListe.push(`${D.personen[id]?.name} hat ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4). Bitte zuerst die Zahlung klären.`);
     }
     if (fehlerListe.length) { fehler(fehlerListe); return; }
+    if (b.bis < heute() && !(ex && ex.von === b.von && ex.bis === b.bis) && !confirm('Diese Reservierung liegt in der Vergangenheit. Das verändert die Tageskonten rückwirkend. Trotzdem speichern?')) return;
     const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap());
     const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
     if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;

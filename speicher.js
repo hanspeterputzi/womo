@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261108o';
+import { tageListe } from './regeln.js?v=20261108p';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -47,8 +47,7 @@ export async function laden() {
     if (!fam.exists()) throw new Error('Dieser Link ist ungültig.');
     const d = ergaenzen({ personen: {}, adminId: fam.data().adminId, start: fam.data().start || '' });
     (await fs.getDocs(fs.collection(db, 'familien', code, 'personen'))).forEach((x) => { d.personen[x.id] = x.data(); });
-    for (const s of SAMMLUNGEN) (await fs.getDocs(fs.collection(db, 'familien', code, s))).forEach((x) => { d[s][x.id] = { ...x.data(), id: x.id }; });
-    return d;
+    return d;   // Sammlungen füllt abonnieren() mit dem ersten Snapshot (kein doppeltes Lesen)
   }
   let d = lesen();
   if (!d) {
@@ -63,15 +62,22 @@ export async function laden() {
 }
 
 // Live-Updates: gleiche Familie auf anderen Handys. cb() wird bei Aenderungen gerufen.
+// Liefert erst, wenn alle Sammlungen einmal angekommen sind. Danach rufen Aenderungen cb().
 export async function abonnieren(d, cb) {
   if (!online) return;
   await fsInit();
+  const erste = [];
   for (const s of SAMMLUNGEN) {
-    fs.onSnapshot(fs.collection(db, 'familien', code, s), (snap) => {
-      const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu; cb();
-    });
+    erste.push(new Promise((ok, nein) => {
+      let first = true;
+      fs.onSnapshot(fs.collection(db, 'familien', code, s), (snap) => {
+        const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu;
+        if (first) { first = false; ok(); } else cb();
+      }, nein);
+    }));
   }
   fs.onSnapshot(fs.doc(db, 'familien', code), (x) => { if (x.exists()) { d.start = x.data().start || ''; d.adminId = x.data().adminId; cb(); } });
+  await Promise.all(erste);
 }
 
 // Allgemein: Dokument in einer Sammlung speichern / loeschen.
