@@ -147,6 +147,7 @@ export function pruefeUebergabe(u, uebergaben, buchungen) {
   if (offen.length) fehler.push(`Bitte bei jedem Punkt Ja oder Nein wählen (noch offen: ${offen.length}).`);
   const nein = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein');
   if (nein.length && !(u.bemerkung || '').trim()) fehler.push('Bei Nein bitte den Mangel in der Bemerkung beschreiben.');
+  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Die Rückgabe ist erst abgeschlossen, wenn der Schlüssel am Schlüsselbrett der Eltern hängt. Bitte «Ja» wählen.');
   if (Number.isInteger(u.km) && u.km >= 0) { const p = kmPlausibel(u, uebergaben, buchungen); if (!p.ok) fehler.push(p.text); }
   return { ok: fehler.length === 0, fehler };
 }
@@ -263,3 +264,6 @@ export function terminStufe(t, heuteIso) {
 }
 
 export const chf = (rappen) => (rappen / 100).toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// Rueckgabe gilt erst als abgeschlossen, wenn der Schluessel quittiert ist.
+export const rueckgabeFertig = (rk) => !!rk && rk.schluessel === 'ja';

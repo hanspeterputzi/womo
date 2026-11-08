@@ -1,9 +1,9 @@
 import {
   SCHWELLE, dauer, konten, kontostaende, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
-  KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, addJahre, chf,
-} from './regeln.js?v=20261107l';
-import * as S from './speicher.js?v=20261107l';
+  KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
+} from './regeln.js?v=20261108a';
+import * as S from './speicher.js?v=20261108a';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -91,7 +91,7 @@ const ICON = {
   unterwegs: '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>',
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
 };
-const TABS = [['kalender', 'Kalender'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['termine', 'Termine'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
   ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'TCS Camping, ACSI, camping.info, PiNCAMP', 'Sicher, Strom und Sanitär vorhanden'],
@@ -186,16 +186,21 @@ function kalender() {
   const versatz = (erster.getDay() + 6) % 7, jetzt = new Date();
   const bs = liste();
   let zellen = '';
+  const tT = heute(), terminTag = {};
+  Object.values(D.termine).forEach((x) => { (terminTag[x.faelligAm] = terminTag[x.faelligAm] || []).push(x); });
+  const RANG = { ueberfaellig: 3, bald: 2, offen: 1, erledigt: 0 };
   for (let i = 0; i < versatz; i++) zellen += '<div class="tag leer"></div>';
   for (let t = 1; t <= n; t++) {
     const d = iso(J, M, t), hier = bs.filter((b) => b.von <= d && d <= b.bis);
     const wd = (versatz + t - 1) % 7;
     const cls = ['tag', wd >= 5 ? 'we' : '', hier.length > 1 ? 'koll' : '',
       jetzt.getFullYear() === J && jetzt.getMonth() === M && jetzt.getDate() === t ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}"></i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}"></i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
+  const monatsT = Object.values(D.termine).filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
+  const TCHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
   app.innerHTML = rahmen(`${hinweiseHtml()}${ringe(J)}
   <div class="karte">
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
@@ -204,7 +209,8 @@ function kalender() {
     <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
-  <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>`) +
+  <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
+  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`) +
   '<button id="neu">＋ Reservieren</button>';
   bindRahmen();
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
@@ -302,11 +308,13 @@ function fahrtHtml(b, st) {
   const wer = D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?';
   const maengel = [ab, rk].some((u) => u && (CHECKPUNKTE.some(([k]) => u.punkte?.[k] === 'nein') || (u.schaeden || '').trim()));
   const km = st.proBuchung[b.id];
-  const chip = (u, text) => `<span class="chipk ${u ? 'ok' : ''}">${u ? '✓ ' : ''}${text}</span>`;
+  const fertigR = rueckgabeFertig(rk);
+  const schlOffen = rk && !fertigR;
+  const knopf = (fertig, id, text, offen) => `<button class="btn${fertig ? ' ok' : offen ? ' gelb' : ''}" data-u="${b.id}|${id}">${fertig ? '✓ ' : ''}${text}</button>`;
   return `<div class="b" style="flex-direction:column;gap:6px">
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
-    <div class="btnzeile" style="margin:0">${chip(ab, 'Übergabe')}${chip(rk, 'Rückgabe')}${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}</div>
-    <div class="btnzeile" style="margin:0"><button class="btn" data-u="${b.id}|ab">Übergabe ${ab ? 'ansehen' : 'erfassen'}</button><button class="btn" data-u="${b.id}|rueck">Rückgabe ${rk ? 'ansehen' : 'erfassen'}</button></div></div>`;
+    ${km !== undefined || maengel || schlOffen ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}</div>` : ''}
+    <div class="btnzeile" style="margin:0">${knopf(!!ab, 'ab', `Übergabe ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
 }
 
 function uebergabeForm(bid, phase) {
@@ -328,6 +336,7 @@ function uebergabeForm(bid, phase) {
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
   <label for="u_bem">Bemerkung (bei Nein: den Mangel beschreiben)</label><textarea id="u_bem" ${dis}>${h(ex?.bemerkung || '')}</textarea>
   <label for="u_sch">Neue Schäden oder Mängel</label><textarea id="u_sch" ${dis}>${h(ex?.schaeden || '')}</textarea>
+  ${phase === 'rueck' ? `<label>Schlüssel (letzte Pflicht der Rückgabe)</label><p class="info" style="margin:0 0 6px">Der Schlüssel hängt am Schlüsselbrett der Eltern. Ohne Ja ist die Rückgabe nicht abgeschlossen.</p><div class="mitw">${radio('u_schl', 'ja', 'Ja, Schlüssel hängt am Schlüsselbrett', 'ja', ex?.schluessel === 'ja')}${radio('u_schl', 'nein', 'Nein, noch nicht', 'nein', ex && ex.schluessel !== 'ja')}</div>${ex?.schluesselAm ? `<p class="info">Quittiert am ${fmt(ex.schluesselAm.slice(0, 10))}, ${ex.schluesselAm.slice(11, 16)} Uhr, von ${h(D.personen[ex.schluesselVon]?.name || '?')}.</p>` : ''}` : ''}
   <div id="msg"></div>
   <div class="aktion"><button id="abb">${darf ? 'Abbrechen' : 'Schliessen'}</button>${darf ? '<button class="primaer" id="spei">Speichern</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
@@ -339,9 +348,14 @@ function uebergabeForm(bid, phase) {
     const kmTxt = val('u_km').replace(/\D/g, '');
     const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), tank: tankEl ? tankEl.value.replace('-', '/') : '',
       punkte, bemerkung: val('u_bem').trim(), schaeden: val('u_sch').trim(), erfasstVon: ex?.erfasstVon || ich };
+    if (phase === 'rueck') {
+      const sl = formEl.querySelector('input[name="u_schl"]:checked');
+      u.schluessel = sl ? sl.value : '';
+      if (u.schluessel === 'ja') { u.schluesselAm = ex?.schluessel === 'ja' && ex.schluesselAm ? ex.schluesselAm : lokal; u.schluesselVon = ex?.schluessel === 'ja' && ex.schluesselVon ? ex.schluesselVon : ich; }
+    }
     const p = pruefeUebergabe(u, Object.values(D.uebergaben), D.buchungen);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übergabe gespeichert.' : 'Rückgabe gespeichert.'); });
+    await sicher(async () => { await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übergabe gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.'); });
   };
 }
 
