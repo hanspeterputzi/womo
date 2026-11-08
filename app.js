@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108y';
-import * as S from './speicher.js?v=20261108y';
+} from './regeln.js?v=20261108z';
+import * as S from './speicher.js?v=20261108z';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -661,22 +661,21 @@ const TERMIN_ICON = {
 function termine() {
   const t = heute();
   const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
+  const isoVon = (n) => new Date(n * 86400000).toISOString().slice(0, 10);
   const tageBis = (x) => nr(x.faelligAm) - nr(t);
   const rel = (x) => { const d = tageBis(x); return d === 0 ? 'heute' : d === 1 ? 'morgen' : d > 1 ? `in ${d} Tagen` : d === -1 ? 'seit gestern' : `seit ${-d} Tagen`; };
+  const pilleText = (x) => { const d = tageBis(x); return d < 0 ? `${-d} ${-d === 1 ? 'Tag' : 'Tage'}` : d === 0 ? 'heute' : `${d} ${d === 1 ? 'Tag' : 'Tage'}`; };
   const WT = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   const wochentag = (iso) => WT[new Date(nr(iso) * 86400000).getUTCDay()];
   const datum = (iso) => { const [j, m, d] = iso.split('-').map(Number); return `${d}. ${MONATE[m - 1]} ${j}`; };
-  const kurz = (iso) => { const [j, m, d] = iso.split('-').map(Number); return `${wochentag(iso).slice(0, 2)}, ${d}. ${MONATE[m - 1].slice(0, 3)} ${j}`; };
+  const kurz = (iso) => { const [j, m, d] = iso.split('-').map(Number); return `${wochentag(iso).slice(0, 2)}, ${d}. ${MONATE[m - 1].slice(0, 3)}`; };
   const L = termineEcht();
   const offen = L.filter((x) => !x.erledigtAm).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : a.faelligAm > b.faelligAm ? 1 : 0));
   const fertig = L.filter((x) => x.erledigtAm).sort((a, b) => (a.erledigtAm < b.erledigtAm ? 1 : -1));
   const icon = (x) => `<svg viewBox="0 0 24 24" aria-hidden="true">${TERMIN_ICON[x.art] || TERMIN_ICON[x.titel] || TERMIN_ICON.Sonstiges}</svg>`;
   const klasse = (x) => ({ ueberfaellig: 'rot', bald: 'gelb', offen: 'blau', erledigt: 'ok' })[terminStufe(x, t)];
-  const zahlen = { rot: offen.filter((x) => klasse(x) === 'rot').length, gelb: offen.filter((x) => klasse(x) === 'gelb').length, blau: offen.filter((x) => klasse(x) === 'blau').length };
-  const stat = (k, n, text) => n ? `<span class="t-stat ${k}"><i></i><b>${n}</b> ${text}</span>` : '';
-  const sub = offen.length ? `<div class="t-stats">${stat('rot', zahlen.rot, 'überfällig')}${stat('gelb', zahlen.gelb, 'bald')}${stat('blau', zahlen.blau, 'später')}</div>` : '';
 
-  // Nächster Termin mit Ring: voll = fällig oder überfällig, leer = mindestens 30 Tage entfernt
+  // Karte oben: nächster Termin mit Ring (voll = fällig oder überfällig, leer = mindestens 30 Tage entfernt)
   const n = offen[0];
   let next = `<div class="t-next leer"><div><p class="t-lab">Nächster Termin</p><p class="t-nt">Keine offenen Termine</p><p class="t-nd">Alles erledigt.</p></div></div>`;
   if (n) {
@@ -684,22 +683,28 @@ function termine() {
     const mitte = d === 0 ? '<b>Heute</b>' : `<b>${Math.abs(d)}</b><small>${Math.abs(d) === 1 ? 'Tag' : 'Tage'}</small>`;
     const pille = d < 0 ? 'zu spät' : d === 0 ? 'heute fällig' : d === 1 ? 'morgen fällig' : `in ${d} Tagen`;
     next = `<button class="t-next ${k}" data-tid="${h(n.id)}"><span class="t-ring"><svg viewBox="0 0 84 84"><circle class="rb" cx="42" cy="42" r="34"/><circle class="rf" cx="42" cy="42" r="34" stroke-dasharray="${(voll * U).toFixed(1)} ${U.toFixed(1)}"/></svg><span class="t-mid">${mitte}</span></span>
-      <span class="t-ntx"><span class="t-lab">Nächster Termin</span><span class="t-nt">${h(n.titel)}</span><span class="t-nd">${kurz(n.faelligAm)}</span><span class="t-pille ${k}">${pille}</span></span></button>`;
+      <span class="t-ntx"><span class="t-lab">Nächster Termin</span><span class="t-nt">${h(n.titel)}</span><span class="t-nd">${wochentag(n.faelligAm).slice(0, 2)}, ${datum(n.faelligAm)}</span><span class="t-pille ${k}">${pille}</span></span></button>`;
   }
 
-  // Zeitleiste
-  let monat = '', liste = '';
-  offen.slice(1).forEach((x) => {
-    const m = x.faelligAm.slice(0, 7), [jj, mm, dd] = x.faelligAm.split('-'), k = klasse(x);
-    if (m !== monat) { monat = m; liste += `<p class="t-monat">${MONATE[+mm - 1]} ${jj}</p>`; }
-    liste += `<button class="t-item ${k}" data-tid="${h(x.id)}"><span class="t-d"><small>${wochentag(x.faelligAm).slice(0, 2)}</small><b>${+dd}</b></span>
-      <span class="t-karte"><span class="t-ic ${k}">${icon(x)}</span><span class="t-tx"><strong>${h(x.titel)}</strong><span>${rel(x)}</span></span><span class="t-pf" aria-hidden="true">›</span></span></button>`;
-  });
+  // Wochenstreifen: die nächsten 14 Tage ab Montag dieser Woche
+  const heuteNr = nr(t), montag = heuteNr - ((new Date(heuteNr * 86400000).getUTCDay() + 6) % 7);
+  const tagMap = {}; offen.forEach((x) => { (tagMap[x.faelligAm] = tagMap[x.faelligAm] || []).push(x); });
+  const strip = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((w) => `<small>${w}</small>`).join('') + Array.from({ length: 14 }, (_, i) => {
+    const iso = isoVon(montag + i), xs = tagMap[iso] || [], k = xs.length ? klasse(xs[0]) : '', dd = +iso.slice(8);
+    return `<${xs.length ? 'button' : 'div'} class="t-tg${iso === t ? ' heute' : ''}${montag + i < heuteNr ? ' vorbei' : ''} ${k}"${xs.length ? ` data-tid="${h(xs[0].id)}"` : ''}>${dd}<u></u></${xs.length ? 'button' : 'div'}>`;
+  }).join('');
+
+  // Gruppen (der erste Termin steht schon in der Karte oben)
+  const rest = offen.slice(1);
+  const zeile = (x) => { const k = klasse(x); return `<button class="t-z ${k}" data-tid="${h(x.id)}"><span class="t-sq ${k}">${icon(x)}</span><span class="t-zt"><strong>${h(x.titel)}</strong><small>${kurz(x.faelligAm)}</small></span><span class="t-pl ${k}">${pilleText(x)}</span></button>`; };
+  const gruppe = (titel, xs) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
+  const listen = gruppe('Überfällig', rest.filter((x) => klasse(x) === 'rot')) + gruppe('Bald (30 Tage)', rest.filter((x) => klasse(x) === 'gelb')) + gruppe('Später', rest.filter((x) => klasse(x) === 'blau'));
   const erl = fertig.map((x) => `<button class="t-fertig" data-tid="${h(x.id)}"><span class="t-haken">✓</span><span><strong>${h(x.titel)}</strong><small>erledigt am ${fmt(x.erledigtAm)}</small></span></button>`).join('');
 
-  app.innerHTML = rahmen(`<div class="seitenkopf"><div><h2>Termine</h2>${sub}</div><button class="t-plus" id="tneu" aria-label="Neuer Termin">＋</button></div>
+  app.innerHTML = rahmen(`<div class="seitenkopf"><h2>Termine</h2><button class="t-plus" id="tneu" aria-label="Neuer Termin">＋</button></div>
     ${next}
-    ${offen.length ? `<div class="t-zeit">${liste}</div>` : ''}
+    <div class="t-woche">${strip}</div>
+    ${listen}
     ${fertig.length ? `<details class="sek" style="margin-top:20px"><summary><span>Erledigt</span><b>${fertig.length}</b></summary><div class="sek-in">${erl}</div></details>` : ''}
     <p class="info" style="margin:18px 6px 0">HP organisiert Service, MFK, Reifenwechsel und Winterlager (Ziffer 11). Die Kosten tragen alle nach Ziffer 5.</p>`);
   bindRahmen();
@@ -708,7 +713,7 @@ function termine() {
   app.querySelectorAll('[data-tid]').forEach((b) => b.onclick = () => {
     const x = D.termine[b.dataset.tid]; if (!x) return;
     const darf = eigener(x), k = klasse(x);
-    sheet(`<div class="t-sk"><span class="t-ic ${k} gross">${icon(x)}</span><div><h3 style="margin:0">${h(x.titel)}</h3><div class="info" style="margin:2px 0 0">${x.erledigtAm ? 'Erledigt am ' + fmt(x.erledigtAm) : wochentag(x.faelligAm) + ', ' + datum(x.faelligAm) + ' · ' + rel(x)}</div></div></div>
+    sheet(`<div class="t-sk"><span class="t-sq ${k} gross">${icon(x)}</span><div><h3 style="margin:0">${h(x.titel)}</h3><div class="info" style="margin:2px 0 0">${x.erledigtAm ? 'Erledigt am ' + fmt(x.erledigtAm) : wochentag(x.faelligAm) + ', ' + datum(x.faelligAm) + ' · ' + rel(x)}</div></div></div>
       ${x.art && x.art !== x.titel ? `<p class="info">Art: ${h(x.art)}</p>` : ''}${x.notiz ? `<p class="info">${h(x.notiz)}</p>` : ''}
       <p class="info">Erfasst von ${h(D.personen[x.erfasstVon]?.name || '?')}.${darf ? '' : ' Nur diese Person kann den Termin ändern.'}</p><div id="msg"></div>
       <div class="t-akt2">${darf ? (x.erledigtAm ? '<button class="gross-btn" id="t_wieder">Wieder öffnen</button>' : '<button class="gross-btn pri" id="t_erledigt">Als erledigt markieren</button>') + '<button class="gross-btn rot" id="t_loeschen">Löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
