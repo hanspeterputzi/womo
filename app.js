@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108u';
-import * as S from './speicher.js?v=20261108u';
+} from './regeln.js?v=20261108v';
+import * as S from './speicher.js?v=20261108v';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -200,7 +200,7 @@ const LAND_LINKS = {
   'Bosnien-Herzegowina': [CI('bosnien-herzegowina')], 'Montenegro': [CI('montenegro')], 'Albanien': [CI('albanien')], 'Nordmazedonien': [CI('mazedonien')],
 };
 function unterwegs() {
-  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Wohnmobil Stellplatz');
+  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n === 'Campingplätze' ? 'Campingplatz Wohnmobil Verband' : n + ' Wohnmobil Stellplatz');
   const suchL = (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q);
   const chip = ([n, url]) => {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
@@ -211,9 +211,10 @@ function unterwegs() {
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       return gruppen ? `<div class="u-ort" style="flex-direction:column;gap:0"><div style="display:flex;gap:14px">${kopf}</div>
+        <div class="u-chips" style="margin:10px 0 2px"><a class="u-chip u-such" href="${such(t)}" target="_blank" rel="noopener">🔎 Websuche: ${h(t)}</a></div>
         <div style="margin-top:6px">${gruppen.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
         : `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
-    }).join('')}<p class="info" style="margin:6px 0 0">Tippen auf einen Namen öffnet direkt die Webseite (am 08.11.2026 geprüft: Seite erreichbar, Qualität der Angebote nicht). Nur «Gasthöfe» öffnet eine Websuche.</p></div>
+    }).join('')}<p class="info" style="margin:6px 0 0">Tippen auf einen Namen öffnet direkt die Webseite (am 08.11.2026 geprüft: Seite erreichbar, Qualität der Angebote nicht). Die Knöpfe «Websuche» öffnen eine Google-Suche.</p></div>
   <div class="karte"><p class="titel">Nach Land</p>
     ${LAENDER.map(([f, l, t, sz]) => `<details class="u-det u-lnd${VERBOT_LAND.has(l) ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
       <ul class="info" style="padding-left:18px;margin:4px 0 8px">${sz.map((x) => `<li style="margin-bottom:4px">${h(x)}</li>`).join('')}</ul>
@@ -231,23 +232,14 @@ const VERTRAG_REGELN = [
   ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
   ['Übernahme-Checkliste (Anhang B)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
-function exportDaten() {
-  const sauberPers = Object.fromEntries(Object.entries(D.personen).map(([i, p]) => [i, { name: p.name, konto: p.konto }]));   // ohne PIN-Hash
-  const daten = { stand: new Date().toISOString(), personen: sauberPers, adminId: D.adminId, start: D.start };
-  for (const s of S.SAMMLUNGEN) daten[s] = D[s];
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(daten, null, 1)], { type: 'application/json' }));
-  a.download = `womo-sicherung-${heute()}.json`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
     <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags. Bei Widerspruch gilt der Vertrag.</p>
     ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>
-    <div class="karte"><p class="titel">Datensicherung</p><p class="info" style="margin:0 0 8px">Speichert alle Reservierungen, Übergaben, Kosten und Termine als Datei auf dem Gerät (ohne PIN). Bitte regelmässig sichern, zum Beispiel am Monatsende.</p><button class="btn pri" id="export">Sicherung speichern</button></div>`);
+    <div class="karte"><p class="titel">Datensicherung</p><p class="info" style="margin:0 0 8px">Alle Reservierungen, Übernahmen, Kosten, Einzahlungen und Termine werden automatisch gesichert: <strong>jeden Sonntag um 20 Uhr</strong>.</p>
+      <p class="info" style="margin:0 0 8px"><strong>Wo:</strong> auf dem Mac von HP, im Benutzerordner (Home) im Ordner <strong>Womo-Sicherung</strong>, darin der Ordner <strong>Sicherungen</strong>. Jede Sicherung ist eine Datei «womo-sicherung-Datum_Uhrzeit.json». Die PINs sind nicht enthalten.</p>
+      <p class="info" style="margin:0">Der Mac muss am Sonntag eingeschaltet sein. Ist er aus, wird die Sicherung beim nächsten Einschalten nachgeholt. Sicherungen werden zwei Jahre aufbewahrt.</p></div>`);
   bindRahmen();
-  document.getElementById('export').onclick = exportDaten;
 }
 function rahmen(inhalt) {
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
