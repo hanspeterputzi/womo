@@ -106,7 +106,7 @@ export function pruefeBuchung(b, personen) {
 // =====================================================================
 // Version 2: Uebergabe-Checkliste (Anhang B) und Kilometerstand
 // =====================================================================
-export const TANK = ['auf Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
+export const TANK = ['voll'];
 export const CHECKPUNKTE = [
   ['innen', 'Innenraum sauber, kein Geruch, nicht geraucht'],
   ['kuehlschrank', 'Kühlschrank geleert und geputzt'],
@@ -142,8 +142,7 @@ export function kmPlausibel(neu, uebergaben, buchungen) {
 export function pruefeUebergabe(u, uebergaben, buchungen) {
   const fehler = [];
   if (!Number.isInteger(u.km) || u.km < 0 || u.km > 999999) fehler.push('Kilometerstand fehlt oder ist ungültig.');
-  if (!TANK.includes(u.tank)) fehler.push('Tankstand fehlt.');
-  else if (u.tank !== 'voll') fehler.push('Der Tank muss voll sein (Vertrag Ziffer 10). Bei der Rückgabe immer, und damit auch bei der Übergabe an den Nächsten. Bitte zuerst volltanken.');
+  if (u.tank !== 'voll') fehler.push('Der Tank muss voll sein (Vertrag Ziffer 10). Bei der Rückgabe immer, und damit auch bei der Übergabe an den Nächsten. Bitte zuerst volltanken.');
   const offen = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] !== 'ja' && u.punkte?.[k] !== 'nein');
   if (offen.length) fehler.push(`Bitte bei jedem Punkt Ja oder Nein wählen (noch offen: ${offen.length}).`);
   const nein = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein');
