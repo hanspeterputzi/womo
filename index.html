@@ -32,7 +32,7 @@ a{color:inherit}
 /* Kopfleiste */
 .kopf{position:sticky;top:0;z-index:20;background:var(--bar);color:var(--barfg);
   padding:calc(12px + env(safe-area-inset-top)) 18px 12px;display:flex;align-items:center;justify-content:space-between}
-.marke{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.5px;font-size:19px}
+.marke{display:flex;align-items:center;gap:3px;font-weight:800;letter-spacing:.5px;font-size:19px}
 .keil{width:26px;height:16px;background:#fff;clip-path:polygon(0 100%,100% 0,100% 100%)}
 .chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:0;color:#fff;
   padding:6px 12px 6px 6px;border-radius:999px;font:inherit;font-size:14px;font-weight:600}
@@ -198,7 +198,7 @@ details.det summary{cursor:pointer;min-height:44px;display:flex;align-items:cent
 .u-ban{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#e5484d,#b4232a);color:#fff;border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
 .u-ban strong{display:block;font-size:17px;line-height:1.25;margin-bottom:3px}.u-ban span{font-size:13px;opacity:.9}
 .u-ban.slim{padding:10px 14px;gap:12px}.u-ban.slim strong{font-size:15px;margin:0}.u-ban.slim .u-bic{width:34px;height:34px}.u-ban.slim .u-bic svg{width:20px;height:20px}
-.btnzeile.zk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.btnzeile.zk .btn{width:100%;text-align:center;font-size:15px}
+.btnzeile.zk{display:grid;grid-template-columns:1fr 1fr;gap:8px}.btnzeile.zk .btn{width:100%;min-width:0;white-space:normal;text-align:center;font-size:14px;line-height:1.25;padding:10px 8px}
 .km-karte{display:flex;align-items:center;justify-content:space-between;gap:12px}.km-karte .grosszahl{white-space:nowrap}
 .u-bic{flex:none;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center}
 .u-bic svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}

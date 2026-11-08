@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108r';
-import * as S from './speicher.js?v=20261108r';
+} from './regeln.js?v=20261108s';
+import * as S from './speicher.js?v=20261108s';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -130,12 +130,14 @@ const LAENDER = [
   ['🇧🇪', 'Belgien', 'Wildcampen verboten', ['Wildcampen ist verboten, in Flandern und an der Küste streng kontrolliert. Sicher: Stellplatz oder Campingplatz.', 'Umweltzone Brüssel (LEZ): ausländische Fahrzeuge vorher online anmelden, Zulassung des Fahrzeugs prüfen (lez.brussels).']],
   ['🇱🇺', 'Luxemburg', 'Freistehen verboten', ['Freistehen ist verboten. Abseits von Städten wird eine Nacht teils geduldet, das ist keine Rechtsgrundlage. Auf Privatgrund mit Erlaubnis möglich.', 'Keine Autobahnmaut und keine Vignette für Pkw und Wohnmobile. Einzelne Brücken oder Tunnel können Gebühren haben. Keine Umweltzonen.']],
   ['🇩🇰', 'Dänemark', 'Kein Jedermannsrecht', ['Übernachten nur auf Campingplätzen und ausgewiesenen Plätzen. Zu einer Nacht am Strassenrand widersprechen sich die Quellen.', 'Keine Autobahnmaut, aber Gebühr für Storebælt- und Öresundbrücke (pro Fahrt, Preis nach Fahrzeug).']],
-  ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.']],
+  ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.', 'Höchste Einbruchrate Europas auf Rastplätzen nahe grösseren Strassen.']],
   ['🇳🇴', 'Norwegen', 'Jedermannsrecht nur für Zelte', ['Das Jedermannsrecht gilt für Zelte, nicht für Wohnmobile. Auf vielen Rastplätzen ausserhalb von Städten wird Übernachten geduldet, an Hotspots (z. B. Geiranger, Preikestolen) ist es verboten.', 'Viele Mautstationen (AutoPASS). Ausländische Fahrzeuge vorher registrieren (Epass24) oder Chip besorgen, sonst droht eine höhere Klasse.']],
   ['🇫🇮', 'Finnland', 'Für Wohnmobile unklar', ['Das Jedermannsrecht deckt vor allem Zelten ab. Für Wohnmobile ist Übernachten ausserhalb von Campingplätzen unklar: nicht auf Strassen und öffentlichen Parkplätzen, auf Privatgrund nur mit Zustimmung des Eigentümers.', 'Die öffentlichen Strassen sind für private Pkw und Wohnmobile maut- und vignettenfrei.']],
   ['🇵🇹', 'Portugal', 'Freistehen eingeschränkt', ['Freistehen ist eingeschränkt und regional verschieden, die Quellen widersprechen sich. Ein Gesetz zum Parken und Übernachten von Wohnmobilen gilt laut Berichten seit Januar 2026 (nicht im Original geprüft). Schilder und Gemeindeverbote beachten, Stellplätze nutzen.', 'Viele Autobahnen sind mautpflichtig. Transponder (Via Verde oder kompatible Box), Mautklasse des Fahrzeugs vorher prüfen.']],
   ['🇬🇷', 'Griechenland', 'Parken erlaubt, Campen verboten', ['Wohnmobile dürfen seit der Polizeiverordnung 2026 wie andere Fahrzeuge parken: in Ortschaften bis 7,5 m ohne Zeitlimit, längere 24 Stunden, ausserhalb ohne Zeitgrenze. Wer Stühle, Tisch oder Markise aufbaut, campt: das bleibt verboten (Gesetz 5170/2025, Strafen ab etwa 300 Euro). Die Quellen nennen für die Verordnung Februar oder April 2026, den amtlichen Text habe ich nicht gefunden.', 'Keine Vignette. Fast alle Autobahnen sind mautpflichtig, der Preis hängt von der Fahrzeughöhe ab. Preise steigen, die Quellen widersprechen sich: vor der Reise mit dem Routenplaner mit Mautkosten (z. B. ADAC) prüfen.']],
 ];
+// Rot = Wildcampen oder Freistehen ist verboten (gleiche Regel für alle Länder).
+const VERBOT_LAND = new Set(['Kroatien', 'Österreich', 'Slowenien', 'Niederlande', 'Belgien', 'Luxemburg']);
 const PLATTFORMEN = [
   ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
   ['Schweiz: Höfe und Private', ['Nomady', 'Landcamp.ch', 'schweizerbauern.ch', 'Swiss Hosts (ungeprüft)', 'Myfarm.ch (ungeprüft)']],
@@ -153,12 +155,12 @@ function unterwegs() {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${such(name)}" target="_blank" rel="noopener">${h(name)}${note ? `<em class="${note === 'ungeprüft' ? 'u-un' : ''}">${h(note)}</em>` : ''}</a>`;
   };
-  app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
+  app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin]) => `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener"><span class="u-ic ${c}">${SVG(ic)}</span>
     <div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div><span class="u-pfeil" aria-hidden="true">›</span></a>`).join('')}<p class="info" style="margin:6px 0 0">Tippen öffnet eine Websuche.</p></div>
   <div class="karte"><p class="titel">Nach Land</p>
-    ${LAENDER.map(([f, l, t, sz, v]) => `<details class="u-det u-lnd${v ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
+    ${LAENDER.map(([f, l, t, sz, v]) => `<details class="u-det u-lnd${VERBOT_LAND.has(l) ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
       <ul class="info" style="padding-left:18px;margin:4px 0 8px">${sz.map((x) => `<li style="margin-bottom:4px">${h(x)}</li>`).join('')}</ul>
       <div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
     <p class="info">Stand 08.11.2026. Quellen: Reiseportale und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
@@ -428,7 +430,7 @@ function uebergabeForm(bid, phase) {
   const dis = darf ? '' : 'disabled';
   const radio = (name, wert, text, cls, aktiv) => `<span class="chk ${cls}"><input type="radio" name="${name}" id="${name}_${wert}" value="${wert}" ${aktiv ? 'checked' : ''} ${dis}><label for="${name}_${wert}">${text}</label></span>`;
   sheet(`<h3>${phase === 'ab' ? 'Übernahme' : 'Rückgabe'}</h3>
-  ${phase === 'ab' ? `<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
+  ${phase === 'ab' ? `<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
   <p class="info" style="margin:0">${fmt(b.von)} – ${fmt(b.bis)} · ${h(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?')}${ex ? ` · erfasst von ${h(D.personen[ex.erfasstVon]?.name || '?')}` : ''}</p>
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übernahme: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
