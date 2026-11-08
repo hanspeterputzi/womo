@@ -5,7 +5,7 @@ import { tageListe } from './regeln.js';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
-export const SAMMLUNGEN = ['buchungen', 'uebergaben', 'kosten', 'einzahlungen', 'termine', 'zahlstatus', 'alltag'];
+export const SAMMLUNGEN = ['buchungen', 'uebergaben', 'kosten', 'einzahlungen', 'termine', 'zahlstatus'];
 
 // Code aus dem Link; wird auf dem Geraet gemerkt, falls der Startbildschirm-Icon ohne Code oeffnet.
 const KEY_CODE = 'womo-code';
@@ -47,11 +47,7 @@ export async function laden() {
     if (!fam.exists()) throw new Error('Dieser Link ist ungültig.');
     const d = ergaenzen({ personen: {}, adminId: fam.data().adminId, start: fam.data().start || '' });
     (await fs.getDocs(fs.collection(db, 'familien', code, 'personen'))).forEach((x) => { d.personen[x.id] = x.data(); });
-    for (const s of SAMMLUNGEN) {
-      // 'alltag' ist neu: solange die Datenbankregel dafuer fehlt, bleibt die Liste leer und die App laeuft weiter.
-      try { (await fs.getDocs(fs.collection(db, 'familien', code, s))).forEach((x) => { d[s][x.id] = { ...x.data(), id: x.id }; }); }
-      catch (e) { if (s !== 'alltag') throw e; d.alltagGesperrt = true; }
-    }
+    for (const s of SAMMLUNGEN) (await fs.getDocs(fs.collection(db, 'familien', code, s))).forEach((x) => { d[s][x.id] = { ...x.data(), id: x.id }; });
     return d;
   }
   let d = lesen();
@@ -72,8 +68,8 @@ export async function abonnieren(d, cb) {
   await fsInit();
   for (const s of SAMMLUNGEN) {
     fs.onSnapshot(fs.collection(db, 'familien', code, s), (snap) => {
-      const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu; if (s === 'alltag') d.alltagGesperrt = false; cb();
-    }, (e) => { if (s !== 'alltag') console.error(e); });
+      const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu; cb();
+    });
   }
   fs.onSnapshot(fs.doc(db, 'familien', code), (x) => { if (x.exists()) { d.start = x.data().start || ''; d.adminId = x.data().adminId; cb(); } });
 }

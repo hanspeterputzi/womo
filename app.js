@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108g';
-import * as S from './speicher.js?v=20261108g';
+} from './regeln.js?v=20261108h';
+import * as S from './speicher.js?v=20261108h';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -26,6 +26,9 @@ let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().ge
 // Buchhaltung: HP fuehrt sie, die Tochter ist Stellvertreterin (Vertrag Ziffer 11).
 const buchhalter = () => ich === D.adminId || ich === 't';
 const liste = () => Object.values(D.buchungen);
+// Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag');
+const alltagMap = () => Object.fromEntries(Object.values(D.termine).filter((x) => x.art === 'Alltag').map((x) => [x.id, x]));
 // Regel (HP, 07.11.2026): Niemand aendert oder loescht einen Eintrag, den jemand anders erfasst hat. Auch HP nicht.
 const eigener = (x) => !!x && !!ich && x.erfasstVon === ich;
 const nurEigene = () => hinweis('Das ist ein Eintrag von ' + 'jemand anderem. Den kann nur die Person ändern, die ihn erfasst hat.');
@@ -180,7 +183,7 @@ function hinweiseHtml() {
   const sp = zahlungsSperre(D.zahlstatus[ich], t);
   if (sp.stufe === 'gesperrt') out += `<div class="hinweiskarte rot">Nutzungsverbot wegen Zahlungsverzug seit ${fmt(sp.ab)}, bis die Zahlung erfolgt ist (Vertrag Ziffer 4).</div>`;
   else if (sp.stufe === 'erinnert') out += `<div class="hinweiskarte gelb">Zahlungserinnerung: Bitte bis ${fmt(sp.frist)} zahlen, sonst gilt ein Nutzungsverbot.</div>`;
-  Object.values(D.termine).filter((x) => ['ueberfaellig', 'bald'].includes(terminStufe(x, t))).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1)).slice(0, 3).forEach((x) => {
+  termineEcht().filter((x) => ['ueberfaellig', 'bald'].includes(terminStufe(x, t))).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1)).slice(0, 3).forEach((x) => {
     const u = terminStufe(x, t) === 'ueberfaellig';
     out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
   });
@@ -191,7 +194,7 @@ function hinweiseHtml() {
 // Kalender (Version 1)
 // =====================================================================
 function ringe(J) {
-  const st = kontostaendeMitAlltag(liste(), D.personen, J, D.alltag, D.buchungen);
+  const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const U = 2 * Math.PI * 32;
   return `<div class="karte"><p class="titel">Tageskonto ${J}</p><div class="ringe">` +
     Object.keys(SCHWELLE).map((k) => {
@@ -211,7 +214,7 @@ function kalender() {
   const bs = liste();
   let zellen = '';
   const tT = heute(), terminTag = {};
-  Object.values(D.termine).forEach((x) => { (terminTag[x.faelligAm] = terminTag[x.faelligAm] || []).push(x); });
+  termineEcht().forEach((x) => { (terminTag[x.faelligAm] = terminTag[x.faelligAm] || []).push(x); });
   const RANG = { ueberfaellig: 3, bald: 2, offen: 1, erledigt: 0 };
   for (let i = 0; i < versatz; i++) zellen += '<div class="tag leer"></div>';
   for (let t = 1; t <= n; t++) {
@@ -223,7 +226,7 @@ function kalender() {
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
-  const monatsT = Object.values(D.termine).filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
+  const monatsT = termineEcht().filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
   const TCHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
   app.innerHTML = rahmen(`${hinweiseHtml()}${ringe(J)}
   <div class="karte">
@@ -328,21 +331,20 @@ function fahrten() {
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
-  app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.alltag[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'alltag', x.id); fahrten(); }); });
+  app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
 }
 
 // Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (183 Tage).
 function alltagKarte(J) {
-  const st = kontostaendeMitAlltag(liste(), D.personen, J, D.alltag, D.buchungen);
-  const L = Object.values(D.alltag).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
+  const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
+  const L = Object.values(alltagMap()).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
   const elternIch = D.personen[ich]?.konto === 'eltern';
   const rot = st.eltern > SCHWELLE.eltern;
   return `<div class="karte"><div class="kopfzeile"><p class="titel">Alltagsfahrten der Eltern</p>${elternIch ? '<button class="btn pri" id="aneu">＋ Alltagsfahrt</button>' : ''}</div>
     <p class="grosszahl">${st.eltern} <small>von ${SCHWELLE.eltern} Tagen (Eltern ${J})</small></p>
-    <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(D.alltag, J))} km.</p>
+    <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
     ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
     <p class="info" style="margin:0 0 6px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
-    ${D.alltagGesperrt ? '<div class="hinweiskarte gelb">Alltagsfahrten sind noch nicht freigeschaltet (Datenbankregel fehlt). HP muss die neue Regel in Firebase veröffentlichen.</div>' : ''}
     ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${a.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
 }
 
@@ -361,7 +363,7 @@ function alltagForm() {
     const a = { datum: val('a_datum'), personId: val('a_wer'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), notiz: val('a_notiz').trim(), erfasstVon: ich };
     const p = pruefeAlltag(a, D.buchungen, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { await S.speichern(D, 'alltag', null, a); schliessen(); fahrten(); hinweis('Alltagsfahrt gespeichert.'); });
+    await sicher(async () => { await S.speichern(D, 'termine', null, { ...a, art: 'Alltag', titel: 'Alltagsfahrt', faelligAm: a.datum, erledigtAm: '' }); schliessen(); fahrten(); hinweis('Alltagsfahrt gespeichert.'); });
   };
 }
 
@@ -547,7 +549,7 @@ function einzahlungForm() {
 // =====================================================================
 function termine() {
   const t = heute();
-  const L = Object.values(D.termine).sort((a, b) => (!!a.erledigtAm - !!b.erledigtAm) || (a.faelligAm < b.faelligAm ? -1 : 1));
+  const L = termineEcht().sort((a, b) => (!!a.erledigtAm - !!b.erledigtAm) || (a.faelligAm < b.faelligAm ? -1 : 1));
   const CHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
   app.innerHTML = rahmen(`<div class="karte"><div class="kopfzeile"><p class="titel">Termine</p><button class="btn pri" id="tneu">＋ Termin</button></div>
     <p class="info" style="margin:0 0 6px">HP organisiert Service, MFK, Reifenwechsel und Winterlager (Ziffer 11). Die Kosten tragen alle nach Ziffer 5.</p>
