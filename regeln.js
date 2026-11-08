@@ -106,7 +106,7 @@ export function pruefeBuchung(b, personen) {
 // =====================================================================
 // Version 2: Uebergabe-Checkliste (Anhang B) und Kilometerstand
 // =====================================================================
-export const TANK = ['auf Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
+export const TANK = ['Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
 export const CHECKPUNKTE = [
   ['innen', 'Innenraum sauber, kein Geruch, nicht geraucht'],
   ['kuehlschrank', 'Kühlschrank geleert und geputzt'],
@@ -304,4 +304,14 @@ export function kontostaendeMitAlltag(buchungen, personen, J, alltag, buchungenO
   const al = alltagTage(alltag || {}, buchungenObj || {}, J);
   r.eltern += al;
   return { ...r, alltag: al };
+}
+
+// Letzter bekannter Tankstand: aus Uebergaben/Rueckgaben und «Getankt»-Meldungen (nach Datum und Uhrzeit). Nicht voll -> Warnung.
+export function tankOffen(uebergaben, fuellungen) {
+  const alle = [
+    ...uebergaben.filter((u) => u.tank && u.datumZeit).map((u) => ({ tank: u.tank, datumZeit: u.datumZeit, phase: u.phase, erfasstVon: u.erfasstVon })),
+    ...fuellungen.filter((f) => f.datumZeit).map((f) => ({ tank: 'voll', datumZeit: f.datumZeit, phase: 'getankt', erfasstVon: f.erfasstVon })),
+  ].sort((a, b) => (a.datumZeit < b.datumZeit ? -1 : a.datumZeit > b.datumZeit ? 1 : 0));
+  const l = alle[alle.length - 1];
+  return l && l.tank !== 'voll' ? l : null;
 }

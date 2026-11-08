@@ -1,9 +1,9 @@
 import {
-  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, stufe, kollision, ueberschneidungen, pruefeBuchung,
+  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108i';
-import * as S from './speicher.js?v=20261108i';
+} from './regeln.js?v=20261108j';
+import * as S from './speicher.js?v=20261108j';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -27,7 +27,11 @@ let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().ge
 const buchhalter = () => ich === D.adminId || ich === 't';
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank');
+const tankFuellungen = () => Object.values(D.termine).filter((x) => x.art === 'Tank');
+const jetztLokal = () => { const j = new Date(), p = (n) => String(n).padStart(2, '0'); return `${j.getFullYear()}-${p(j.getMonth() + 1)}-${p(j.getDate())}T${p(j.getHours())}:${p(j.getMinutes())}`; };
+const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
+const tankText = (tk, wann, wer) => `⛽ Womo: Der Tank ist nicht voll (${tk}), zuletzt erfasst am ${fmt(wann.slice(0, 10))} von ${wer}. Bitte volltanken, bevor das Womo wieder gebraucht wird (Vertrag Ziffer 10).`;
 const alltagMap = () => Object.fromEntries(Object.values(D.termine).filter((x) => x.art === 'Alltag').map((x) => [x.id, x]));
 // Regel (HP, 07.11.2026): Niemand aendert oder loescht einen Eintrag, den jemand anders erfasst hat. Auch HP nicht.
 const eigener = (x) => !!x && !!ich && x.erfasstVon === ich;
@@ -180,6 +184,8 @@ function bindRahmen() {
 // Hinweise oben im Kalender: Zahlungsverzug, faellige Termine
 function hinweiseHtml() {
   const t = heute(); let out = '';
+  const to = tankOffen(Object.values(D.uebergaben), tankFuellungen());
+  if (to) out += `<div class="hinweiskarte rot">⛽ Tank nicht voll: ${h(to.tank)}, zuletzt erfasst am ${fmt(to.datumZeit.slice(0, 10))} von ${h(D.personen[to.erfasstVon]?.name || '?')}. Der Vertrag verlangt immer einen vollen Tank.<div class="btnzeile"><button class="btn" id="tankvoll">Jetzt voll getankt</button><a class="btn" href="${waLink(tankText(to.tank, to.datumZeit, D.personen[to.erfasstVon]?.name || '?'))}" target="_blank" rel="noopener" style="text-decoration:none">Familie per WhatsApp warnen</a></div></div>`;
   const sp = zahlungsSperre(D.zahlstatus[ich], t);
   if (sp.stufe === 'gesperrt') out += `<div class="hinweiskarte rot">Nutzungsverbot wegen Zahlungsverzug seit ${fmt(sp.ab)}, bis die Zahlung erfolgt ist (Vertrag Ziffer 4).</div>`;
   else if (sp.stufe === 'erinnert') out += `<div class="hinweiskarte gelb">Zahlungserinnerung: Bitte bis ${fmt(sp.frist)} zahlen, sonst gilt ein Nutzungsverbot.</div>`;
@@ -240,6 +246,7 @@ function kalender() {
   <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`) +
   '<button id="neu">＋ Reservieren</button>';
   bindRahmen();
+  const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
   document.getElementById('hj').onclick = () => { ansicht = new Date(); kalender(); };
@@ -397,7 +404,7 @@ function uebergabeForm(bid, phase) {
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
   <label for="u_km">Kilometerstand</label><input id="u_km" inputmode="numeric" value="${ex ? ex.km : ''}" placeholder="z. B. 12450" ${dis}>
   <label>Tankstand (Vertrag: immer voll)</label>
-  <div class="tank" id="tankg">${TANK.map((t, i) => `<span class="tk" style="--n:${i}"><input type="radio" name="u_tank" id="u_tank_${i}" value="${i}" ${ex?.tank === t ? 'checked' : ''} ${dis}><label for="u_tank_${i}"><i></i><b>${t === 'auf Reserve' ? 'Res.' : t}</b></label></span>`).join('')}</div>
+  <div class="tank" id="tankg">${TANK.map((t, i) => `<span class="tk ${i <= 1 ? 'tr' : i <= 3 ? 'tg' : 'to'}${t === 'voll' ? ' tv' : ''}"><input type="radio" name="u_tank" id="u_tank_${i}" value="${i}" ${ex?.tank === t ? 'checked' : ''} ${dis}><label for="u_tank_${i}">${t}</label></span>`).join('')}</div>
   <div class="tankanz" id="tankanz"></div>
   <div id="tankw"></div>
   <label>Checkliste (Anhang B)</label>
@@ -411,8 +418,6 @@ function uebergabeForm(bid, phase) {
   document.getElementById('abb').onclick = schliessen;
   const gauge = () => {
     const el = formEl.querySelector('input[name="u_tank"]:checked'), i = el ? +el.value : -1, g = document.getElementById('tankg');
-    g.querySelectorAll('.tk').forEach((x, k) => x.classList.toggle('on', k <= i));
-    g.style.setProperty('--c', i < 0 ? 'var(--line)' : i <= 1 ? 'var(--rot)' : i <= 3 ? 'var(--gelb)' : 'var(--ok)');
     const a = document.getElementById('tankanz'); a.textContent = i < 0 ? 'Bitte den Tankstand wählen.' : i === TANK.length - 1 ? 'Tank voll ✓' : `Tank: ${TANK[i]}, nicht voll`;
     a.className = 'tankanz' + (i < 0 ? '' : i === TANK.length - 1 ? ' ok' : i <= 1 ? ' rot' : ' gelb');
   };
@@ -434,7 +439,10 @@ function uebergabeForm(bid, phase) {
     }
     const p = pruefeUebergabe(u, Object.values(D.uebergaben), D.buchungen);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übergabe gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.'); });
+    await sicher(async () => {
+      await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übergabe gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.');
+      if (tankWarnung(u)) sheet(`<h3>Tank nicht voll</h3><div class="hinweiskarte rot">Gespeichert. Der Tank ist nicht voll (${h(u.tank)}). Bitte die anderen warnen.</div><div class="aktion"><button id="abb">Schliessen</button><a class="primaer" style="text-decoration:none;text-align:center;display:block;padding:14px" href="${waLink(tankText(u.tank, u.datumZeit, D.personen[u.erfasstVon]?.name || '?'))}" target="_blank" rel="noopener">Familie per WhatsApp warnen</a></div>`), document.getElementById('abb').onclick = schliessen;
+    });
   };
 }
 

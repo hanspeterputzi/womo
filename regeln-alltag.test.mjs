@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { pruefeAlltag, alltagTage, alltagKm, kontostaendeMitAlltag, tankWarnung, pruefeUebergabe, CHECKPUNKTE, TANK } from './regeln.js';
+import { tankOffen, pruefeAlltag, alltagTage, alltagKm, kontostaendeMitAlltag, tankWarnung, pruefeUebergabe, CHECKPUNKTE, TANK } from './regeln.js';
 let n = 0; const test = (name, f) => { f(); n++; console.log('OK  ', name); };
 const P = { hp: { konto: 'eltern' }, fr: { konto: 'eltern' }, t: { konto: 'kind-1' }, s: { konto: 'kind-2' } };
 const B = { b1: { id: 'b1', von: '2026-07-10', bis: '2026-07-20', fahrerId: 't', mitreisende: ['s'] } };
@@ -57,5 +57,13 @@ test('Pflichtfelder: ohne Kilometer, Datum/Uhrzeit oder Tank ist nichts speicher
   assert.equal(pruefeUebergabe({ ...ok, datumZeit: '' }, U, BB).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, datumZeit: undefined }, U, BB).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, tank: '' }, U, BB).ok, false);
+});
+test('Tankwarnung: letzter Stand zaehlt, «Getankt» hebt sie auf', () => {
+  const U = [{ phase: 'rueck', tank: 'voll', datumZeit: '2026-08-01T10:00', erfasstVon: 't' }, { phase: 'ab', tank: '1/2', datumZeit: '2026-08-05T09:00', erfasstVon: 'hp' }];
+  assert.equal(tankOffen(U, []).tank, '1/2');
+  assert.equal(tankOffen(U, [{ datumZeit: '2026-08-05T09:30', erfasstVon: 'hp' }]), null);                     // danach getankt
+  assert.equal(tankOffen(U, [{ datumZeit: '2026-08-04T09:30', erfasstVon: 'hp' }]).tank, '1/2');                // Tanken war davor
+  assert.equal(tankOffen([U[0]], []), null); assert.equal(tankOffen([], []), null);
+  assert.equal(tankOffen([...U, { phase: 'rueck', tank: 'voll', datumZeit: '2026-08-09T18:00', erfasstVon: 's' }], []), null);
 });
 console.log(`\n${n} Testgruppen bestanden`);

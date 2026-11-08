@@ -102,7 +102,7 @@ test('Uebergabe-Pruefung', () => {
   assert.equal(pruefeUebergabe(ok, U, B3).ok, true);
   assert.equal(pruefeUebergabe({ ...ok, tank: '' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, tank: '5/6' }, U, B3).ok, false);
-  assert.equal(pruefeUebergabe({ ...ok, tank: 'auf Reserve' }, U, B3).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, tank: 'Reserve' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, tank: '3/4' }, U, B3).ok, false);                        // Tank nicht voll: gesperrt (Ziffer 10)
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck', tank: '1/2' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck' }, U, B3).ok, false);                       // Rueckgabe ohne Schluessel: nicht abschliessbar
