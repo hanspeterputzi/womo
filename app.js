@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108j';
-import * as S from './speicher.js?v=20261108j';
+} from './regeln.js?v=20261108k';
+import * as S from './speicher.js?v=20261108k';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -327,7 +327,7 @@ function fahrten() {
   const J = new Date().getFullYear();
   const st = kmStatistik(Object.values(D.uebergaben), D.buchungen, J);
   const bs = liste().sort((a, b) => (a.von < b.von ? 1 : -1)).slice(0, 40);
-  app.innerHTML = rahmen(`<div class="hinweiskarte rot" style="font-size:16px;text-align:center">Rauchen und Tiere sind verboten</div>
+  app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong><span>Vertrag Ziffer 9</span></div></div>
   <div class="karte"><p class="titel">Kilometerstand</p>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p>
     <p class="info">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km (Zuordnung nach Abreisetag der Reise).` : 'Noch kein Stand erfasst. Er entsteht aus den Übergaben und Rückgaben.'}</p></div>
@@ -398,7 +398,7 @@ function uebergabeForm(bid, phase) {
   const dis = darf ? '' : 'disabled';
   const radio = (name, wert, text, cls, aktiv) => `<span class="chk ${cls}"><input type="radio" name="${name}" id="${name}_${wert}" value="${wert}" ${aktiv ? 'checked' : ''} ${dis}><label for="${name}_${wert}">${text}</label></span>`;
   sheet(`<h3>${phase === 'ab' ? 'Übergabe' : 'Rückgabe'}</h3>
-  ${phase === 'ab' ? '<div class="hinweiskarte rot" style="font-size:16px;text-align:center;margin-bottom:10px">Rauchen und Tiere sind verboten</div>' : ''}
+  ${phase === 'ab' ? `<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong><span>Vertrag Ziffer 9</span></div></div>` : ''}
   <p class="info" style="margin:0">${fmt(b.von)} – ${fmt(b.bis)} · ${h(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?')}${ex ? ` · erfasst von ${h(D.personen[ex.erfasstVon]?.name || '?')}` : ''}</p>
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übergabe: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
