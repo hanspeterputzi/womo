@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108q';
-import * as S from './speicher.js?v=20261108q';
+} from './regeln.js?v=20261108r';
+import * as S from './speicher.js?v=20261108r';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -356,14 +356,14 @@ function fahrten() {
   const J = new Date().getFullYear();
   const st = kmStatistik(Object.values(D.uebergaben), D.buchungen, J);
   const bs = liste().sort((a, b) => (a.von < b.von ? 1 : -1)).slice(0, 40);
-  app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
-  <div class="karte"><p class="titel">Kilometerstand</p>
-    <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p>
-    <p class="info">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km (Zuordnung nach Abreisetag der Reise).` : 'Noch kein Stand erfasst. Er entsteht aus den Übernahmen und Rückgaben.'}</p></div>
-  ${alltagKarte(J)}
+  app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   <div class="karte"><p class="titel">Fahrten und Übernahmen</p>
     <p class="info" style="margin:0 0 6px">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>
-    ${bs.length ? bs.map((b) => fahrtHtml(b, st)).join('') : '<p class="leer-t">Noch keine Reservierungen.</p>'}</div>`);
+    ${bs.length ? bs.map((b) => fahrtHtml(b, st)).join('') : '<p class="leer-t">Noch keine Reservierungen.</p>'}</div>
+  <div class="karte km-karte"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
+    <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
+    <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
+  ${alltagKarte(J)}`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
@@ -380,7 +380,7 @@ function alltagKarte(J) {
     <p class="grosszahl">${st.eltern} <small>von ${SCHWELLE.eltern} Tagen (Eltern ${J})</small></p>
     <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
     ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
-    <p class="info" style="margin:0 0 6px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
+    <details class="det"><summary>So funktionieren Alltagsfahrten</summary><p class="info" style="margin:6px 0 8px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p></details>
     ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
 }
 
@@ -417,7 +417,7 @@ function fahrtHtml(b, st) {
   return `<div class="b" style="flex-direction:column;gap:6px">
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
     ${km !== undefined || maengel || schlOffen || tankNV ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}</div>` : ''}
-    <div class="btnzeile" style="margin:0">${knopf(!!ab, 'ab', `Übernahme ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
+    <div class="btnzeile zk" style="margin:0">${knopf(!!ab, 'ab', `Übernahme ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
 }
 
 function uebergabeForm(bid, phase) {
@@ -519,21 +519,25 @@ function kosten() {
 
   const kjahr = kl.filter((k) => k.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
   const ejahr = el.filter((e) => e.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
+  const mein = ids.includes(ich) ? (() => {
+    const ein = eingezahlt(el, ich, 'betrieb', von, bis), saldo = r.anteil[ich] - ein;
+    const zp = D.start && vertragsJahr(D.start, t) !== null && vertragsJahr(D.start, t) <= 8 ? zahlplan(D.start, t, el, D.personen[ich], ich) : null;
+    const offen = zp && zp.posten ? zp.posten.filter((p) => p.offen > 0) : [];
+    return `<div class="hero-zeile"><div><div class="hero-l">Dein Anteil ${J}</div><div class="hero-z">CHF ${chf(r.anteil[ich])}</div></div><div><div class="hero-l">Davon bezahlt</div><div class="hero-z">CHF ${chf(ein)}</div></div></div>
+      <div class="hero-stand ${saldo > 0 ? 'rot' : 'ok'}">${saldo > 0 ? `Du musst noch CHF ${chf(saldo)} einzahlen.` : saldo < 0 ? `Du hast ${chf(-saldo)} CHF Guthaben.` : r.total === 0 ? 'Noch keine Kosten erfasst.' : 'Alles bezahlt.'}</div>
+      ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}`;
+  })() : '';
+  const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   app.innerHTML = rahmen(`
-  <div class="karte"><div class="monatskopf" style="margin:0"><h2>Kosten ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div></div>
-  <div class="karte"><p class="titel">Rücklage</p><p class="grosszahl"><small>CHF</small> ${chf(r.ruecklagePool)}</p>
-    <p class="info">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p></div>
-  <div class="karte"><p class="titel">Anteile ${J}</p><p class="grosszahl"><small>CHF</small> ${chf(r.total)} <small>Kosten total</small></p>
-    <div class="zeilen" style="margin-top:8px">${anteile}</div>
-    <p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p></div>
-  <div class="karte"><p class="titel">Zahlplan Vertragsjahr</p>${plan}</div>
-  <div class="karte"><p class="titel">Zahlungsstatus</p><div class="zeilen">${status}</div>
-    <p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p></div>
-  <div class="karte"><div class="kopfzeile"><p class="titel">Kosten ${J}</p>${buch ? '<button class="btn pri" id="kneu">＋ Kosten</button>' : ''}</div>
-    ${kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${h(k.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>'}</div>
-  <div class="karte"><div class="kopfzeile"><p class="titel">Einzahlungen ${J}</p>${buch ? '<button class="btn pri" id="eneu">＋ Einzahlung</button>' : ''}</div>
-    ${ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${h(e.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>'}
-    ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}</div>`);
+  <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2>Kosten ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
+    ${mein}
+    ${buch ? '<div class="btnzeile"><button class="btn pri" id="kneu">＋ Kosten</button><button class="btn pri" id="eneu">＋ Einzahlung</button></div>' : ''}</div>
+  ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
+  ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
+  ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
+  ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
+  ${sek('Kosten ' + J, kjahr.length + ' Einträge', kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${h(k.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
+  ${sek('Einzahlungen ' + J, ejahr.length + ' Einträge', (ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${h(e.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
