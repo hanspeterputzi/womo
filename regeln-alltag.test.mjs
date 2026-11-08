@@ -42,7 +42,7 @@ test('Konto Eltern = Ferien + Alltag, Kinderkonten unveraendert', () => {
   const r = kontostaendeMitAlltag(Object.values(BB), P, 2026, A, BB);
   assert.equal(r.eltern, 10 + 2); assert.equal(r.alltag, 2); assert.equal(r['kind-1'], 6); assert.equal(r['kind-2'], 5);
 });
-test('Grenze 183: Ferien 170 + Alltag 14 = 184 ueberschreitet', () => {
+test('Grenze 181: Ferien 170 + Alltag 14 = 184 ueberschreitet', () => {
   const BB = { b1: { id: 'b1', von: '2026-01-01', bis: '2026-06-19', fahrerId: 'hp', mitreisende: [] } };    // 170 Tage
   const A = {}; for (let i = 1; i <= 14; i++) A['a' + i] = { datum: `2026-09-${String(i).padStart(2, '0')}`, km: 5 };
   const r = kontostaendeMitAlltag(Object.values(BB), P, 2026, A, BB);

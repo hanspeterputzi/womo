@@ -2,7 +2,7 @@
 // Reine Berechnung ohne Datenbank. Laeuft im Browser und in Node.
 // Grundlage: womo-datenmodell-entwurf.md. Zahlen kommen nur aus der Berechnung.
 
-export const SCHWELLE = { 'eltern': 183, 'kind-1': 92, 'kind-2': 92 };
+export const SCHWELLE = { 'eltern': 181, 'kind-1': 92, 'kind-2': 92 };
 export const MAX_PERSONEN = 4;
 
 const MS_TAG = 86400000;

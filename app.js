@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108l';
-import * as S from './speicher.js?v=20261108l';
+} from './regeln.js?v=20261108n';
+import * as S from './speicher.js?v=20261108n';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -116,13 +116,13 @@ const LAENDER = [
   ['🇸🇮', 'Slowenien', 'Wildcampen verboten', ['Wildcampen ist verboten, auch Übernachten am Strassenrand und auf Parkplätzen. Strafen von mehreren hundert Euro.', 'Autobahn: nur elektronische Vignette, an das Kennzeichen gebunden. Vor der Fahrt kaufen.']],
   ['🇳🇱', 'Niederlande', 'Freistehen streng verboten', ['Freistehen ist verboten, auch auf normalen Parkplätzen. «Camperplaatsen» oder Campingplätze benutzen.', 'Viele Städte haben Umweltzonen. Vor der Einfahrt prüfen.']],
   ['🇧🇪', 'Belgien', 'Wildcampen verboten', ['Wildcampen ist verboten, in Flandern und an der Küste streng kontrolliert. Sicher: Stellplatz oder Campingplatz.', 'Umweltzone Brüssel (LEZ): ausländische Fahrzeuge vorher online anmelden, Zulassung des Fahrzeugs prüfen (lez.brussels).']],
-  ['🇱🇺', 'Luxemburg', 'Freistehen verboten', ['Freistehen ist verboten. Abseits von Städten wird eine Nacht teils geduldet, das ist keine Rechtsgrundlage. Auf Privatgrund mit Erlaubnis möglich.', 'Maut: nicht geprüft.']],
+  ['🇱🇺', 'Luxemburg', 'Freistehen verboten', ['Freistehen ist verboten. Abseits von Städten wird eine Nacht teils geduldet, das ist keine Rechtsgrundlage. Auf Privatgrund mit Erlaubnis möglich.', 'Keine Autobahnmaut und keine Vignette für Pkw und Wohnmobile. Einzelne Brücken oder Tunnel können Gebühren haben. Keine Umweltzonen.']],
   ['🇩🇰', 'Dänemark', 'Kein Jedermannsrecht', ['Übernachten nur auf Campingplätzen und ausgewiesenen Plätzen. Zu einer Nacht am Strassenrand widersprechen sich die Quellen.', 'Keine Autobahnmaut, aber Gebühr für Storebælt- und Öresundbrücke (pro Fahrt, Preis nach Fahrzeug).']],
   ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.']],
   ['🇳🇴', 'Norwegen', 'Jedermannsrecht nur für Zelte', ['Das Jedermannsrecht gilt für Zelte, nicht für Wohnmobile. Auf vielen Rastplätzen ausserhalb von Städten wird Übernachten geduldet, an Hotspots (z. B. Geiranger, Preikestolen) ist es verboten.', 'Viele Mautstationen (AutoPASS). Ausländische Fahrzeuge vorher registrieren (Epass24) oder Chip besorgen, sonst droht eine höhere Klasse.']],
-  ['🇫🇮', 'Finnland', 'Für Wohnmobile unklar', ['Das Jedermannsrecht deckt vor allem Zelten ab. Für Wohnmobile ist Übernachten ausserhalb von Campingplätzen unklar: nicht auf Strassen und öffentlichen Parkplätzen, auf Privatgrund nur mit Zustimmung des Eigentümers.', 'Maut: nicht geprüft.']],
+  ['🇫🇮', 'Finnland', 'Für Wohnmobile unklar', ['Das Jedermannsrecht deckt vor allem Zelten ab. Für Wohnmobile ist Übernachten ausserhalb von Campingplätzen unklar: nicht auf Strassen und öffentlichen Parkplätzen, auf Privatgrund nur mit Zustimmung des Eigentümers.', 'Die öffentlichen Strassen sind für private Pkw und Wohnmobile maut- und vignettenfrei.']],
   ['🇵🇹', 'Portugal', 'Freistehen eingeschränkt', ['Freistehen ist eingeschränkt und regional verschieden, die Quellen widersprechen sich. Ein Gesetz zum Parken und Übernachten von Wohnmobilen gilt laut Berichten seit Januar 2026 (nicht im Original geprüft). Schilder und Gemeindeverbote beachten, Stellplätze nutzen.', 'Viele Autobahnen sind mautpflichtig. Transponder (Via Verde oder kompatible Box), Mautklasse des Fahrzeugs vorher prüfen.']],
-  ['🇬🇷', 'Griechenland', 'Rechtslage im Wandel', ['Ein Gesetz von 2025 sah hohe Strafen (ab 300 Euro) für Camping ausserhalb von Plätzen vor. Laut Berichten wurde 2026 das Parkverbot für Wohnmobile per Polizeidirektive zurückgenommen (nicht im Original geprüft). Sicher: Campingplatz.', 'Maut: nicht geprüft.']],
+  ['🇬🇷', 'Griechenland', 'Parken erlaubt, Campen verboten', ['Wohnmobile dürfen seit der Polizeiverordnung 2026 wie andere Fahrzeuge parken: in Ortschaften bis 7,5 m ohne Zeitlimit, längere 24 Stunden, ausserhalb ohne Zeitgrenze. Wer Stühle, Tisch oder Markise aufbaut, campt: das bleibt verboten (Gesetz 5170/2025, Strafen ab etwa 300 Euro). Die Quellen nennen für die Verordnung Februar oder April 2026, den amtlichen Text habe ich nicht gefunden.', 'Keine Vignette. Fast alle Autobahnen sind mautpflichtig, der Preis hängt von der Fahrzeughöhe ab. Preise steigen, die Quellen widersprechen sich: vor der Reise mit dem Routenplaner mit Mautkosten (z. B. ADAC) prüfen.']],
 ];
 const PLATTFORMEN = [
   ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
@@ -157,12 +157,12 @@ function unterwegs() {
   bindRahmen();
 }
 const VERTRAG_REGELN = [
-  ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übergabe und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
-  ['Alltagsfahrten der Eltern (Ziffer 7a)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 183 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
+  ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übernahme und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
+  ['Alltagsfahrten der Eltern (Ziffer 7a)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.', 'Kinder reisen nur auf zugelassenen Sitzplätzen mit passendem Rückhaltesystem.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten, wenn immer möglich.', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
-  ['Sauberkeit und Übergabe (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
-  ['Übergabe-Checkliste (Anhang B)', ['Bei jeder Übergabe und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
+  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
+  ['Übernahme-Checkliste (Anhang B)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
@@ -330,10 +330,10 @@ function fahrten() {
   app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   <div class="karte"><p class="titel">Kilometerstand</p>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p>
-    <p class="info">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km (Zuordnung nach Abreisetag der Reise).` : 'Noch kein Stand erfasst. Er entsteht aus den Übergaben und Rückgaben.'}</p></div>
+    <p class="info">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km (Zuordnung nach Abreisetag der Reise).` : 'Noch kein Stand erfasst. Er entsteht aus den Übernahmen und Rückgaben.'}</p></div>
   ${alltagKarte(J)}
-  <div class="karte"><p class="titel">Fahrten und Übergaben</p>
-    <p class="info" style="margin:0 0 6px">Übergabe und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>
+  <div class="karte"><p class="titel">Fahrten und Übernahmen</p>
+    <p class="info" style="margin:0 0 6px">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>
     ${bs.length ? bs.map((b) => fahrtHtml(b, st)).join('') : '<p class="leer-t">Noch keine Reservierungen.</p>'}</div>`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
@@ -341,7 +341,7 @@ function fahrten() {
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
 }
 
-// Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (183 Tage).
+// Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (181 Tage).
 function alltagKarte(J) {
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const L = Object.values(alltagMap()).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
@@ -386,7 +386,7 @@ function fahrtHtml(b, st) {
   return `<div class="b" style="flex-direction:column;gap:6px">
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
     ${km !== undefined || maengel || schlOffen || tankNV ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}</div>` : ''}
-    <div class="btnzeile" style="margin:0">${knopf(!!ab, 'ab', `Übergabe ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
+    <div class="btnzeile" style="margin:0">${knopf(!!ab, 'ab', `Übernahme ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
 }
 
 function uebergabeForm(bid, phase) {
@@ -397,10 +397,10 @@ function uebergabeForm(bid, phase) {
   const jetzt = new Date(), lokal = `${jetzt.getFullYear()}-${pad(jetzt.getMonth() + 1)}-${pad(jetzt.getDate())}T${pad(jetzt.getHours())}:${pad(jetzt.getMinutes())}`;
   const dis = darf ? '' : 'disabled';
   const radio = (name, wert, text, cls, aktiv) => `<span class="chk ${cls}"><input type="radio" name="${name}" id="${name}_${wert}" value="${wert}" ${aktiv ? 'checked' : ''} ${dis}><label for="${name}_${wert}">${text}</label></span>`;
-  sheet(`<h3>${phase === 'ab' ? 'Übergabe' : 'Rückgabe'}</h3>
+  sheet(`<h3>${phase === 'ab' ? 'Übernahme' : 'Rückgabe'}</h3>
   ${phase === 'ab' ? `<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
   <p class="info" style="margin:0">${fmt(b.von)} – ${fmt(b.bis)} · ${h(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?')}${ex ? ` · erfasst von ${h(D.personen[ex.erfasstVon]?.name || '?')}` : ''}</p>
-  ${phase === 'rueck' && ab ? `<p class="info">Bei der Übergabe: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
+  ${phase === 'rueck' && ab ? `<p class="info">Bei der Übernahme: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
   <label for="u_km">Kilometerstand</label><input id="u_km" inputmode="numeric" value="${ex ? ex.km : ''}" placeholder="z. B. 12450" ${dis}>
   <label>Tankstand (Vertrag: immer voll)</label>
@@ -440,7 +440,7 @@ function uebergabeForm(bid, phase) {
     const p = pruefeUebergabe(u, Object.values(D.uebergaben), D.buchungen);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => {
-      await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übergabe gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.');
+      await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übernahme gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.');
       if (tankWarnung(u)) sheet(`<h3>Tank nicht voll</h3><div class="hinweiskarte rot">Gespeichert. Der Tank ist nicht voll (${h(u.tank)}). Bitte die anderen warnen.</div><div class="aktion"><button id="abb">Schliessen</button><a class="primaer" style="text-decoration:none;text-align:center;display:block;padding:14px" href="${waLink(tankText(u.tank, u.datumZeit, D.personen[u.erfasstVon]?.name || '?'))}" target="_blank" rel="noopener">Familie per WhatsApp warnen</a></div>`), document.getElementById('abb').onclick = schliessen;
     });
   };
@@ -464,7 +464,7 @@ function kosten() {
 
   let plan;
   if (!D.start) {
-    plan = `<p class="info" style="margin-top:0">Das Übergabedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App das Vertragsjahr und die Beträge für Rücklage und Darlehen nicht berechnen.</p>${ich === D.adminId ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}`;
+    plan = `<p class="info" style="margin-top:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App das Vertragsjahr und die Beträge für Rücklage und Darlehen nicht berechnen.</p>${ich === D.adminId ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}`;
   } else {
     const n = vertragsJahr(D.start, t);
     if (n === null) plan = `<p class="info" style="margin-top:0">Der Vertrag beginnt am ${fmt(D.start)}.</p>${ich === D.adminId ? startFeld(D.start) : ''}`;
@@ -473,7 +473,7 @@ function kosten() {
       ids.map((i) => {
         const zp = zahlplan(D.start, t, el, D.personen[i], i);
         return `<div class="z"><div class="l"><strong>${name(i)}</strong>${zp.posten.map((p) => `<div class="meta">${ZWECKE[p.zweck]}: Soll ${chf(p.soll)} · bezahlt ${chf(p.ist)}</div>`).join('')}</div><div class="r">${zp.posten.map((p) => `<div><span class="chipk ${p.offen > 0 ? 'gelb' : 'ok'}">${p.offen > 0 ? 'offen ' + chf(p.offen) : 'bezahlt'}</span></div>`).join('')}</div></div>`;
-      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, bei Kaufpreis CHF 60 000).</p>${ich === D.adminId ? `<details class="det"><summary>Übergabedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
+      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, bei Kaufpreis CHF 60 000).</p>${ich === D.adminId ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
   }
 
   const status = ids.map((i) => {
@@ -512,10 +512,10 @@ function kosten() {
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
   });
   const sb = document.getElementById('startspei');
-  if (sb) sb.onclick = async () => { const v = val('startdatum'); if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { hinweis('Bitte ein Datum wählen.'); return; } await sicher(async () => { await S.startSetzen(D, v); kosten(); hinweis('Übergabedatum gespeichert.'); }); };
+  if (sb) sb.onclick = async () => { const v = val('startdatum'); if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { hinweis('Bitte ein Datum wählen.'); return; } await sicher(async () => { await S.startSetzen(D, v); kosten(); hinweis('Übernahmedatum gespeichert.'); }); };
 }
 function startFeld(wert) {
-  return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übergabedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
+  return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übernahmedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
 }
 
 function kostenForm() {
