@@ -46,7 +46,7 @@ export function konten(b, personen) {
   return [...new Set(k)].sort();
 }
 
-// Kontostaende pro Konto im Jahr J, mit Teilungsregel fuer beide Kinder allein.
+// Kontostaende pro Konto im Jahr J, mit Teilungsregel fuer beide Kinder allein (halbe Tage moeglich).
 export function kontostaende(buchungen, personen, J) {
   const r = { 'eltern': 0, 'kind-1': 0, 'kind-2': 0 };
   const sortiert = [...buchungen].sort((a, b) =>
@@ -57,18 +57,8 @@ export function kontostaende(buchungen, personen, J) {
     const ks = konten(b, personen);
     if (ks.length === 1) { r[ks[0]] += t; continue; }
     if (ks.length === 0) continue;
-    const h = Math.floor(t / 2);
-    const stand1 = r['kind-1'], stand2 = r['kind-2'];
-    r['kind-1'] += h; r['kind-2'] += h;
-    if (t % 2) {
-      let extra;
-      if (stand1 !== stand2) extra = stand1 < stand2 ? 'kind-1' : 'kind-2';
-      else {
-        const e = personen[b.erfasstVon] && personen[b.erfasstVon].konto;
-        extra = (e === 'kind-1' || e === 'kind-2') ? e : 'kind-1';
-      }
-      r[extra] += 1;
-    }
+    // Beide Kinder allein: jedes Kind traegt die Haelfte, ein ungerader Tag zaehlt je einen halben Tag (7 Tage = 3.5 + 3.5).
+    r['kind-1'] += t / 2; r['kind-2'] += t / 2;
   }
   return r;
 }

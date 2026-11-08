@@ -36,19 +36,19 @@ test('Kollision inkl. Randtag', () => {
   assert.ok(kollision(a, { von: '2026-07-10', bis: '2026-07-12' }));
   assert.ok(!kollision(a, { von: '2026-07-11', bis: '2026-07-12' }));
 });
-test('Teilung: 7 Tage Gleichstand', () => {
-  let r = kontostaende([B('2026-07-01', 7)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [4, 3]);
-  r = kontostaende([B('2026-07-01', 7, 't', ['s'], 's')], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [3, 4]);
-  r = kontostaende([B('2026-07-01', 7, 't', ['s'], 'hp')], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [4, 3]);
-  r = kontostaende([B('2026-07-01', 8)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [4, 4]);
+test('Teilung: 7 Tage = 3.5 + 3.5, 6 Tage = 3 + 3, egal wer erfasst', () => {
+  let r = kontostaende([B('2026-07-01', 7)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [3.5, 3.5]);
+  r = kontostaende([B('2026-07-01', 7, 't', ['s'], 's')], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [3.5, 3.5]);
+  r = kontostaende([B('2026-07-01', 6)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [3, 3]);
+  r = kontostaende([B('2026-07-01', 1)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [0.5, 0.5]);
 });
-test('Teilung: Summe = Reisetage (1 bis 39)', () => {
-  for (let i = 1; i < 40; i++) { const r = kontostaende([B('2026-03-01', i)], P, 2026); assert.equal(r['kind-1'] + r['kind-2'], i); }
+test('Teilung: Summe = Reisetage (1 bis 39), beide Kinder gleich', () => {
+  for (let i = 1; i < 40; i++) { const r = kontostaende([B('2026-03-01', i)], P, 2026); assert.equal(r['kind-1'] + r['kind-2'], i); assert.equal(r['kind-1'], r['kind-2']); }
 });
-test('Teilung: Ausgleich ueber mehrere Reisen', () => {
+test('Teilung: mehrere Reisen und Einzelreise', () => {
   let r = kontostaende([B('2026-03-01', 7), B('2026-06-01', 7)], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [7, 7]);
   const e = B('2026-02-01', 5, 's', []);
-  r = kontostaende([e, B('2026-07-01', 7, 't', ['s'], 's')], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [4, 8]);
+  r = kontostaende([e, B('2026-07-01', 7, 't', ['s'], 's')], P, 2026); assert.deepEqual([r['kind-1'], r['kind-2']], [3.5, 8.5]);
   const r2 = kontostaende([B('2026-07-01', 7, 't', ['s'], 's'), e], P, 2026); assert.deepEqual(r2, r);
 });
 test('Eltern im Fahrzeug: nur Eltern zaehlen', () => {
@@ -59,7 +59,7 @@ test('Eltern im Fahrzeug: nur Eltern zaehlen', () => {
 test('Silvester mit Teilung', () => {
   const b = B('2026-12-30', 4); assert.equal(kontostaende([b], P, 2026)['kind-1'], 1); assert.equal(kontostaende([b], P, 2027)['kind-2'], 1);
   const c = B('2026-12-29', 5), a = kontostaende([c], P, 2026), d = kontostaende([c], P, 2027);
-  assert.equal(a['kind-1'] + a['kind-2'], 3); assert.equal(d['kind-1'] + d['kind-2'], 2);
+  assert.equal(a['kind-1'] + a['kind-2'], 3); assert.equal(a['kind-1'], 1.5); assert.equal(d['kind-1'] + d['kind-2'], 2);
 });
 test('Pruefung Buchung (Eigentuemer, Ausnahme, max. 4)', () => {
   const V = '2026-07-01';

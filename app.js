@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108s';
-import * as S from './speicher.js?v=20261108s';
+} from './regeln.js?v=20261108t';
+import * as S from './speicher.js?v=20261108t';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -113,16 +113,16 @@ const ICON = {
 const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
-  ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'TCS Camping, ACSI, camping.info, PiNCAMP', 'Sicher, Strom und Sanitär vorhanden'],
-  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten'],
-  ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation'],
-  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen'],
+  ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [['TCS Camping', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['ADAC PiNCAMP', 'https://www.pincamp.de/'], ['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['Swisscamps', 'https://www.swisscamps.ch/de'], ['camping.ch', 'https://camping.ch/']]],
+  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de']]],
+  ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation', null],
+  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['AlpacaCamping', 'https://www.alpacacamping.de/']]],
 ];
 const LAENDER = [
-  ['🇫🇷', 'Frankreich', 'Aires de camping-car', ['Stellplätze heissen «Aires de camping-car».']],
-  ['🇮🇹', 'Italien', 'Aree di sosta, Agricamper', ['Stellplätze heissen «Aree di sosta», Bauernhöfe «Agricamper».']],
-  ['🇪🇸', 'Spanien', 'Áreas de autocaravanas', ['Stellplätze heissen «Áreas de autocaravanas».']],
-  ['🇩🇪', 'Deutschland', 'Wohnmobilstellplätze', ['Stellplätze heissen «Wohnmobilstellplätze».']],
+  ['🇫🇷', 'Frankreich', 'Gemeinden entscheiden, Aires nutzen', ['Stellplätze heissen «Aires de camping-car».', 'Die Gemeinden entscheiden. In vielen ländlichen Gegenden wird eine Nacht im Wohnmobil geduldet, nicht aber an Küsten, in Schutzgebieten, bei Denkmälern und bei Trinkwasserquellen. Auf Korsika ist es streng verboten. Busse bis 1500 Euro. Am sichersten sind die Aires de camping-car.']],
+  ['🇮🇹', 'Italien', 'Wildcampen verboten', ['Stellplätze heissen «Aree di sosta», Bauernhöfe «Agricamper».', 'Wildcampen ist verboten, in Touristengebieten wird oft kontrolliert. Bussen bis etwa 500 Euro, je nach Region. Erlaubt sind Campingplätze, ausgewiesene Aree di sosta und Privatgrund mit Erlaubnis des Besitzers. Die Quellen widersprechen sich teils.']],
+  ['🇪🇸', 'Spanien', 'Meist verboten, je nach Region verschieden', ['Stellplätze heissen «Áreas de autocaravanas».', 'Freies Campen ist in den meisten Regionen nicht erlaubt. Es gibt kein einheitliches Landesgesetz, die Regionen regeln es selbst. Übernachten im Fahrzeug ist dort möglich, wo Parken erlaubt ist und kein Verbotsschild steht, solange nichts ausgefahren wird (Markise, Tisch, Stühle). Strände sind generell verboten.']],
+  ['🇩🇪', 'Deutschland', 'Wildcampen verboten, eine Nacht zur Erholung erlaubt', ['Stellplätze heissen «Wohnmobilstellplätze».', 'Wildcampen ist verboten, in Naturschutzgebieten und auf Privatgrund erst recht. Ausnahme: eine Nacht auf einem Parkplatz, um wieder fahrtüchtig zu werden. Das gilt nur, wenn das Ziel noch nicht erreicht ist. Markise, Tisch und Stühle bleiben eingepackt. Einzelne Gemeinden können es zusätzlich einschränken.']],
   ['🇭🇷', 'Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz', ['Wildcampen ist verboten. Nur Campingplatz oder Stellplatz.'], true],
   ['🇦🇹', 'Österreich', 'Freistehen meist verboten', ['Freistehen ist in den meisten Bundesländern verboten oder streng geregelt (Landesgesetze, hohe Strafen möglich). Campingplatz oder Stellplatz wählen.', 'Maut: Bis 3,5 t zulässigem Gesamtgewicht gilt die Vignette, darüber die GO-Box. Das Gewicht unseres Fahrzeugs vorher prüfen.']],
   ['🇸🇮', 'Slowenien', 'Wildcampen verboten', ['Wildcampen ist verboten, auch Übernachten am Strassenrand und auf Parkplätzen. Strafen von mehreren hundert Euro.', 'Autobahn: nur elektronische Vignette, an das Kennzeichen gebunden. Vor der Fahrt kaufen.']],
@@ -130,35 +130,38 @@ const LAENDER = [
   ['🇧🇪', 'Belgien', 'Wildcampen verboten', ['Wildcampen ist verboten, in Flandern und an der Küste streng kontrolliert. Sicher: Stellplatz oder Campingplatz.', 'Umweltzone Brüssel (LEZ): ausländische Fahrzeuge vorher online anmelden, Zulassung des Fahrzeugs prüfen (lez.brussels).']],
   ['🇱🇺', 'Luxemburg', 'Freistehen verboten', ['Freistehen ist verboten. Abseits von Städten wird eine Nacht teils geduldet, das ist keine Rechtsgrundlage. Auf Privatgrund mit Erlaubnis möglich.', 'Keine Autobahnmaut und keine Vignette für Pkw und Wohnmobile. Einzelne Brücken oder Tunnel können Gebühren haben. Keine Umweltzonen.']],
   ['🇩🇰', 'Dänemark', 'Kein Jedermannsrecht', ['Übernachten nur auf Campingplätzen und ausgewiesenen Plätzen. Zu einer Nacht am Strassenrand widersprechen sich die Quellen.', 'Keine Autobahnmaut, aber Gebühr für Storebælt- und Öresundbrücke (pro Fahrt, Preis nach Fahrzeug).']],
-  ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.', 'Höchste Einbruchrate Europas auf Rastplätzen nahe grösseren Strassen.']],
+  ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.', 'Einbrüche in Wohnmobile auf Rastplätzen sind häufig, das deutsche Auswärtige Amt warnt davor.']],
   ['🇳🇴', 'Norwegen', 'Jedermannsrecht nur für Zelte', ['Das Jedermannsrecht gilt für Zelte, nicht für Wohnmobile. Auf vielen Rastplätzen ausserhalb von Städten wird Übernachten geduldet, an Hotspots (z. B. Geiranger, Preikestolen) ist es verboten.', 'Viele Mautstationen (AutoPASS). Ausländische Fahrzeuge vorher registrieren (Epass24) oder Chip besorgen, sonst droht eine höhere Klasse.']],
   ['🇫🇮', 'Finnland', 'Für Wohnmobile unklar', ['Das Jedermannsrecht deckt vor allem Zelten ab. Für Wohnmobile ist Übernachten ausserhalb von Campingplätzen unklar: nicht auf Strassen und öffentlichen Parkplätzen, auf Privatgrund nur mit Zustimmung des Eigentümers.', 'Die öffentlichen Strassen sind für private Pkw und Wohnmobile maut- und vignettenfrei.']],
   ['🇵🇹', 'Portugal', 'Freistehen eingeschränkt', ['Freistehen ist eingeschränkt und regional verschieden, die Quellen widersprechen sich. Ein Gesetz zum Parken und Übernachten von Wohnmobilen gilt laut Berichten seit Januar 2026 (nicht im Original geprüft). Schilder und Gemeindeverbote beachten, Stellplätze nutzen.', 'Viele Autobahnen sind mautpflichtig. Transponder (Via Verde oder kompatible Box), Mautklasse des Fahrzeugs vorher prüfen.']],
   ['🇬🇷', 'Griechenland', 'Parken erlaubt, Campen verboten', ['Wohnmobile dürfen seit der Polizeiverordnung 2026 wie andere Fahrzeuge parken: in Ortschaften bis 7,5 m ohne Zeitlimit, längere 24 Stunden, ausserhalb ohne Zeitgrenze. Wer Stühle, Tisch oder Markise aufbaut, campt: das bleibt verboten (Gesetz 5170/2025, Strafen ab etwa 300 Euro). Die Quellen nennen für die Verordnung Februar oder April 2026, den amtlichen Text habe ich nicht gefunden.', 'Keine Vignette. Fast alle Autobahnen sind mautpflichtig, der Preis hängt von der Fahrzeughöhe ab. Preise steigen, die Quellen widersprechen sich: vor der Reise mit dem Routenplaner mit Mautkosten (z. B. ADAC) prüfen.']],
 ];
 // Rot = Wildcampen oder Freistehen ist verboten (gleiche Regel für alle Länder).
-const VERBOT_LAND = new Set(['Kroatien', 'Österreich', 'Slowenien', 'Niederlande', 'Belgien', 'Luxemburg']);
+const VERBOT_LAND = new Set(['Kroatien', 'Österreich', 'Slowenien', 'Niederlande', 'Belgien', 'Luxemburg', 'Deutschland', 'Spanien', 'Italien']);
 const PLATTFORMEN = [
-  ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
-  ['Schweiz: Höfe und Private', ['Nomady', 'Landcamp.ch', 'schweizerbauern.ch', 'Swiss Hosts (ungeprüft)', 'Myfarm.ch (ungeprüft)']],
-  ['Schweiz: Campingplätze', ['PiNCAMP', 'swisscamps.ch', 'camping.ch']],
-  ['Europa: Stellplätze', ['Campercontact', 'Stellplatz-Radar', 'camping.info', 'ADAC Camping', 'CaraMaps', 'Camping-App.eu', 'TopPlatz', 'Stellplatz Europe', 'SPF-Mobil (Android)', 'Searchforsites', 'iOverlander', 'NorCamp (Skandinavien)']],
-  ['Europa: Camping-Rabatt', ['ACSI CampingCard', 'ACSI Eurocampings', 'ADAC Campcard']],
-  ['Europa: Höfe und Private', ['AlpacaCamping', 'Hinterland', 'MyCabin', 'VanSite', 'Roadsurfer Spots', 'StayFree', 'Camperland', 'LandReise.de', 'Landvergnügen', 'Bauernleben (AT)', 'Schau aufs Land (AT, IT, SI)', 'France Passion (ungeprüft)', 'Campspace (ungeprüft)', 'Hipcamp (ungeprüft)']],
-  ['Parkplatz-Apps (nur, wo erlaubt)', ['EasyPark', 'Camppa']],
-  ['Freistehen, nur als Zusatz', ['park4night (nicht alles erlaubt)']],
+  ['Schweiz: Campingplätze', [['TCS Camping', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['PiNCAMP (ADAC)', 'https://www.pincamp.de/'], ['Swisscamps', 'https://www.swisscamps.ch/de'], ['camping.ch', 'https://camping.ch/']]],
+  ['Schweiz: offizielle Stellplätze', [['Wohnmobilland', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/']]],
+  ['Schweiz: Höfe und Private', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Myfarm.ch', 'https://www.myfarm.ch/de']]],
+  ['Europa: Campingplätze und Rabatt', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/'], ['camping.info', 'https://www.camping.info/de'], ['ACS Camping Card', 'https://www.acs.ch/en/mitgliedschaft/clubleistungen/camping-card.php']]],
+  ['Europa: Stellplätze', [['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/']]],
+  ['Europa: Höfe und Private', [['AlpacaCamping', 'https://www.alpacacamping.de/'], ['Hinterland', 'https://hinterland.camp/en'], ['VanSite', 'https://vansite.eu/de'], ['Roadsurfer Spots', 'https://roadsurfer.com/'], ['StayFree', 'https://www.stayfree.app/'], ['Camperland', 'https://www.camperland.de/'], ['LandReise.de', 'https://www.landreise.de/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['France Passion', 'https://www.france-passion.com/'], ['Campspace', 'https://campspace.com/en'], ['Hipcamp', 'https://www.hipcamp.com/en-GB']]],
+  ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]],
+  ['Freistehen, nur als Zusatz', [['park4night (nicht alles erlaubt)', 'https://park4night.com/en']]],
 ];
 function unterwegs() {
   const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Wohnmobil Stellplatz');
   const suchL = (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q);
-  const chip = (n) => {
+  const chip = ([n, url]) => {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
-    return `<a class="u-chip" href="${such(name)}" target="_blank" rel="noopener">${h(name)}${note ? `<em class="${note === 'ungeprüft' ? 'u-un' : ''}">${h(note)}</em>` : ''}</a>`;
+    return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
   app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
-  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin]) => `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener"><span class="u-ic ${c}">${SVG(ic)}</span>
-    <div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div><span class="u-pfeil" aria-hidden="true">›</span></a>`).join('')}<p class="info" style="margin:6px 0 0">Tippen öffnet eine Websuche.</p></div>
+  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, links]) => {
+      const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
+      return links ? `<div class="u-ort" style="flex-direction:column;gap:0"><div style="display:flex;gap:14px">${kopf}</div><div class="u-chips" style="margin:10px 0 0">${links.map(chip).join('')}</div></div>`
+        : `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
+    }).join('')}<p class="info" style="margin:6px 0 0">Gasthöfe: Tippen öffnet eine Websuche. Bei den übrigen Plätzen öffnen die Namen direkt die Webseite.</p></div>
   <div class="karte"><p class="titel">Nach Land</p>
     ${LAENDER.map(([f, l, t, sz, v]) => `<details class="u-det u-lnd${VERBOT_LAND.has(l) ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
       <ul class="info" style="padding-left:18px;margin:4px 0 8px">${sz.map((x) => `<li style="margin-bottom:4px">${h(x)}</li>`).join('')}</ul>
@@ -166,7 +169,7 @@ function unterwegs() {
     <p class="info">Stand 08.11.2026. Quellen: Reiseportale und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
   <div class="karte"><p class="titel">Apps und Plattformen</p>
     ${PLATTFORMEN.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}
-    <p class="info">Tippen öffnet eine Websuche. «ungeprüft»: Quelle nicht abrufbar oder nur erwähnt.</p></div>
+    <p class="info">Tippen öffnet direkt die Webseite. Die Adressen sind am 08.11.2026 geprüft (Seite erreichbar), die Qualität der Angebote nicht.</p></div>
   <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
   bindRahmen();
 }
@@ -609,12 +612,18 @@ function termine() {
   const t = heute();
   const L = termineEcht().sort((a, b) => (!!a.erledigtAm - !!b.erledigtAm) || (a.faelligAm < b.faelligAm ? -1 : 1));
   const CHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
-  app.innerHTML = rahmen(`<div class="karte"><div class="kopfzeile"><p class="titel">Termine</p><button class="btn pri" id="tneu">＋ Termin</button></div>
-    <p class="info" style="margin:0 0 6px">HP organisiert Service, MFK, Reifenwechsel und Winterlager (Ziffer 11). Die Kosten tragen alle nach Ziffer 5.</p>
-    ${L.length ? L.map((x) => { const s = terminStufe(x, t), [c, txt] = CHIP[s];
-      return `<div class="b" style="padding:12px 0"><div class="inhalt"><div class="zeit" style="font-size:16px">${h(x.titel)}</div>
-        <div class="meta">${x.erledigtAm ? 'erledigt am ' + fmt(x.erledigtAm) : 'fällig am ' + fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span>${x.art && x.art !== x.titel ? ' · ' + h(x.art) : ''}</div>${x.notiz ? `<div class="meta">${h(x.notiz)}</div>` : ''}
-        ${eigener(x) ? `<div class="btnzeile">${x.erledigtAm ? `<button class="btn" data-tw="${x.id}">Wieder öffnen</button>` : `<button class="btn pri" data-te="${x.id}">Erledigt</button>`}<button class="btn rot" data-td="${x.id}">Löschen</button></div>` : `<div class="meta">erfasst von ${h(D.personen[x.erfasstVon]?.name || '?')}</div>`}</div></div>`; }).join('') : '<p class="leer-t">Noch keine Termine. Trage zum Beispiel den MFK-Termin ein.</p>'}</div>`);
+  const karte = (x) => {
+    const st = terminStufe(x, t), [c, txt] = CHIP[st], [jj, mm, tt] = x.faelligAm.split('-');
+    return `<div class="termin ${c || 'offen'}"><div class="t-datum"><b>${+tt}</b><span>${MONATE[+mm - 1].slice(0, 3)}</span></div>
+      <div class="t-in"><div class="t-titel">${h(x.titel)}</div>
+        <div class="t-meta"><span class="chipk ${c}">${txt}</span>${x.erledigtAm ? `<span>erledigt am ${fmt(x.erledigtAm)}</span>` : `<span>fällig am ${fmt(x.faelligAm)}</span>`}${x.art && x.art !== x.titel ? `<span>${h(x.art)}</span>` : ''}</div>
+        ${x.notiz ? `<div class="t-notiz">${h(x.notiz)}</div>` : ''}
+        ${eigener(x) ? `<div class="t-akt">${x.erledigtAm ? `<button class="btn" data-tw="${h(x.id)}">Wieder öffnen</button>` : `<button class="btn pri" data-te="${h(x.id)}">Erledigt</button>`}<button class="btn rot" data-td="${h(x.id)}">Löschen</button></div>` : `<div class="t-notiz">erfasst von ${h(D.personen[x.erfasstVon]?.name || '?')}</div>`}</div></div>`;
+  };
+  const offen = L.filter((x) => !x.erledigtAm), fertig = L.filter((x) => x.erledigtAm);
+  app.innerHTML = rahmen(`<div class="seitenkopf"><h2>Termine</h2><button class="btn pri" id="tneu">＋ Termin</button></div>
+    <p class="info" style="margin:0 4px 14px">HP organisiert Service, MFK, Reifenwechsel und Winterlager (Ziffer 11). Die Kosten tragen alle nach Ziffer 5.</p>
+    ${L.length ? (offen.length ? `<p class="abschnitt">Offen (${offen.length})</p>${offen.map(karte).join('')}` : '') + (fertig.length ? `<p class="abschnitt">Erledigt (${fertig.length})</p>${fertig.map(karte).join('')}` : '') : '<div class="karte"><p class="leer-t">Noch keine Termine. Trage zum Beispiel den MFK-Termin ein.</p></div>'}`);
   bindRahmen();
   document.getElementById('tneu').onclick = terminForm;
   const upd = (id, aend) => !eigener(D.termine[id]) ? nurEigene() : sicher(async () => { await S.speichern(D, 'termine', id, { ...D.termine[id], ...aend }); termine(); });

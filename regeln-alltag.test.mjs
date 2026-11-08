@@ -40,7 +40,7 @@ test('Konto Eltern = Ferien + Alltag, Kinderkonten unveraendert', () => {
   const BB = { b1: { id: 'b1', von: '2026-03-01', bis: '2026-03-10', fahrerId: 'hp', mitreisende: ['fr'] }, b2: { id: 'b2', von: '2026-07-10', bis: '2026-07-20', fahrerId: 't', mitreisende: ['s'] } };
   const A = { a1: { datum: '2026-08-03', km: 10 }, a2: { datum: '2026-08-04', km: 5 }, a3: { datum: '2026-03-05', km: 3 } }; // a3 in Ferienreise der Eltern: zaehlt nicht doppelt
   const r = kontostaendeMitAlltag(Object.values(BB), P, 2026, A, BB);
-  assert.equal(r.eltern, 10 + 2); assert.equal(r.alltag, 2); assert.equal(r['kind-1'], 6); assert.equal(r['kind-2'], 5);
+  assert.equal(r.eltern, 10 + 2); assert.equal(r.alltag, 2); assert.equal(r['kind-1'], 5.5); assert.equal(r['kind-2'], 5.5);
 });
 test('Grenze 181: Ferien 170 + Alltag 14 = 184 ueberschreitet', () => {
   const BB = { b1: { id: 'b1', von: '2026-01-01', bis: '2026-06-19', fahrerId: 'hp', mitreisende: [] } };    // 170 Tage
