@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108w';
-import * as S from './speicher.js?v=20261108w';
+} from './regeln.js?v=20261108x';
+import * as S from './speicher.js?v=20261108x';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -121,8 +121,7 @@ const ORTE = [
     ['Suchportale', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['camping.ch (CH)', 'https://camping.ch/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]]]],
   ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
     ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]],
-    ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]],
-    ['Inoffizielle Plätze und Freistehen, nur als Zusatz', [['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]]]],
+    ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]]]],
   ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation', null],
   ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [
     ['Schweiz', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Myfarm.ch', 'https://www.myfarm.ch/de']]],
