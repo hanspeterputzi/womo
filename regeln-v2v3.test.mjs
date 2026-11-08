@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { rueckgabeFertig, teile, kostenAnteile, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, kmPlausibel, pruefeUebergabe, kmStatistik, addTage, addJahre, chf, CHECKPUNKTE, RUECKLAGE_CHF, DARLEHEN_CHF } from './regeln.js';
+import { pruefeAlltag, alltagTage, alltagKm, kontostaendeMitAlltag, tankWarnung, rueckgabeFertig, teile, kostenAnteile, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, kmPlausibel, pruefeUebergabe, kmStatistik, addTage, addJahre, chf, CHECKPUNKTE, RUECKLAGE_CHF, DARLEHEN_CHF } from './regeln.js';
 const IDS = ['hp', 'fr', 't', 's'];
 let n = 0; const test = (name, f) => { f(); n++; console.log('OK  ', name); };
 const summe = (o) => Object.values(o).reduce((a, b) => a + b, 0);
@@ -110,7 +110,7 @@ test('Uebergabe-Pruefung', () => {
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'ja' }, U, B3).ok, true);
   assert.equal(pruefeUebergabe({ ...ok, phase: 'ab' }, U, B3).ok, true);                           // Uebergabe braucht keinen Schluessel
   assert.ok(CHECKPUNKTE.some(([k]) => k === 'kuehlschrank'));
-  assert.ok(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'nein' }, U, B3).fehler.some((f) => f.includes('Papa is watching you')));
+  assert.ok(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'nein' }, U, B3).fehler.some((f) => f.includes('Papà ti sta guardando. 😉')));
   assert.equal(rueckgabeFertig({ schluessel: 'ja' }), true); assert.equal(rueckgabeFertig({}), false); assert.equal(rueckgabeFertig(undefined), false);
   assert.equal(pruefeUebergabe({ ...ok, km: -5 }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, km: 1500 }, U, B3).ok, false);                           // tiefer als bekannter Stand

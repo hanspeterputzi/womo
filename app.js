@@ -1,9 +1,9 @@
 import {
-  SCHWELLE, dauer, konten, kontostaende, stufe, kollision, ueberschneidungen, pruefeBuchung,
+  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108e';
-import * as S from './speicher.js?v=20261108e';
+} from './regeln.js?v=20261108g';
+import * as S from './speicher.js?v=20261108g';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -99,7 +99,24 @@ const ORTE = [
   ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation'],
   ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen'],
 ];
-const LAENDER = [['🇫🇷', 'Frankreich', 'Aires de camping-car'], ['🇮🇹', 'Italien', 'Aree di sosta, Agricamper'], ['🇪🇸', 'Spanien', 'Áreas de autocaravanas'], ['🇩🇪', 'Deutschland', 'Wohnmobilstellplätze'], ['🇭🇷', 'Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz', true]];
+const LAENDER = [
+  ['🇫🇷', 'Frankreich', 'Aires de camping-car', ['Stellplätze heissen «Aires de camping-car».']],
+  ['🇮🇹', 'Italien', 'Aree di sosta, Agricamper', ['Stellplätze heissen «Aree di sosta», Bauernhöfe «Agricamper».']],
+  ['🇪🇸', 'Spanien', 'Áreas de autocaravanas', ['Stellplätze heissen «Áreas de autocaravanas».']],
+  ['🇩🇪', 'Deutschland', 'Wohnmobilstellplätze', ['Stellplätze heissen «Wohnmobilstellplätze».']],
+  ['🇭🇷', 'Kroatien', 'Wildcampen verboten, nur Camping oder Stellplatz', ['Wildcampen ist verboten. Nur Campingplatz oder Stellplatz.'], true],
+  ['🇦🇹', 'Österreich', 'Freistehen meist verboten', ['Freistehen ist in den meisten Bundesländern verboten oder streng geregelt (Landesgesetze, hohe Strafen möglich). Campingplatz oder Stellplatz wählen.', 'Maut: Bis 3,5 t zulässigem Gesamtgewicht gilt die Vignette, darüber die GO-Box. Das Gewicht unseres Fahrzeugs vorher prüfen.']],
+  ['🇸🇮', 'Slowenien', 'Wildcampen verboten', ['Wildcampen ist verboten, auch Übernachten am Strassenrand und auf Parkplätzen. Strafen von mehreren hundert Euro.', 'Autobahn: nur elektronische Vignette, an das Kennzeichen gebunden. Vor der Fahrt kaufen.']],
+  ['🇳🇱', 'Niederlande', 'Freistehen streng verboten', ['Freistehen ist verboten, auch auf normalen Parkplätzen. «Camperplaatsen» oder Campingplätze benutzen.', 'Viele Städte haben Umweltzonen. Vor der Einfahrt prüfen.']],
+  ['🇧🇪', 'Belgien', 'Wildcampen verboten', ['Wildcampen ist verboten, in Flandern und an der Küste streng kontrolliert. Sicher: Stellplatz oder Campingplatz.', 'Umweltzone Brüssel (LEZ): ausländische Fahrzeuge vorher online anmelden, Zulassung des Fahrzeugs prüfen (lez.brussels).']],
+  ['🇱🇺', 'Luxemburg', 'Freistehen verboten', ['Freistehen ist verboten. Abseits von Städten wird eine Nacht teils geduldet, das ist keine Rechtsgrundlage. Auf Privatgrund mit Erlaubnis möglich.', 'Maut: nicht geprüft.']],
+  ['🇩🇰', 'Dänemark', 'Kein Jedermannsrecht', ['Übernachten nur auf Campingplätzen und ausgewiesenen Plätzen. Zu einer Nacht am Strassenrand widersprechen sich die Quellen.', 'Keine Autobahnmaut, aber Gebühr für Storebælt- und Öresundbrücke (pro Fahrt, Preis nach Fahrzeug).']],
+  ['🇸🇪', 'Schweden', 'Jedermannsrecht gilt nicht für Wohnmobile', ['Das Jedermannsrecht gilt für Wohnmobile nur eingeschränkt: nicht im Wald oder abseits fester Strassen. Üblich sind Rastplätze und öffentliche Parkplätze. Verbotsschilder beachten.', 'Meist keine Maut. Stau-Gebühr in Stockholm und Göteborg, automatisch erfasst.']],
+  ['🇳🇴', 'Norwegen', 'Jedermannsrecht nur für Zelte', ['Das Jedermannsrecht gilt für Zelte, nicht für Wohnmobile. Auf vielen Rastplätzen ausserhalb von Städten wird Übernachten geduldet, an Hotspots (z. B. Geiranger, Preikestolen) ist es verboten.', 'Viele Mautstationen (AutoPASS). Ausländische Fahrzeuge vorher registrieren (Epass24) oder Chip besorgen, sonst droht eine höhere Klasse.']],
+  ['🇫🇮', 'Finnland', 'Für Wohnmobile unklar', ['Das Jedermannsrecht deckt vor allem Zelten ab. Für Wohnmobile ist Übernachten ausserhalb von Campingplätzen unklar: nicht auf Strassen und öffentlichen Parkplätzen, auf Privatgrund nur mit Zustimmung des Eigentümers.', 'Maut: nicht geprüft.']],
+  ['🇵🇹', 'Portugal', 'Freistehen eingeschränkt', ['Freistehen ist eingeschränkt und regional verschieden, die Quellen widersprechen sich. Ein Gesetz zum Parken und Übernachten von Wohnmobilen gilt laut Berichten seit Januar 2026 (nicht im Original geprüft). Schilder und Gemeindeverbote beachten, Stellplätze nutzen.', 'Viele Autobahnen sind mautpflichtig. Transponder (Via Verde oder kompatible Box), Mautklasse des Fahrzeugs vorher prüfen.']],
+  ['🇬🇷', 'Griechenland', 'Rechtslage im Wandel', ['Ein Gesetz von 2025 sah hohe Strafen (ab 300 Euro) für Camping ausserhalb von Plätzen vor. Laut Berichten wurde 2026 das Parkverbot für Wohnmobile per Polizeidirektive zurückgenommen (nicht im Original geprüft). Sicher: Campingplatz.', 'Maut: nicht geprüft.']],
+];
 const PLATTFORMEN = [
   ['Schweiz: offiziell und legal', ['Wohnmobilland', "Parkn'Sleep", 'stellplatz.info', 'WoMo-Stellplatz Europa']],
   ['Schweiz: Höfe und Private', ['Nomady', 'Landcamp.ch', 'schweizerbauern.ch', 'Swiss Hosts (ungeprüft)', 'Myfarm.ch (ungeprüft)']],
@@ -111,16 +128,21 @@ const PLATTFORMEN = [
   ['Freistehen, nur als Zusatz', ['park4night (nicht alles erlaubt)']],
 ];
 function unterwegs() {
-  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Stellplatz');
+  const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Wohnmobil Stellplatz');
+  const suchL = (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q);
   const chip = (n) => {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${such(name)}" target="_blank" rel="noopener">${h(name)}${note ? `<em class="${note === 'ungeprüft' ? 'u-un' : ''}">${h(note)}</em>` : ''}</a>`;
   };
   app.innerHTML = rahmen(`<div class="u-ban"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong><span>Vertrag Ziffer 9 und Anhang C. Stattdessen:</span></div></div>
-  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin]) => `<div class="u-ort"><span class="u-ic ${c}">${SVG(ic)}</span>
-    <div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div></div>`).join('')}</div>
-  <div class="karte"><p class="titel">Nach Land</p><div class="u-laender">${LAENDER.map(([f, l, t, v]) => `<div class="u-land${v ? ' verbot' : ''}"><span class="u-flag">${f}</span><strong>${h(l)}</strong><span>${h(t)}</span></div>`).join('')}</div></div>
+  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin]) => `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener"><span class="u-ic ${c}">${SVG(ic)}</span>
+    <div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div><span class="u-pfeil" aria-hidden="true">›</span></a>`).join('')}<p class="info" style="margin:6px 0 0">Tippen öffnet eine Websuche.</p></div>
+  <div class="karte"><p class="titel">Nach Land</p>
+    ${LAENDER.map(([f, l, t, sz, v]) => `<details class="u-det u-lnd${v ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
+      <ul class="info" style="padding-left:18px;margin:4px 0 8px">${sz.map((x) => `<li style="margin-bottom:4px">${h(x)}</li>`).join('')}</ul>
+      <div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
+    <p class="info">Stand 08.11.2026. Quellen: Reiseportale und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
   <div class="karte"><p class="titel">Apps und Plattformen</p>
     ${PLATTFORMEN.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}
     <p class="info">Tippen öffnet eine Websuche. «ungeprüft»: Quelle nicht abrufbar oder nur erwähnt.</p></div>
@@ -129,6 +151,7 @@ function unterwegs() {
 }
 const VERTRAG_REGELN = [
   ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übergabe und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
+  ['Alltagsfahrten der Eltern (Ziffer 7)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 183 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.', 'Kinder reisen nur auf zugelassenen Sitzplätzen mit passendem Rückhaltesystem.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten, wenn immer möglich.', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
   ['Sauberkeit und Übergabe (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
@@ -168,15 +191,16 @@ function hinweiseHtml() {
 // Kalender (Version 1)
 // =====================================================================
 function ringe(J) {
-  const st = kontostaende(liste(), D.personen, J);
+  const st = kontostaendeMitAlltag(liste(), D.personen, J, D.alltag, D.buchungen);
   const U = 2 * Math.PI * 32;
   return `<div class="karte"><p class="titel">Tageskonto ${J}</p><div class="ringe">` +
     Object.keys(SCHWELLE).map((k) => {
       const t = st[k], s = stufe(t, k), pr = Math.min(1, t / SCHWELLE[k]);
       const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
       const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${SCHWELLE[k]} Tagen`;
+      const sub2 = k === 'eltern' && st.alltag ? `<div class="sub">davon Alltag ${st.alltag}</div>` : '';
       return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
-      <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div></div>`;
+      <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}</div>`;
     }).join('') + '</div></div>';
 }
 
@@ -293,14 +317,52 @@ function fahrten() {
   const J = new Date().getFullYear();
   const st = kmStatistik(Object.values(D.uebergaben), D.buchungen, J);
   const bs = liste().sort((a, b) => (a.von < b.von ? 1 : -1)).slice(0, 40);
-  app.innerHTML = rahmen(`<div class="karte"><p class="titel">Kilometerstand</p>
+  app.innerHTML = rahmen(`<div class="hinweiskarte rot" style="font-size:16px;text-align:center">Rauchen und Tiere sind verboten</div>
+  <div class="karte"><p class="titel">Kilometerstand</p>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p>
     <p class="info">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km (Zuordnung nach Abreisetag der Reise).` : 'Noch kein Stand erfasst. Er entsteht aus den Übergaben und Rückgaben.'}</p></div>
+  ${alltagKarte(J)}
   <div class="karte"><p class="titel">Fahrten und Übergaben</p>
     <p class="info" style="margin:0 0 6px">Übergabe und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>
     ${bs.length ? bs.map((b) => fahrtHtml(b, st)).join('') : '<p class="leer-t">Noch keine Reservierungen.</p>'}</div>`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
+  const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
+  app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.alltag[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'alltag', x.id); fahrten(); }); });
+}
+
+// Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (183 Tage).
+function alltagKarte(J) {
+  const st = kontostaendeMitAlltag(liste(), D.personen, J, D.alltag, D.buchungen);
+  const L = Object.values(D.alltag).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
+  const elternIch = D.personen[ich]?.konto === 'eltern';
+  const rot = st.eltern > SCHWELLE.eltern;
+  return `<div class="karte"><div class="kopfzeile"><p class="titel">Alltagsfahrten der Eltern</p>${elternIch ? '<button class="btn pri" id="aneu">＋ Alltagsfahrt</button>' : ''}</div>
+    <p class="grosszahl">${st.eltern} <small>von ${SCHWELLE.eltern} Tagen (Eltern ${J})</small></p>
+    <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(D.alltag, J))} km.</p>
+    ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
+    <p class="info" style="margin:0 0 6px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
+    ${D.alltagGesperrt ? '<div class="hinweiskarte gelb">Alltagsfahrten sind noch nicht freigeschaltet (Datenbankregel fehlt). HP muss die neue Regel in Firebase veröffentlichen.</div>' : ''}
+    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${a.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
+}
+
+function alltagForm() {
+  const eltern = idsGeordnet().filter((i) => D.personen[i].konto === 'eltern');
+  sheet(`<h3>Alltagsfahrt</h3>
+  <label for="a_datum">Datum</label><input type="date" id="a_datum" value="${heute()}">
+  <label for="a_wer">Wer</label><select id="a_wer">${eltern.map((i) => `<option value="${i}"${i === ich ? ' selected' : ''}>${h(D.personen[i].name)}</option>`).join('')}</select>
+  <label for="a_km">Gefahrene Kilometer (alle Fahrten des Tages)</label><input id="a_km" inputmode="numeric" placeholder="z. B. 18">
+  <label for="a_notiz">Bemerkung (optional)</label><input id="a_notiz" maxlength="80">
+  <div id="msg"></div>
+  <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const kmTxt = val('a_km').replace(/\D/g, '');
+    const a = { datum: val('a_datum'), personId: val('a_wer'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), notiz: val('a_notiz').trim(), erfasstVon: ich };
+    const p = pruefeAlltag(a, D.buchungen, D.personen);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => { await S.speichern(D, 'alltag', null, a); schliessen(); fahrten(); hinweis('Alltagsfahrt gespeichert.'); });
+  };
 }
 
 function fahrtHtml(b, st) {
@@ -310,10 +372,11 @@ function fahrtHtml(b, st) {
   const km = st.proBuchung[b.id];
   const fertigR = rueckgabeFertig(rk);
   const schlOffen = rk && !fertigR;
+  const tankNV = tankWarnung(ab) || tankWarnung(rk);
   const knopf = (fertig, id, text, offen) => `<button class="btn${fertig ? ' ok' : offen ? ' gelb' : ''}" data-u="${b.id}|${id}">${fertig ? '✓ ' : ''}${text}</button>`;
   return `<div class="b" style="flex-direction:column;gap:6px">
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
-    ${km !== undefined || maengel || schlOffen ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}</div>` : ''}
+    ${km !== undefined || maengel || schlOffen || tankNV ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}</div>` : ''}
     <div class="btnzeile" style="margin:0">${knopf(!!ab, 'ab', `Übergabe ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
 }
 
@@ -331,7 +394,8 @@ function uebergabeForm(bid, phase) {
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übergabe: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
   <label for="u_km">Kilometerstand</label><input id="u_km" inputmode="numeric" value="${ex ? ex.km : ''}" placeholder="z. B. 12450" ${dis}>
-  <label>Tank</label><div class="mitw"><span class="chk ja"><input type="checkbox" id="u_tank" ${ex?.tank === 'voll' ? 'checked' : ''} ${dis}><label for="u_tank">Tank ist voll</label></span></div>
+  <label>Tankstand (Vertrag: immer voll)</label><div class="mitw">${TANK.map((t, i) => radio('u_tank', String(i), t, t === 'voll' ? 'ja' : '', ex?.tank === t)).join('')}</div>
+  <div id="tankw"></div>
   <label>Checkliste (Anhang B)</label>
   ${darf && phase === 'ab' ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
@@ -342,11 +406,15 @@ function uebergabeForm(bid, phase) {
   <div class="aktion"><button id="abb">${darf ? 'Abbrechen' : 'Schliessen'}</button>${darf ? '<button class="primaer" id="spei">Speichern</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
   if (!darf) return;
+  const eltRei = !(b.fahrerId && D.personen[b.fahrerId]?.konto === 'eltern') && !(b.mitreisende || []).some((i) => D.personen[i]?.konto === 'eltern');
+  const tw = () => { const el = formEl.querySelector('input[name="u_tank"]:checked'); document.getElementById('tankw').innerHTML = el && TANK[+el.value] !== 'voll' ? `<div class="hinweiskarte rot">Achtung: Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Speichern geht nur mit einer Bemerkung.${phase === 'ab' && eltRei ? ' Vor einer Ferienreise der Kinder sind die Eltern fürs Volltanken verantwortlich.' : ''}</div>` : ''; };
+  formEl.querySelectorAll('input[name="u_tank"]').forEach((i) => i.onchange = tw); tw();
   if (phase === 'ab') document.getElementById('alleja').onclick = () => CHECKPUNKTE.forEach(([k]) => { document.getElementById(`p_${k}_ja`).checked = true; });
   document.getElementById('spei').onclick = async () => {
     const punkte = {}; for (const [k] of CHECKPUNKTE) { const el = formEl.querySelector(`input[name="p_${k}"]:checked`); if (el) punkte[k] = el.value; }
+    const tankEl = formEl.querySelector('input[name="u_tank"]:checked');
     const kmTxt = val('u_km').replace(/\D/g, '');
-    const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), tank: document.getElementById('u_tank').checked ? 'voll' : '',
+    const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), tank: tankEl ? TANK[+tankEl.value] : '',
       punkte, bemerkung: val('u_bem').trim(), schaeden: val('u_sch').trim(), erfasstVon: ex?.erfasstVon || ich };
     if (phase === 'rueck') {
       u.schluessel = document.getElementById('u_schl').checked ? 'ja' : '';

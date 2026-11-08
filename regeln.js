@@ -106,7 +106,7 @@ export function pruefeBuchung(b, personen) {
 // =====================================================================
 // Version 2: Uebergabe-Checkliste (Anhang B) und Kilometerstand
 // =====================================================================
-export const TANK = ['voll'];
+export const TANK = ['auf Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
 export const CHECKPUNKTE = [
   ['innen', 'Innenraum sauber, kein Geruch, nicht geraucht'],
   ['kuehlschrank', 'Kühlschrank geleert und geputzt'],
@@ -142,12 +142,13 @@ export function kmPlausibel(neu, uebergaben, buchungen) {
 export function pruefeUebergabe(u, uebergaben, buchungen) {
   const fehler = [];
   if (!Number.isInteger(u.km) || u.km < 0 || u.km > 999999) fehler.push('Kilometerstand fehlt oder ist ungültig.');
-  if (u.tank !== 'voll') fehler.push('Der Tank muss voll sein (Vertrag Ziffer 10). Bei der Rückgabe immer, und damit auch bei der Übergabe an den Nächsten. Bitte zuerst volltanken.');
+  if (!TANK.includes(u.tank)) fehler.push('Tankstand fehlt.');
+  else if (u.tank !== 'voll' && !(u.bemerkung || '').trim()) fehler.push('Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Bitte zuerst volltanken, oder in der Bemerkung erklären, warum nicht.');
   const offen = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] !== 'ja' && u.punkte?.[k] !== 'nein');
   if (offen.length) fehler.push(`Bitte bei jedem Punkt Ja oder Nein wählen (noch offen: ${offen.length}).`);
   const nein = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein');
   if (nein.length && !(u.bemerkung || '').trim()) fehler.push('Bei Nein bitte den Mangel in der Bemerkung beschreiben.');
-  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Bitte zuerst den Schlüssel am Schlüsselbrett hinterlegen. Papa is watching you. 😉');
+  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Per favore, prima appendi la chiave alla bacheca delle chiavi. Papà ti sta guardando. 😉');
   if (Number.isInteger(u.km) && u.km >= 0) { const p = kmPlausibel(u, uebergaben, buchungen); if (!p.ok) fehler.push(p.text); }
   return { ok: fehler.length === 0, fehler };
 }
@@ -267,3 +268,39 @@ export const chf = (rappen) => (rappen / 100).toLocaleString('de-CH', { minimumF
 
 // Rueckgabe gilt erst als abgeschlossen, wenn der Schluessel quittiert ist.
 export const rueckgabeFertig = (rk) => !!rk && rk.schluessel === 'ja';
+
+// Tank nicht voll (nur Warnung, Speichern geht mit Bemerkung).
+export const tankWarnung = (u) => !!u && !!u.tank && u.tank !== 'voll';
+
+// =====================================================================
+// Alltagsfahrten der Eltern (privat, ohne Reservierung)
+// Ein Tag mit mindestens einer Alltagsfahrt zaehlt als ein Tag im Konto der Eltern. Reservierte Tage zaehlen nicht doppelt.
+// =====================================================================
+export const ALLTAG_MAX_KM = 1500;   // pro Eintrag, Plausibilitaet
+
+const reserviert = (datum, buchungen) => Object.values(buchungen).some((b) => b.von <= datum && datum <= b.bis);
+
+export function pruefeAlltag(a, buchungen, personen) {
+  const fehler = [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.datum || '')) fehler.push('Datum fehlt oder hat ein falsches Format.');
+  else if (reserviert(a.datum, buchungen)) fehler.push('An diesem Tag ist das Fahrzeug für eine Reise reserviert. Reisen gehen immer vor.');
+  if (!personen[a.personId] || personen[a.personId].konto !== 'eltern') fehler.push('Alltagsfahrten sind nur für Vater und Mutter.');
+  if (!Number.isInteger(a.km) || a.km < 0 || a.km > ALLTAG_MAX_KM) fehler.push(`Die gefahrenen Kilometer fehlen oder sind ungültig (0 bis ${ALLTAG_MAX_KM}).`);
+  return { ok: fehler.length === 0, fehler };
+}
+
+// Anzahl Alltagstage im Jahr J (verschiedene Daten, ohne reservierte Tage).
+export function alltagTage(alltag, buchungen, J) {
+  const t = new Set();
+  for (const a of Object.values(alltag)) if (a.datum && a.datum.slice(0, 4) === String(J) && !reserviert(a.datum, buchungen)) t.add(a.datum);
+  return t.size;
+}
+export const alltagKm = (alltag, J) => Object.values(alltag).filter((a) => a.datum && a.datum.slice(0, 4) === String(J)).reduce((s, a) => s + (a.km || 0), 0);
+
+// Kontostaende inklusive Alltagstage der Eltern.
+export function kontostaendeMitAlltag(buchungen, personen, J, alltag, buchungenObj) {
+  const r = kontostaende(buchungen, personen, J);
+  const al = alltagTage(alltag || {}, buchungenObj || {}, J);
+  r.eltern += al;
+  return { ...r, alltag: al };
+}
