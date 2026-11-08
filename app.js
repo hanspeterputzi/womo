@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108t';
-import * as S from './speicher.js?v=20261108t';
+} from './regeln.js?v=20261108u';
+import * as S from './speicher.js?v=20261108u';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -113,10 +113,20 @@ const ICON = {
 const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
-  ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [['TCS Camping', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['ADAC PiNCAMP', 'https://www.pincamp.de/'], ['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['Swisscamps', 'https://www.swisscamps.ch/de'], ['camping.ch', 'https://camping.ch/']]],
-  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de']]],
+  ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [
+    ['Verbände und Clubs', [['TCS Camping (CH)', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['Swisscamps (CH)', 'https://www.swisscamps.ch/de'], ['ADAC PiNCAMP (DE)', 'https://www.pincamp.de/'], ['Deutscher Camping-Club (DE)', 'https://camping-club.de/'], ['Österr. Camping Club (AT)', 'https://www.campingclub.at/'], ['Camping and Caravanning Club (UK)', 'https://www.campingandcaravanningclub.co.uk/'], ['ACS Camping Card (CH)', 'https://www.acs.ch/en/mitgliedschaft/clubleistungen/camping-card.php']]],
+    ['Dachverbände Europa', [['EFCO & HPA (Verband der Campingwirtschaft)', 'https://www.efcohpa.eu/'], ['FICC (Camping-Weltverband)', 'https://ficc.org/en/'], ['Camping Key Europe', 'https://en.service.camping.se/guide/information-about-camping-key-europe']]],
+    ['Gruppen und Ketten', [['Leading Campings of Europe', 'https://www.leadingcampings.com/de/'], ['Les Castels (FR)', 'https://www.les-castels.com/'], ['Huttopia', 'https://europe.huttopia.com/'], ['Top Camping Austria', 'https://www.topcamping.at/'], ['Camping.com (FR)', 'https://www.campings.com/fr/']]],
+    ['Rabattkarten und Führer', [['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/']]],
+    ['Suchportale', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['camping.ch (CH)', 'https://camping.ch/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/']]]]],
+  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
+    ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/']]],
+    ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]],
+    ['Freistehen, nur als Zusatz', [['park4night (nicht alles erlaubt)', 'https://park4night.com/en']]]]],
   ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 2-2.5 5-2.5 8h2.5v10"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation', null],
-  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['AlpacaCamping', 'https://www.alpacacamping.de/']]],
+  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [
+    ['Schweiz', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Myfarm.ch', 'https://www.myfarm.ch/de']]],
+    ['Europa', [['AlpacaCamping', 'https://www.alpacacamping.de/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['Hinterland', 'https://hinterland.camp/en'], ['VanSite', 'https://vansite.eu/de'], ['Roadsurfer Spots', 'https://roadsurfer.com/'], ['StayFree', 'https://www.stayfree.app/'], ['Camperland', 'https://www.camperland.de/'], ['LandReise.de', 'https://www.landreise.de/'], ['France Passion (FR)', 'https://www.france-passion.com/'], ['Campspace', 'https://campspace.com/en'], ['Hipcamp', 'https://www.hipcamp.com/en-GB']]]]],
 ];
 const LAENDER = [
   ['🇫🇷', 'Frankreich', 'Gemeinden entscheiden, Aires nutzen', ['Stellplätze heissen «Aires de camping-car».', 'Die Gemeinden entscheiden. In vielen ländlichen Gegenden wird eine Nacht im Wohnmobil geduldet, nicht aber an Küsten, in Schutzgebieten, bei Denkmälern und bei Trinkwasserquellen. Auf Korsika ist es streng verboten. Busse bis 1500 Euro. Am sichersten sind die Aires de camping-car.']],
@@ -138,16 +148,57 @@ const LAENDER = [
 ];
 // Rot = Wildcampen oder Freistehen ist verboten (gleiche Regel für alle Länder).
 const VERBOT_LAND = new Set(['Kroatien', 'Österreich', 'Slowenien', 'Niederlande', 'Belgien', 'Luxemburg', 'Deutschland', 'Spanien', 'Italien']);
-const PLATTFORMEN = [
-  ['Schweiz: Campingplätze', [['TCS Camping', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['PiNCAMP (ADAC)', 'https://www.pincamp.de/'], ['Swisscamps', 'https://www.swisscamps.ch/de'], ['camping.ch', 'https://camping.ch/']]],
-  ['Schweiz: offizielle Stellplätze', [['Wohnmobilland', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/']]],
-  ['Schweiz: Höfe und Private', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Myfarm.ch', 'https://www.myfarm.ch/de']]],
-  ['Europa: Campingplätze und Rabatt', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/'], ['camping.info', 'https://www.camping.info/de'], ['ACS Camping Card', 'https://www.acs.ch/en/mitgliedschaft/clubleistungen/camping-card.php']]],
-  ['Europa: Stellplätze', [['Campercontact', 'https://www.campercontact.com/de'], ['Stellplatz-Radar', 'https://stellplatz-radar.de/'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/']]],
-  ['Europa: Höfe und Private', [['AlpacaCamping', 'https://www.alpacacamping.de/'], ['Hinterland', 'https://hinterland.camp/en'], ['VanSite', 'https://vansite.eu/de'], ['Roadsurfer Spots', 'https://roadsurfer.com/'], ['StayFree', 'https://www.stayfree.app/'], ['Camperland', 'https://www.camperland.de/'], ['LandReise.de', 'https://www.landreise.de/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['France Passion', 'https://www.france-passion.com/'], ['Campspace', 'https://campspace.com/en'], ['Hipcamp', 'https://www.hipcamp.com/en-GB']]],
-  ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]],
-  ['Freistehen, nur als Zusatz', [['park4night (nicht alles erlaubt)', 'https://park4night.com/en']]],
-];
+// Weitere Länder aus Vertrag Ziffer 9 (Stand der Recherche 08.11.2026, Quellen: Reiseportale und Automobilclubs, keine Behörden).
+LAENDER.push(
+  ['🇨🇭', 'Schweiz', 'Kein Landesgesetz, Kantone und Gemeinden entscheiden', ['Wildcampen ist nicht generell verboten, aber Kantone und Gemeinden regeln es selbst. In Schutzgebieten und Nationalparks ist es verboten. Verbotsschilder gelten. Auf Privatgrund nur mit Erlaubnis. Bussen je nach Kanton etwa 200 bis 2000 Franken.', 'Autobahnvignette: 40 Franken, 14 Monate gültig, für Fahrzeuge bis 3,5 t. Schwerere Wohnmobile zahlen die Schwerverkehrsabgabe. Tunnel und Pässe können extra kosten.']],
+  ['🇱🇮', 'Liechtenstein', 'Eigentlich verboten, örtlich geduldet', ['Freies Campen ist eigentlich nicht erlaubt, wird aber je nach Gemeinde nicht streng kontrolliert. Am sichersten sind Campingplätze und ausgewiesene Stellplätze.', 'Zur Maut habe ich keine verlässliche Angabe gefunden.']],
+  ['🇨🇿', 'Tschechien', 'Wildcampen verboten', ['Wildcampen und Freistehen sind verboten. Übernachten geht auf Campingplätzen, ausgewiesenen Stellplätzen und mit Erlaubnis des Eigentümers auf Parkplätzen, wenn kein Verbotsschild steht. Die Quellen widersprechen sich bei Parkplätzen.', 'Autobahnen und Schnellstrassen: elektronische Vignette für Fahrzeuge bis 3,5 t, an das Kennzeichen gebunden, vor der Fahrt kaufen. Ohne Vignette drohen etwa 830 Euro Busse. Preise vorher prüfen, die Quellen nennen verschiedene Beträge.']],
+  ['🇵🇱', 'Polen', 'Rechtlich heikel, oft geduldet', ['Wildcampen ist durch Umwelt- und Waldgesetz eigentlich verboten, wird in der Praxis aber oft geduldet. Die Quellen widersprechen sich. Mit dem Wohnmobil im Wald ist es nicht erlaubt (nur Zelte in ausgewiesenen Wäldern). Bussen ab etwa 100 Zloty bis 120 Euro.', 'Keine Vignette. Streckenmaut über e-TOLL (GPS-App) für Fahrzeuge über 3,5 t. Die privaten Autobahnen A1, A2 und A4 werden separat an Mautstellen bezahlt.']],
+  ['🇪🇪', 'Estland', 'Freies Übernachten vielerorts einfach', ['Übernachten ist vielerorts unkompliziert, Naturcamping ist verbreitet. Auf Privatgrund nur mit Erlaubnis des Besitzers. In Nationalparks und Schutzgebieten die Regeln vor Ort beachten.', 'Alle öffentlichen Strassen sind für Pkw und Wohnmobile maut- und vignettenfrei.']],
+  ['🇱🇻', 'Lettland', 'Keine einheitliche Regel', ['Es gibt keine einheitliche Regelung. Eine Nacht freies Stehen ist oft möglich, wo es nicht ausdrücklich verboten ist. Privatgrund nur mit Erlaubnis. Üblich sind Campingplätze, vor allem an der Ostseeküste.', 'Keine Vignette für Fahrzeuge bis 3,5 t. Im Badeort Jūrmala wird eine Maut erhoben.']],
+  ['🇱🇹', 'Litauen', 'Keine einheitliche Regel', ['Es gibt keine einheitliche Regelung. Eine Nacht freies Stehen ist oft möglich, wo es nicht ausdrücklich verboten ist. Privatgrund nur mit Erlaubnis. Üblich sind Campingplätze, vor allem an der Ostseeküste.', 'Keine Vignette für Pkw und Wohnmobile. Die Einfahrt auf die Kurische Nehrung kostet eine Gebühr.']],
+  ['🇭🇺', 'Ungarn', 'Wildcampen mit Fahrzeug nicht erlaubt', ['Wildcampen mit dem Wohnmobil ist nicht erlaubt, die Quellen widersprechen sich aber. Campingplätze und Stellplätze nutzen.', 'Autobahnen und Schnellstrassen (mit «M»): elektronische Vignette e-Matrica, an das Kennzeichen gebunden. Ohne Vignette bleiben 60 Minuten zum Nachkaufen. Über 3,5 t gilt das Mautsystem HU-GO.']],
+  ['🇧🇦', 'Bosnien-Herzegowina', 'Freies Campen verboten, Minengefahr', ['Freies Campen ist grundsätzlich verboten. Wegen der Minengefahr befestigte Wege nicht verlassen und Schilder beachten.', 'Keine Vignette. Maut nur abschnittsweise auf der A1, bar in Mark oder Euro. Versicherungsnachweis vorher bei der Versicherung klären (internationale Versicherungskarte «BIH»), die Quellen widersprechen sich.']],
+  ['🇲🇪', 'Montenegro', 'Nicht erlaubt, abseits teils geduldet', ['Freistehen ist nicht erlaubt, abseits der Touristengebiete wird es teils geduldet. An Stränden und in Nationalparks verboten.', 'Maut nur auf der Autobahn A1 (Bar–Boljare) und im Sozina-Tunnel. Einreise mit Personalausweis: Aufenthalt höchstens 30 Tage.']],
+  ['🇦🇱', 'Albanien', 'Abseits der Städte meist geduldet', ['Freistehen wird abseits der Städte meist geduldet, in Nationalparks ist es eingeschränkt. Nachtfahrten meiden, viele Fahrzeuge sind unbeleuchtet.', 'Maut: Die Quellen widersprechen sich (kleine Gebühr im Kalimash-Tunnel, sonst meist mautfrei). Einreise ohne Visum mit Pass oder Personalausweis, Versicherungskarte mitnehmen.']],
+  ['🇲🇰', 'Nordmazedonien', 'Freies Campen nicht erlaubt', ['Freies Campen ist grundsätzlich nicht erlaubt, auf Privatgrund mit Einverständnis des Eigentümers möglich.', 'Autobahn: kleine Gebühren, bar oder mit Karte. Eine Meldepflicht bei der Polizei nach 24 Stunden wird genannt, die Quelle ist undatiert, bitte vorher prüfen.']],
+  ['🇮🇪', 'Irland', 'Offiziell nicht erlaubt', ['Wildcampen ist offiziell nicht erlaubt (Schilder «Temporary Dwelling prohibited»). Eine Nacht auf öffentlichem Grund wird teils geduldet. Der grösste Teil des Landes ist privat, dort nur mit Erlaubnis des Besitzers.', 'Maut praktisch nur auf der M50 bei Dublin, per Kennzeichen erfasst. Bis 20 Uhr des Folgetags online bezahlen (eflow.ie), sonst Strafgebühr.']],
+  ['🇬🇧', 'Vereinigtes Königreich', 'England: nur mit Erlaubnis, Schottland anders', ['England, Wales und Nordirland: Übernachten ausserhalb von Campingplätzen ist ohne Erlaubnis des Grundbesitzers nicht erlaubt. Schottland: Jedermannsrecht, gilt aber vor allem für Zelte. Wohnmobile dürfen nur zur Wiederherstellung der Fahrtüchtigkeit pausieren. Im Gebiet Loch Lomond gelten Sonderregeln.', 'Zu Maut und Einreise habe ich nichts Verlässliches gefunden. Vor der Reise bei gov.uk und beim ADAC prüfen.']],
+  ['🇮🇸', 'Island', 'Ausserhalb von Campingplätzen verboten', ['Übernachten ausserhalb von Campingplätzen ist verboten, ausser mit Erlaubnis des Landbesitzers.', 'Seit 2026 gibt es eine Streckenmaut statt einer Vignette. Einziger klassischer Mautpunkt ist der Tunnel Vaðlaheiðargöng bei Akureyri (online innert 24 Stunden bezahlen, Quelle älter). Anreise nur per Fähre (Smyril Line ab Hirtshals, etwa 42 Stunden).']],
+);
+LAENDER.sort((a, b) => a[1].localeCompare(b[1], 'de'));
+// Rot = Wildcampen oder Freistehen ist verboten (gleiche Regel für alle Länder).
+VERBOT_LAND.add('Tschechien'); VERBOT_LAND.add('Ungarn'); VERBOT_LAND.add('Bosnien-Herzegowina'); VERBOT_LAND.add('Montenegro'); VERBOT_LAND.add('Nordmazedonien'); VERBOT_LAND.add('Irland'); VERBOT_LAND.add('Island');
+// Direkte Links zu Campingverbänden und Campingplatz-Verzeichnissen je Land (am 08.11.2026 geprüft: Seite erreichbar).
+const CI = (slug) => ['camping.info', 'https://www.camping.info/de/land/' + slug];
+const LAND_LINKS = {
+  'Schweiz': [['Swisscamps (Verband)', 'https://www.swisscamps.ch/de'], ['TCS Camping', 'https://www.tcs.ch/de/camping-reisen/camping/'], ['camping.ch', 'https://camping.ch/']],
+  'Liechtenstein': [CI('liechtenstein')],
+  'Deutschland': [['Deutscher Camping-Club', 'https://camping-club.de/'], ['ADAC PiNCAMP', 'https://www.pincamp.de/'], CI('deutschland')],
+  'Österreich': [['Österr. Camping Club', 'https://www.campingclub.at/'], ['Top Camping Austria', 'https://www.topcamping.at/'], CI('austria')],
+  'Frankreich': [['FNHPA (Verband)', 'https://fnhpa-pro.fr/'], ['Les Castels', 'https://www.les-castels.com/'], ['Huttopia', 'https://europe.huttopia.com/'], CI('frankreich')],
+  'Italien': [['Federcampeggio', 'https://www.federcampeggio.it/'], CI('italien')],
+  'Spanien': [CI('spanien')],
+  'Portugal': [['FCMP (Verband)', 'https://www.fcmportugal.com/'], ['Orbitur', 'https://www.orbitur.pt/pt/'], CI('portugal')],
+  'Niederlande': [['Recron (Verband)', 'https://www.recron.nl/'], CI('niederlande')],
+  'Belgien': [['Camping.be', 'https://www.camping.be/nl/'], CI('belgien')],
+  'Luxemburg': [['Camprilux', 'https://www.camping.lu/'], CI('luxemburg')],
+  'Dänemark': [['Dansk Camping Union', 'https://www.dcu.dk/da'], CI('danemark')],
+  'Schweden': [['SCR Camping.se (Verband)', 'https://camping.se/sv'], ['Camping Key Europe', 'https://en.service.camping.se/guide/information-about-camping-key-europe'], CI('schweden')],
+  'Norwegen': [['Camping.no', 'https://camping.no/nb/'], CI('norwegen')],
+  'Finnland': [['Camping Finland (Verband)', 'https://camping.fi/'], CI('finnland')],
+  'Island': [['Camping Card Iceland', 'https://utilegukortid.is/?lang=en'], CI('island')],
+  'Irland': [['Irish Caravan & Camping Club', 'https://www.iccc.ie/'], CI('irland')],
+  'Vereinigtes Königreich': [['Camping and Caravanning Club', 'https://www.campingandcaravanningclub.co.uk/']],
+  'Kroatien': [['Croatian Camping Association', 'https://www.camping.hr/'], CI('kroatien')],
+  'Slowenien': [['Avtokampi.si (Info-Portal)', 'https://avtokampi.si/'], CI('slowenien')],
+  'Griechenland': [CI('griechenland')],
+  'Tschechien': [['Asociace kempů ČR (Verband)', 'https://www.camp.cz/asociace/index.aspx?sflang=en'], CI('tschechien')],
+  'Polen': [['PFCC (Verband)', 'https://pfcc.eu/'], CI('polen')],
+  'Ungarn': [CI('ungarn')],
+  'Estland': [CI('estland')], 'Lettland': [CI('lettland')], 'Litauen': [CI('litauen')],
+  'Bosnien-Herzegowina': [CI('bosnien-herzegowina')], 'Montenegro': [CI('montenegro')], 'Albanien': [CI('albanien')], 'Nordmazedonien': [CI('mazedonien')],
+};
 function unterwegs() {
   const such = (n) => 'https://www.google.com/search?q=' + encodeURIComponent(n + ' Wohnmobil Stellplatz');
   const suchL = (q) => 'https://www.google.com/search?q=' + encodeURIComponent(q);
@@ -157,19 +208,18 @@ function unterwegs() {
   };
   app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
-  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, links]) => {
+  <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
-      return links ? `<div class="u-ort" style="flex-direction:column;gap:0"><div style="display:flex;gap:14px">${kopf}</div><div class="u-chips" style="margin:10px 0 0">${links.map(chip).join('')}</div></div>`
+      return gruppen ? `<div class="u-ort" style="flex-direction:column;gap:0"><div style="display:flex;gap:14px">${kopf}</div>
+        <div style="margin-top:6px">${gruppen.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
         : `<a class="u-ort u-ortlink" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
-    }).join('')}<p class="info" style="margin:6px 0 0">Gasthöfe: Tippen öffnet eine Websuche. Bei den übrigen Plätzen öffnen die Namen direkt die Webseite.</p></div>
+    }).join('')}<p class="info" style="margin:6px 0 0">Tippen auf einen Namen öffnet direkt die Webseite (am 08.11.2026 geprüft: Seite erreichbar, Qualität der Angebote nicht). Nur «Gasthöfe» öffnet eine Websuche.</p></div>
   <div class="karte"><p class="titel">Nach Land</p>
-    ${LAENDER.map(([f, l, t, sz, v]) => `<details class="u-det u-lnd${VERBOT_LAND.has(l) ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
+    ${LAENDER.map(([f, l, t, sz]) => `<details class="u-det u-lnd${VERBOT_LAND.has(l) ? ' verbot' : ''}"><summary><span class="u-flag">${f}</span><span class="u-lt"><strong>${h(l)}</strong><em>${h(t)}</em></span></summary>
       <ul class="info" style="padding-left:18px;margin:4px 0 8px">${sz.map((x) => `<li style="margin-bottom:4px">${h(x)}</li>`).join('')}</ul>
-      <div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
-    <p class="info">Stand 08.11.2026. Quellen: Reiseportale und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
-  <div class="karte"><p class="titel">Apps und Plattformen</p>
-    ${PLATTFORMEN.map(([g, l], i) => `<details class="u-det"${i === 0 ? ' open' : ''}><summary><span>${h(g)}</span><b>${l.length}</b></summary><div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}
-    <p class="info">Tippen öffnet direkt die Webseite. Die Adressen sind am 08.11.2026 geprüft (Seite erreichbar), die Qualität der Angebote nicht.</p></div>
+      <div class="u-gt">Campingplätze und Verbände</div><div class="u-chips">${(LAND_LINKS[l] || []).map(chip).join('')}</div>
+      <div class="u-gt">Regeln und Maut</div><div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
+    <p class="info">Stand 08.11.2026. Quellen: Reiseportale, Automobilclubs und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Rot = Wildcampen oder Freistehen verboten. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
   <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
   bindRahmen();
 }
