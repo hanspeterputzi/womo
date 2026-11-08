@@ -148,7 +148,7 @@ export function pruefeUebergabe(u, uebergaben, buchungen) {
   if (offen.length) fehler.push(`Bitte bei jedem Punkt Ja oder Nein wählen (noch offen: ${offen.length}).`);
   const nein = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein');
   if (nein.length && !(u.bemerkung || '').trim()) fehler.push('Bei Nein bitte den Mangel in der Bemerkung beschreiben.');
-  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Bitte zuerst den Schlüssel am Schlüsselbrett hinterlegen. Papa is watching you');
+  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Bitte zuerst den Schlüssel am Schlüsselbrett hinterlegen. Papa is watching you. 😉');
   if (Number.isInteger(u.km) && u.km >= 0) { const p = kmPlausibel(u, uebergaben, buchungen); if (!p.ok) fehler.push(p.text); }
   return { ok: fehler.length === 0, fehler };
 }
