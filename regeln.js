@@ -141,6 +141,7 @@ export function kmPlausibel(neu, uebergaben, buchungen) {
 // Pruefung vor dem Speichern einer Uebergabe oder Rueckgabe.
 export function pruefeUebergabe(u, uebergaben, buchungen) {
   const fehler = [];
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(u.datumZeit || '')) fehler.push('Datum und Uhrzeit fehlen.');
   if (!Number.isInteger(u.km) || u.km < 0 || u.km > 999999) fehler.push('Kilometerstand fehlt oder ist ungültig.');
   if (!TANK.includes(u.tank)) fehler.push('Tankstand fehlt.');
   else if (u.tank !== 'voll' && !(u.bemerkung || '').trim()) fehler.push('Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Bitte zuerst volltanken, oder in der Bemerkung erklären, warum nicht.');

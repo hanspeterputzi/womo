@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108h';
-import * as S from './speicher.js?v=20261108h';
+} from './regeln.js?v=20261108i';
+import * as S from './speicher.js?v=20261108i';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -154,7 +154,7 @@ function unterwegs() {
 }
 const VERTRAG_REGELN = [
   ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übergabe und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
-  ['Alltagsfahrten der Eltern (Ziffer 7)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 183 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
+  ['Alltagsfahrten der Eltern (Ziffer 7a)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 183 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.', 'Kinder reisen nur auf zugelassenen Sitzplätzen mit passendem Rückhaltesystem.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten, wenn immer möglich.', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
   ['Sauberkeit und Übergabe (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
@@ -396,7 +396,9 @@ function uebergabeForm(bid, phase) {
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übergabe: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
   <label for="u_km">Kilometerstand</label><input id="u_km" inputmode="numeric" value="${ex ? ex.km : ''}" placeholder="z. B. 12450" ${dis}>
-  <label>Tankstand (Vertrag: immer voll)</label><div class="mitw">${TANK.map((t, i) => radio('u_tank', String(i), t, t === 'voll' ? 'ja' : '', ex?.tank === t)).join('')}</div>
+  <label>Tankstand (Vertrag: immer voll)</label>
+  <div class="tank" id="tankg">${TANK.map((t, i) => `<span class="tk" style="--n:${i}"><input type="radio" name="u_tank" id="u_tank_${i}" value="${i}" ${ex?.tank === t ? 'checked' : ''} ${dis}><label for="u_tank_${i}"><i></i><b>${t === 'auf Reserve' ? 'Res.' : t}</b></label></span>`).join('')}</div>
+  <div class="tankanz" id="tankanz"></div>
   <div id="tankw"></div>
   <label>Checkliste (Anhang B)</label>
   ${darf && phase === 'ab' ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
@@ -407,6 +409,14 @@ function uebergabeForm(bid, phase) {
   <div id="msg"></div>
   <div class="aktion"><button id="abb">${darf ? 'Abbrechen' : 'Schliessen'}</button>${darf ? '<button class="primaer" id="spei">Speichern</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
+  const gauge = () => {
+    const el = formEl.querySelector('input[name="u_tank"]:checked'), i = el ? +el.value : -1, g = document.getElementById('tankg');
+    g.querySelectorAll('.tk').forEach((x, k) => x.classList.toggle('on', k <= i));
+    g.style.setProperty('--c', i < 0 ? 'var(--line)' : i <= 1 ? 'var(--rot)' : i <= 3 ? 'var(--gelb)' : 'var(--ok)');
+    const a = document.getElementById('tankanz'); a.textContent = i < 0 ? 'Bitte den Tankstand wählen.' : i === TANK.length - 1 ? 'Tank voll ✓' : `Tank: ${TANK[i]}, nicht voll`;
+    a.className = 'tankanz' + (i < 0 ? '' : i === TANK.length - 1 ? ' ok' : i <= 1 ? ' rot' : ' gelb');
+  };
+  formEl.querySelectorAll('input[name="u_tank"]').forEach((i) => i.addEventListener('change', gauge)); gauge();
   if (!darf) return;
   const eltRei = !(b.fahrerId && D.personen[b.fahrerId]?.konto === 'eltern') && !(b.mitreisende || []).some((i) => D.personen[i]?.konto === 'eltern');
   const tw = () => { const el = formEl.querySelector('input[name="u_tank"]:checked'); document.getElementById('tankw').innerHTML = el && TANK[+el.value] !== 'voll' ? `<div class="hinweiskarte rot">Achtung: Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Speichern geht nur mit einer Bemerkung.${phase === 'ab' && eltRei ? ' Vor einer Ferienreise der Kinder sind die Eltern fürs Volltanken verantwortlich.' : ''}</div>` : ''; };

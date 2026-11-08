@@ -97,7 +97,7 @@ test('Kilometer: Plausibilitaet', () => {
   assert.equal(kmPlausibel({ buchungId: 'b3', phase: 'ab', km: 2000 }, [...U, ], { ...B, b3: { von: '2026-09-01' } }).ok, true);
 });
 test('Uebergabe-Pruefung', () => {
-  const ok = { buchungId: 'b3', phase: 'ab', km: 1950, tank: 'voll', punkte: alleJa, bemerkung: '' };
+  const ok = { buchungId: 'b3', phase: 'ab', datumZeit: '2026-09-01T10:00', km: 1950, tank: 'voll', punkte: alleJa, bemerkung: '' };
   const B3 = { ...B, b3: { von: '2026-09-01' } };
   assert.equal(pruefeUebergabe(ok, U, B3).ok, true);
   assert.equal(pruefeUebergabe({ ...ok, tank: '' }, U, B3).ok, false);

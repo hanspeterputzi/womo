@@ -7,7 +7,7 @@ const alleJa = Object.fromEntries(CHECKPUNKTE.map(([k]) => [k, 'ja']));
 
 test('Tank: Skala hat 7 Stufen, voll ist die letzte', () => { assert.equal(TANK.length, 7); assert.equal(TANK[6], 'voll'); });
 test('Tank nicht voll: nur mit Bemerkung speicherbar, mit Warnung', () => {
-  const u = { buchungId: 'b1', phase: 'ab', km: 100, tank: '1/2', punkte: alleJa, bemerkung: '' };
+  const u = { buchungId: 'b1', phase: 'ab', datumZeit: '2026-08-01T09:30', km: 100, tank: '1/2', punkte: alleJa, bemerkung: '' };
   const U = [], BB = { b1: B.b1 };
   assert.equal(pruefeUebergabe(u, U, BB).ok, false);
   assert.equal(pruefeUebergabe({ ...u, bemerkung: 'Tankstelle war zu' }, U, BB).ok, true);
@@ -47,5 +47,15 @@ test('Grenze 183: Ferien 170 + Alltag 14 = 184 ueberschreitet', () => {
   const A = {}; for (let i = 1; i <= 14; i++) A['a' + i] = { datum: `2026-09-${String(i).padStart(2, '0')}`, km: 5 };
   const r = kontostaendeMitAlltag(Object.values(BB), P, 2026, A, BB);
   assert.equal(r.eltern, 184);
+});
+test('Pflichtfelder: ohne Kilometer, Datum/Uhrzeit oder Tank ist nichts speicherbar', () => {
+  const ok = { buchungId: 'b1', phase: 'ab', datumZeit: '2026-08-01T09:30', km: 100, tank: 'voll', punkte: alleJa, bemerkung: '' };
+  const U = [], BB = { b1: B.b1 };
+  assert.equal(pruefeUebergabe(ok, U, BB).ok, true);
+  assert.equal(pruefeUebergabe({ ...ok, km: NaN }, U, BB).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, km: undefined }, U, BB).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, datumZeit: '' }, U, BB).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, datumZeit: undefined }, U, BB).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, tank: '' }, U, BB).ok, false);
 });
 console.log(`\n${n} Testgruppen bestanden`);
