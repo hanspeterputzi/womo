@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108z';
-import * as S from './speicher.js?v=20261108z';
+} from './regeln.js?v=20261109a';
+import * as S from './speicher.js?v=20261109a';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -19,6 +19,8 @@ const FARBE = { 'hp': 'var(--hp)', 'eltern': 'var(--eltern)', 'nora': 'var(--nor
 // Farbe je Person: HP blau, Nora hellblau, Nanouk rosa, Nene tuerkis.
 const PERSON_FARBE = { hp: 'hp', fr: 'nora', t: 'kind-1', s: 'kind-2' };
 const val = (id) => document.getElementById(id).value;
+// Gemeinsamer Seitenkopf aller Tabs: grosser Titel, rechts (wenn es etwas zu erfassen gibt) ein Knopf mit Beschriftung.
+const seitenkopf = (titel, id, label) => `<div class="seitenkopf"><h2>${titel}</h2>${id ? `<button class="t-plus lang" id="${id}">${label}</button>` : ''}</div>`;
 // Zeit immer nach Schweizer Zeit, auch wenn das Handy im Ausland läuft.
 const ZH = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 const jetztLokal = () => ZH.format(new Date()).replace(' ', 'T');
@@ -205,7 +207,7 @@ function unterwegs() {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
-  app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
+  app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
@@ -232,12 +234,13 @@ const VERTRAG_REGELN = [
   ['Übernahme-Checkliste (Anhang B)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
 function vertrag() {
-  app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
-    <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags. Bei Widerspruch gilt der Vertrag.</p>
-    ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>
-    <div class="karte"><p class="titel">Datensicherung</p><p class="info" style="margin:0 0 8px">Alle Reservierungen, Übernahmen, Kosten, Einzahlungen und Termine werden automatisch gesichert: <strong>jeden Sonntag um 20 Uhr</strong>.</p>
+  app.innerHTML = rahmen(`${seitenkopf('Vertrag')}
+    <p class="info" style="margin:0 6px 14px">Kurzfassung des Miteigentumsvertrags. Bei Widerspruch gilt der Vertrag.</p>
+    ${VERTRAG_REGELN.map(([t, l]) => `<details class="sek"><summary><span>${t}</span></summary><div class="sek-in"><ul class="info" style="padding-left:18px;margin:0">${l.map((x) => `<li style="margin-bottom:6px">${x}</li>`).join('')}</ul></div></details>`).join('')}
+    <details class="sek"><summary><span>Datensicherung</span><b>jeden Sonntag</b></summary><div class="sek-in">
+      <p class="info" style="margin:0 0 8px">Alle Reservierungen, Übernahmen, Kosten, Einzahlungen und Termine werden automatisch gesichert: <strong>jeden Sonntag um 20 Uhr</strong>.</p>
       <p class="info" style="margin:0 0 8px"><strong>Wo:</strong> auf dem Mac von HP, im Benutzerordner (Home) im Ordner <strong>Womo-Sicherung</strong>, darin der Ordner <strong>Sicherungen</strong>. Jede Sicherung ist eine Datei «womo-sicherung-Datum_Uhrzeit.json». Die PINs sind nicht enthalten.</p>
-      <p class="info" style="margin:0">Der Mac muss am Sonntag eingeschaltet sein. Ist er aus, wird die Sicherung beim nächsten Einschalten nachgeholt. Sicherungen werden zwei Jahre aufbewahrt.</p></div>`);
+      <p class="info" style="margin:0">Der Mac muss am Sonntag eingeschaltet sein. Ist er aus, wird die Sicherung beim nächsten Einschalten nachgeholt. Sicherungen werden zwei Jahre aufbewahrt.</p></div></details>`);
   bindRahmen();
 }
 function rahmen(inhalt) {
@@ -304,7 +307,7 @@ function kalender() {
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
   const monatsT = termineEcht().filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
   const TCHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
-  app.innerHTML = rahmen(`${hinweiseHtml()}${ringe(J)}
+  app.innerHTML = rahmen(`${seitenkopf('Kalender', 'resneu', '＋ Reservieren')}${hinweiseHtml()}${ringe(J)}
   <div class="karte">
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
@@ -313,14 +316,13 @@ function kalender() {
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
-  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`) +
-  '<button id="neu">＋ Reservieren</button>';
+  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
   bindRahmen();
   const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
   document.getElementById('hj').onclick = () => { ansicht = new Date(); kalender(); };
-  document.getElementById('neu').onclick = () => formularZeigen('');
+  document.getElementById('resneu').onclick = () => formularZeigen('');
   app.querySelectorAll('.tag[data-d]').forEach((el) => el.onclick = () => formularZeigen(el.dataset.d));
   app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => { const x = D.buchungen[el.dataset.edit]; if (!eigener(x)) return nurEigene(); formularZeigen('', x); });
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
@@ -398,36 +400,82 @@ function formularZeigen(tag, ex) {
 // =====================================================================
 // Fahrten: Uebergabe-Checkliste (Anhang B) und Kilometerstand (Version 2)
 // =====================================================================
+const FAHRT_ICON = '<path d="M3 17V8a2 2 0 0 1 2-2h9l5 5v6M3 17h2M9 17h6M19 17h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
+const KOSTEN_ICON = '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/>';
+function reiseText(b, kurz) {
+  const [j1, m1, d1] = b.von.split('-').map(Number), [j2, m2, d2] = b.bis.split('-').map(Number);
+  const mo = (m) => kurz ? MONATE[m - 1].slice(0, 3) + '.' : MONATE[m - 1], jahr = j2 === new Date().getFullYear() ? '' : ' ' + j2;
+  if (b.von === b.bis) return `${d1}. ${mo(m1)}${jahr}`;
+  return m1 === m2 && j1 === j2 ? `${d1}.–${d2}. ${mo(m2)}${jahr}` : `${d1}. ${mo(m1).slice(0, 3)} – ${d2}. ${mo(m2).slice(0, 3)}${jahr}`;
+}
+function fahrtInfo(b, st) {
+  const ab = D.uebergaben[b.id + '_ab'], rk = D.uebergaben[b.id + '_rueck'];
+  const wer = D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?';
+  const maengel = [ab, rk].some((u) => u && (CHECKPUNKTE.some(([k]) => u.punkte?.[k] === 'nein') || (u.schaeden || '').trim()));
+  return { ab, rk, wer, maengel, km: st.proBuchung[b.id], fertigR: rueckgabeFertig(rk), schlOffen: !!rk && !rueckgabeFertig(rk), tankNV: tankWarnung(ab) || tankWarnung(rk) };
+}
+function fahrtChips(f) {
+  return `${f.km !== undefined ? `<span class="chipk">${zahl(f.km)} km gefahren</span>` : ''}${f.maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${f.schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${f.tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}`;
+}
 function fahrten() {
-  const J = new Date().getFullYear();
+  const J = new Date().getFullYear(), t = heute();
   const st = kmStatistik(Object.values(D.uebergaben), D.buchungen, J);
-  const bs = liste().sort((a, b) => (a.von < b.von ? 1 : -1)).slice(0, 40);
-  app.innerHTML = rahmen(`<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
-  <div class="karte"><p class="titel">Fahrten und Übernahmen</p>
-    <p class="info" style="margin:0 0 6px">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>
-    ${bs.length ? bs.map((b) => fahrtHtml(b, st)).join('') : '<p class="leer-t">Noch keine Reservierungen.</p>'}</div>
-  <div class="karte km-karte"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
+  const alle = liste().sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
+  const kommend = alle.filter((b) => b.bis >= t), vorbei = alle.filter((b) => b.bis < t).reverse().slice(0, 40);
+  const elternIch = D.personen[ich]?.konto === 'eltern';
+  const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
+  const knopf = (f, b, id, text, pri) => `<button class="btn${f ? ' ok' : pri ? ' gelb' : ''}" data-u="${h(b.id)}|${id}">${f ? '✓ ' : ''}${text}</button>`;
+  const n = kommend[0];
+  let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><span class="t-nd">Reservierungen machst du im Tab «Kalender».</span></div>`;
+  if (n) {
+    const f = fahrtInfo(n, st), laeuft = n.von <= t;
+    karte = `<div class="f-next"><span class="t-lab">${laeuft ? 'Laufende Reise' : 'Nächste Reise'}</span><span class="f-nt">${reiseText(n)}</span>
+      <span class="t-nd">${h(f.wer)}${n.ziel ? ' · ' + h(n.ziel) : ''}</span>
+      <span class="t-pille ${laeuft ? 'gelb' : 'blau'}">${laeuft ? 'unterwegs' : `in ${nr(n.von) - nr(t)} ${nr(n.von) - nr(t) === 1 ? 'Tag' : 'Tagen'}`}</span>
+      ${fahrtChips(f) ? `<span class="f-chips">${fahrtChips(f)}</span>` : ''}
+      <div class="btnzeile zk" style="margin:14px 0 0">${knopf(!!f.ab, n, 'ab', `Übernahme ${f.ab ? 'ansehen' : 'erfassen'}`)}${knopf(f.fertigR, n, 'rueck', `Rückgabe ${f.rk ? 'ansehen' : 'erfassen'}`, f.schlOffen)}</div></div>`;
+  }
+  const pilleFuer = (b) => {
+    const f = fahrtInfo(b, st);
+    if (b.bis < t) return f.fertigR ? ['ok', '✓ fertig'] : f.ab ? ['gelb', 'Rückgabe offen'] : ['rot', 'ohne Checkliste'];
+    const d = nr(b.von) - nr(t); return ['blau', d <= 0 ? 'unterwegs' : `in ${d} ${d === 1 ? 'Tag' : 'Tagen'}`];
+  };
+  const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
+  app.innerHTML = rahmen(`${seitenkopf('Fahrten', elternIch ? 'aneu' : null, '＋ Alltagsfahrt')}
+  <div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
+  ${karte}
+  ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
+  <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
     <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
-  ${alltagKarte(J)}`);
+  ${alltagSek(J)}
+  ${vorbei.length ? `<details class="sek"><summary><span>Vergangene Reisen</span><b>${vorbei.length}</b></summary><div class="sek-in">${vorbei.map(zeile).join('')}</div></details>` : ''}
+  <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
+  app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
+    const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
+    sheet(`<div class="t-sk"><span class="t-sq blau gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${reiseText(b)}</h3><div class="info" style="margin:2px 0 0">${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</div></div></div>
+      ${fahrtChips(f) ? `<p class="f-chips" style="margin:6px 0 0">${fahrtChips(f)}</p>` : ''}
+      <div class="t-akt2"><button class="gross-btn pri" id="f_ab">Übernahme ${f.ab ? 'ansehen' : 'erfassen'}</button><button class="gross-btn" id="f_rk">Rückgabe ${f.rk ? 'ansehen' : 'erfassen'}</button><button class="gross-btn" id="abb">Schliessen</button></div>`);
+    document.getElementById('abb').onclick = schliessen;
+    document.getElementById('f_ab').onclick = () => uebergabeForm(b.id, 'ab');
+    document.getElementById('f_rk').onclick = () => uebergabeForm(b.id, 'rueck');
+  });
 }
 
 // Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (181 Tage).
-function alltagKarte(J) {
+function alltagSek(J) {
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const L = Object.values(alltagMap()).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
-  const elternIch = D.personen[ich]?.konto === 'eltern';
   const rot = st.eltern > SCHWELLE.eltern;
-  return `<div class="karte"><div class="kopfzeile"><p class="titel">Alltagsfahrten der Eltern</p>${elternIch ? '<button class="btn pri" id="aneu">＋ Alltagsfahrt</button>' : ''}</div>
-    <p class="grosszahl">${st.eltern} <small>von ${SCHWELLE.eltern} Tagen (Eltern ${J})</small></p>
-    <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
+  return `<details class="sek"><summary><span>Alltagsfahrten der Eltern</span><b>${st.eltern} / ${SCHWELLE.eltern}</b></summary><div class="sek-in">
+    <p class="info" style="margin:0 0 6px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
     ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
-    <details class="det"><summary>So funktionieren Alltagsfahrten</summary><p class="info" style="margin:6px 0 8px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p></details>
-    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
+    <p class="info" style="margin:0 0 8px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
+    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div></details>`;
 }
 
 function alltagForm() {
@@ -449,21 +497,6 @@ function alltagForm() {
     if (fe.length) { fehler([...new Set(fe)]); return; }
     await sicher(async () => { await S.speichern(D, 'termine', null, { ...a, art: 'Alltag', titel: 'Alltagsfahrt', faelligAm: a.datum, erledigtAm: '' }); schliessen(); fahrten(); hinweis('Alltagsfahrt gespeichert.'); });
   };
-}
-
-function fahrtHtml(b, st) {
-  const ab = D.uebergaben[b.id + '_ab'], rk = D.uebergaben[b.id + '_rueck'];
-  const wer = D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?';
-  const maengel = [ab, rk].some((u) => u && (CHECKPUNKTE.some(([k]) => u.punkte?.[k] === 'nein') || (u.schaeden || '').trim()));
-  const km = st.proBuchung[b.id];
-  const fertigR = rueckgabeFertig(rk);
-  const schlOffen = rk && !fertigR;
-  const tankNV = tankWarnung(ab) || tankWarnung(rk);
-  const knopf = (fertig, id, text, offen) => `<button class="btn${fertig ? ' ok' : offen ? ' gelb' : ''}" data-u="${h(b.id)}|${id}">${fertig ? '✓ ' : ''}${text}</button>`;
-  return `<div class="b" style="flex-direction:column;gap:6px">
-    <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
-    ${km !== undefined || maengel || schlOffen || tankNV ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}</div>` : ''}
-    <div class="btnzeile zk" style="margin:0">${knopf(!!ab, 'ab', `Übernahme ${ab ? 'ansehen' : 'erfassen'}`)}${knopf(fertigR, 'rueck', `Rückgabe ${rk ? 'ansehen' : 'erfassen'}`, schlOffen)}</div></div>`;
 }
 
 function uebergabeForm(bid, phase) {
@@ -574,23 +607,35 @@ function kosten() {
       ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}`;
   })() : '';
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
-  app.innerHTML = rahmen(`
-  <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2>Kosten ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
+  const zeileK = (attr, id, titel, sub) => `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
+  app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Erfassen')}
+  <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
-    ${buch ? '<div class="btnzeile"><button class="btn pri" id="kneu">＋ Kosten</button><button class="btn pri" id="eneu">＋ Einzahlung</button></div>' : ''}</div>
+  </div>
   ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
   ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
-  ${sek('Kosten ' + J, kjahr.length + ' Einträge', kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${h(k.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
-  ${sek('Einzahlungen ' + J, ejahr.length + ' Einträge', (ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${h(e.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
+  ${sek('Kosten ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), kjahr.length ? kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''))).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
+  ${sek('Einzahlungen ' + J, ejahr.length + (ejahr.length === 1 ? ' Eintrag' : ' Einträge'), (ejahr.length ? ejahr.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum).slice(0, 6) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''))).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
   const kn = document.getElementById('kneu'); if (kn) kn.onclick = kostenForm;
   const en = document.getElementById('eneu'); if (en) en.onclick = einzahlungForm;
-  app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = async () => { if (!eigener(D.kosten[b.dataset.dk])) return nurEigene(); if (confirm('Kosteneintrag löschen?')) await sicher(async () => { await S.loeschen(D, 'kosten', b.dataset.dk); kosten(); }); });
-  app.querySelectorAll('[data-de]').forEach((b) => b.onclick = async () => { if (!eigener(D.einzahlungen[b.dataset.de])) return nurEigene(); if (confirm('Einzahlung löschen?')) await sicher(async () => { await S.loeschen(D, 'einzahlungen', b.dataset.de); kosten(); }); });
+  const eintragSheet = (titel, info, x, loeschen) => {
+    const darf = buch && eigener(x);
+    sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
+      <div class="t-akt2">${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
+    document.getElementById('abb').onclick = schliessen;
+    if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
+  };
+  app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
+  app.querySelectorAll('[data-de]').forEach((b) => b.onclick = () => { const e = D.einzahlungen[b.dataset.de]; if (e) eintragSheet('CHF ' + chf(e.betrag), `${fmt(e.datum)} · ${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}<br>Erfasst von ${name(e.erfasstVon)}.`, e, () => S.loeschen(D, 'einzahlungen', e.id)); });
+  const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => {
+    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Kosten erfassen</button><button class="gross-btn" id="k_e">Einzahlung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = kostenForm; document.getElementById('k_e').onclick = einzahlungForm;
+  };
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
@@ -701,7 +746,7 @@ function termine() {
   const listen = gruppe('Überfällig', rest.filter((x) => klasse(x) === 'rot')) + gruppe('Bald (30 Tage)', rest.filter((x) => klasse(x) === 'gelb')) + gruppe('Später', rest.filter((x) => klasse(x) === 'blau'));
   const erl = fertig.map((x) => `<button class="t-fertig" data-tid="${h(x.id)}"><span class="t-haken">✓</span><span><strong>${h(x.titel)}</strong><small>erledigt am ${fmt(x.erledigtAm)}</small></span></button>`).join('');
 
-  app.innerHTML = rahmen(`<div class="seitenkopf"><h2>Termine</h2><button class="t-plus" id="tneu" aria-label="Neuer Termin">＋</button></div>
+  app.innerHTML = rahmen(`${seitenkopf('Termine', 'tneu', '＋ Termin')}
     ${next}
     <div class="t-woche">${strip}</div>
     ${listen}
