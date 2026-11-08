@@ -1,9 +1,9 @@
 import {
-  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung,
+  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108n';
-import * as S from './speicher.js?v=20261108n';
+} from './regeln.js?v=20261108o';
+import * as S from './speicher.js?v=20261108o';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -11,7 +11,7 @@ const formEl = document.getElementById('form');
 const MONATE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const KONTO_NAME = { 'eltern': 'Eltern', 'kind-1': 'Nanouk', 'kind-2': 'Nene' };
 const REIHENFOLGE = ['hp', 'fr', 't', 's'];
-const h = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const h = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const iso = (j, m, t) => `${j}-${String(m + 1).padStart(2, '0')}-${String(t).padStart(2, '0')}`;
 const fmt = (s) => s.split('-').reverse().join('.');
 const zahl = (n) => Number(n).toLocaleString('de-CH');
@@ -19,7 +19,10 @@ const FARBE = { 'hp': 'var(--hp)', 'eltern': 'var(--eltern)', 'nora': 'var(--nor
 // Farbe je Person: HP blau, Nora hellblau, Nanouk rosa, Nene tuerkis.
 const PERSON_FARBE = { hp: 'hp', fr: 'nora', t: 'kind-1', s: 'kind-2' };
 const val = (id) => document.getElementById(id).value;
-const heute = () => { const d = new Date(); return iso(d.getFullYear(), d.getMonth(), d.getDate()); };
+// Zeit immer nach Schweizer Zeit, auch wenn das Handy im Ausland läuft.
+const ZH = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const jetztLokal = () => ZH.format(new Date()).replace(' ', 'T');
+const heute = () => jetztLokal().slice(0, 10);
 
 let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().getFullYear();
 
@@ -29,7 +32,6 @@ const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
 const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank');
 const tankFuellungen = () => Object.values(D.termine).filter((x) => x.art === 'Tank');
-const jetztLokal = () => { const j = new Date(), p = (n) => String(n).padStart(2, '0'); return `${j.getFullYear()}-${p(j.getMonth() + 1)}-${p(j.getDate())}T${p(j.getHours())}:${p(j.getMinutes())}`; };
 const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 const tankText = (tk, wann, wer) => `⛽ Womo: Der Tank ist nicht voll (${tk}), zuletzt erfasst am ${fmt(wann.slice(0, 10))} von ${wer}. Bitte volltanken, bevor das Womo wieder gebraucht wird (Vertrag Ziffer 10).`;
 const alltagMap = () => Object.fromEntries(Object.values(D.termine).filter((x) => x.art === 'Alltag').map((x) => [x.id, x]));
@@ -57,7 +59,11 @@ function sheet(inhalt) {
   formEl.onclick = (e) => { if (e.target === formEl) schliessen(); };
 }
 function fehler(texte) { const m = document.getElementById('msg'); if (m) m.innerHTML = `<div class="fehler">${[].concat(texte).map(h).join('<br>')}</div>`; }
-async function sicher(fn) { try { await fn(); } catch (e) { fehler('Speichern fehlgeschlagen: ' + (e.message || e)); } }
+// Läuft schon ein Speichern, wird ein zweiter Tipp ignoriert (kein doppelter Eintrag).
+async function sicher(fn) {
+  if (sicher.l) return; sicher.l = true;
+  try { await fn(); } catch (e) { fehler('Speichern fehlgeschlagen: ' + (e.message || e)); } finally { sicher.l = false; }
+}
 
 async function start() {
   try { D = await S.laden(); }
@@ -73,6 +79,7 @@ function zeige() {
 }
 
 function anmeldung() {
+  if (!Object.keys(D.personen).length) { app.innerHTML = '<div class="login"><p class="gross">Womo</p><div class="fehler">Es sind noch keine Personen eingerichtet. Bitte zuerst die Einrichtung durchführen.</div></div>'; return; }
   let zuletzt = ''; try { zuletzt = localStorage.getItem('womo-person') || ''; } catch {}
   app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Wer bist du?</p>
   <label for="p">Name</label>
@@ -164,11 +171,23 @@ const VERTRAG_REGELN = [
   ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
   ['Übernahme-Checkliste (Anhang B)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
+function exportDaten() {
+  const sauberPers = Object.fromEntries(Object.entries(D.personen).map(([i, p]) => [i, { name: p.name, konto: p.konto }]));   // ohne PIN-Hash
+  const daten = { stand: new Date().toISOString(), personen: sauberPers, adminId: D.adminId, start: D.start };
+  for (const s of S.SAMMLUNGEN) daten[s] = D[s];
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(daten, null, 1)], { type: 'application/json' }));
+  a.download = `womo-sicherung-${heute()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
 function vertrag() {
   app.innerHTML = rahmen(`<div class="karte"><p class="titel">Vertragsregeln</p>
     <p class="info" style="margin:0 0 6px">Kurzfassung des Miteigentumsvertrags. Bei Widerspruch gilt der Vertrag.</p>
-    ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>`);
+    ${VERTRAG_REGELN.map(([t, l], i) => `<details class="det"${i === 0 ? ' open' : ''}><summary>${t}</summary><ul class="info" style="padding-left:18px;margin:6px 0 10px">${l.map((x) => `<li style="margin-bottom:4px">${x}</li>`).join('')}</ul></details>`).join('')}</div>
+    <div class="karte"><p class="titel">Datensicherung</p><p class="info" style="margin:0 0 8px">Speichert alle Reservierungen, Übergaben, Kosten und Termine als Datei auf dem Gerät (ohne PIN). Bitte regelmässig sichern, zum Beispiel am Monatsende.</p><button class="btn pri" id="export">Sicherung speichern</button></div>`);
   bindRahmen();
+  document.getElementById('export').onclick = exportDaten;
 }
 function rahmen(inhalt) {
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
@@ -227,7 +246,7 @@ function kalender() {
     const d = iso(J, M, t), hier = bs.filter((b) => b.von <= d && d <= b.bis);
     const wd = (versatz + t - 1) % 7;
     const cls = ['tag', wd >= 5 ? 'we' : '', hier.length > 1 ? 'koll' : '',
-      jetzt.getFullYear() === J && jetzt.getMonth() === M && jetzt.getDate() === t ? 'heute' : ''].join(' ');
+      d === tT ? 'heute' : ''].join(' ');
     zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}"></i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
@@ -255,7 +274,8 @@ function kalender() {
   app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => { const x = D.buchungen[el.dataset.edit]; if (!eigener(x)) return nurEigene(); formularZeigen('', x); });
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
     if (!eigener(D.buchungen[el.dataset.del])) return nurEigene();
-    if (confirm('Reservierung löschen?')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
+    const ue = ['ab', 'rueck'].filter((ph) => D.uebergaben[el.dataset.del + '_' + ph]).length;
+    if (confirm(ue ? 'Reservierung löschen? Die erfasste Übernahme/Rückgabe (Checkliste, Kilometer) wird ebenfalls gelöscht.' : 'Reservierung löschen?')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
   });
 }
 
@@ -269,7 +289,7 @@ function buchungHtml(b) {
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)}</div>
     <div class="meta"><span class="tagetxt">${dauer(b)} Tage</span> · ${h(wer)}${mit.length ? ' mit ' + h(mit.join(', ')) : ''}${b.gaeste ? ` · ${b.gaeste} Gast/Gäste` : ''}${b.ziel ? ' · ' + h(b.ziel) : ''}</div>
     <div class="meta">Zählt für ${h(zaehlt)} · erfasst von ${h(D.personen[b.erfasstVon]?.name || '?')}</div></div>
-    ${darf ? `<div style="display:flex;flex-direction:column;gap:6px;align-self:flex-start"><button class="kl" style="color:var(--acc)" data-edit="${b.id}">Ändern</button><button class="kl" data-del="${b.id}">Löschen</button></div>` : ''}</div>`;
+    ${darf ? `<div style="display:flex;flex-direction:column;gap:10px;align-self:flex-start"><button class="kl" style="color:var(--acc)" data-edit="${h(b.id)}">Ändern</button><button class="kl" data-del="${h(b.id)}">Löschen</button></div>` : ''}</div>`;
 }
 
 function formularZeigen(tag, ex) {
@@ -311,6 +331,9 @@ function formularZeigen(tag, ex) {
       if (sp.stufe === 'gesperrt') fehlerListe.push(`${D.personen[id]?.name} hat ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4). Bitte zuerst die Zahlung klären.`);
     }
     if (fehlerListe.length) { fehler(fehlerListe); return; }
+    const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap());
+    const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
+    if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;
     await sicher(async () => {
       await S.buchungSpeichern(D, b);
       ansicht = new Date(b.von + 'T12:00:00');
@@ -352,7 +375,7 @@ function alltagKarte(J) {
     <p class="info" style="margin:0 0 4px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
     ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
     <p class="info" style="margin:0 0 6px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
-    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${a.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
+    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div>`;
 }
 
 function alltagForm() {
@@ -366,10 +389,12 @@ function alltagForm() {
   <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
-    const kmTxt = val('a_km').replace(/\D/g, '');
-    const a = { datum: val('a_datum'), personId: val('a_wer'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), notiz: val('a_notiz').trim(), erfasstVon: ich };
+    const a = { datum: val('a_datum'), personId: val('a_wer'), km: kmZahl(val('a_km')), notiz: val('a_notiz').trim(), erfasstVon: ich };
     const p = pruefeAlltag(a, D.buchungen, D.personen);
-    if (!p.ok) { fehler(p.fehler); return; }
+    const fe = [...p.fehler];
+    if (Number.isNaN(a.km)) fe.push('Kilometer nur als ganze Zahl eingeben, ohne Punkt und Komma.');
+    if (zahlungsSperre(D.zahlstatus[ich], heute()).stufe === 'gesperrt') fe.push('Du hast ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4).');
+    if (fe.length) { fehler([...new Set(fe)]); return; }
     await sicher(async () => { await S.speichern(D, 'termine', null, { ...a, art: 'Alltag', titel: 'Alltagsfahrt', faelligAm: a.datum, erledigtAm: '' }); schliessen(); fahrten(); hinweis('Alltagsfahrt gespeichert.'); });
   };
 }
@@ -382,7 +407,7 @@ function fahrtHtml(b, st) {
   const fertigR = rueckgabeFertig(rk);
   const schlOffen = rk && !fertigR;
   const tankNV = tankWarnung(ab) || tankWarnung(rk);
-  const knopf = (fertig, id, text, offen) => `<button class="btn${fertig ? ' ok' : offen ? ' gelb' : ''}" data-u="${b.id}|${id}">${fertig ? '✓ ' : ''}${text}</button>`;
+  const knopf = (fertig, id, text, offen) => `<button class="btn${fertig ? ' ok' : offen ? ' gelb' : ''}" data-u="${h(b.id)}|${id}">${fertig ? '✓ ' : ''}${text}</button>`;
   return `<div class="b" style="flex-direction:column;gap:6px">
     <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)} <span class="meta">· ${h(wer)}</span></div>
     ${km !== undefined || maengel || schlOffen || tankNV ? `<div class="btnzeile" style="margin:0">${km !== undefined ? `<span class="chipk">${zahl(km)} km gefahren</span>` : ''}${maengel ? '<span class="chipk rot">Mängel gemeldet</span>' : ''}${schlOffen ? '<span class="chipk gelb">Schlüssel noch nicht quittiert</span>' : ''}${tankNV ? '<span class="chipk rot">Tank nicht voll</span>' : ''}</div>` : ''}
@@ -393,8 +418,7 @@ function uebergabeForm(bid, phase) {
   const b = D.buchungen[bid]; if (!b) return;
   const id = bid + '_' + phase, ex = D.uebergaben[id], ab = D.uebergaben[bid + '_ab'];
   const darf = !ex || eigener(ex);
-  const pad = (n) => String(n).padStart(2, '0');
-  const jetzt = new Date(), lokal = `${jetzt.getFullYear()}-${pad(jetzt.getMonth() + 1)}-${pad(jetzt.getDate())}T${pad(jetzt.getHours())}:${pad(jetzt.getMinutes())}`;
+  const lokal = jetztLokal();
   const dis = darf ? '' : 'disabled';
   const radio = (name, wert, text, cls, aktiv) => `<span class="chk ${cls}"><input type="radio" name="${name}" id="${name}_${wert}" value="${wert}" ${aktiv ? 'checked' : ''} ${dis}><label for="${name}_${wert}">${text}</label></span>`;
   sheet(`<h3>${phase === 'ab' ? 'Übernahme' : 'Rückgabe'}</h3>
@@ -408,7 +432,7 @@ function uebergabeForm(bid, phase) {
   <div class="tankanz" id="tankanz"></div>
   <div id="tankw"></div>
   <label>Checkliste (Anhang B)</label>
-  ${darf && phase === 'ab' ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
+  ${darf ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
   <label for="u_bem">Bemerkung (bei Nein: den Mangel beschreiben)</label><textarea id="u_bem" ${dis}>${h(ex?.bemerkung || '')}</textarea>
   <label for="u_sch">Neue Schäden oder Mängel</label><textarea id="u_sch" ${dis}>${h(ex?.schaeden || '')}</textarea>
@@ -426,19 +450,23 @@ function uebergabeForm(bid, phase) {
   const eltRei = !(b.fahrerId && D.personen[b.fahrerId]?.konto === 'eltern') && !(b.mitreisende || []).some((i) => D.personen[i]?.konto === 'eltern');
   const tw = () => { const el = formEl.querySelector('input[name="u_tank"]:checked'); document.getElementById('tankw').innerHTML = el && TANK[+el.value] !== 'voll' ? `<div class="hinweiskarte rot">Achtung: Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Speichern geht nur mit einer Bemerkung.${phase === 'ab' && eltRei ? ' Vor einer Ferienreise der Kinder sind die Eltern fürs Volltanken verantwortlich.' : ''}</div>` : ''; };
   formEl.querySelectorAll('input[name="u_tank"]').forEach((i) => i.onchange = tw); tw();
-  if (phase === 'ab') document.getElementById('alleja').onclick = () => CHECKPUNKTE.forEach(([k]) => { document.getElementById(`p_${k}_ja`).checked = true; });
+  document.getElementById('alleja').onclick = () => CHECKPUNKTE.forEach(([k]) => { document.getElementById(`p_${k}_ja`).checked = true; });
   document.getElementById('spei').onclick = async () => {
     const punkte = {}; for (const [k] of CHECKPUNKTE) { const el = formEl.querySelector(`input[name="p_${k}"]:checked`); if (el) punkte[k] = el.value; }
     const tankEl = formEl.querySelector('input[name="u_tank"]:checked');
-    const kmTxt = val('u_km').replace(/\D/g, '');
-    const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), tank: tankEl ? TANK[+tankEl.value] : '',
+    const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmZahl(val('u_km')), tank: tankEl ? TANK[+tankEl.value] : '',
       punkte, bemerkung: val('u_bem').trim(), schaeden: val('u_sch').trim(), erfasstVon: ex?.erfasstVon || ich };
     if (phase === 'rueck') {
       u.schluessel = document.getElementById('u_schl').checked ? 'ja' : '';
       if (u.schluessel === 'ja') { u.schluesselAm = ex?.schluessel === 'ja' && ex.schluesselAm ? ex.schluesselAm : lokal; u.schluesselVon = ex?.schluessel === 'ja' && ex.schluesselVon ? ex.schluesselVon : ich; }
     }
     const p = pruefeUebergabe(u, Object.values(D.uebergaben), D.buchungen);
-    if (!p.ok) { fehler(p.fehler); return; }
+    const fe = [...p.fehler];
+    if (Number.isNaN(u.km)) fe.unshift('Kilometerstand nur als ganze Zahl eingeben, ohne Punkt und Komma.');
+    if (!ex && zahlungsSperre(D.zahlstatus[ich], heute()).stufe === 'gesperrt') fe.push('Du hast ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4).');
+    if (fe.length) { fehler([...new Set(fe)]); return; }
+    const letzter = Math.max(0, ...Object.values(D.uebergaben).filter((x) => D.buchungen[x.buchungId] && x.km <= u.km).map((x) => x.km));
+    if (u.km - letzter > 3000 && !confirm(`Der Stand ${zahl(u.km)} km liegt ${zahl(u.km - letzter)} km über dem letzten Stand (${zahl(letzter)} km). Stimmt das?`)) return;
     await sicher(async () => {
       await S.speichern(D, 'uebergaben', id, { ...u, erfasstAm: ex?.erfasstAm }); schliessen(); fahrten(); hinweis(phase === 'ab' ? 'Übernahme gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.');
       if (tankWarnung(u)) sheet(`<h3>Tank nicht voll</h3><div class="hinweiskarte rot">Gespeichert. Der Tank ist nicht voll (${h(u.tank)}). Bitte die anderen warnen.</div><div class="aktion"><button id="abb">Schliessen</button><a class="primaer" style="text-decoration:none;text-align:center;display:block;padding:14px" href="${waLink(tankText(u.tank, u.datumZeit, D.personen[u.erfasstVon]?.name || '?'))}" target="_blank" rel="noopener">Familie per WhatsApp warnen</a></div>`), document.getElementById('abb').onclick = schliessen;
@@ -496,9 +524,9 @@ function kosten() {
   <div class="karte"><p class="titel">Zahlungsstatus</p><div class="zeilen">${status}</div>
     <p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p></div>
   <div class="karte"><div class="kopfzeile"><p class="titel">Kosten ${J}</p>${buch ? '<button class="btn pri" id="kneu">＋ Kosten</button>' : ''}</div>
-    ${kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${k.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>'}</div>
+    ${kjahr.length ? kjahr.map((k) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(k.datum).slice(0, 6)} · CHF ${chf(k.betrag)}</div><div class="meta">${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}</div></div>${buch && eigener(k) ? `<button class="kl" data-dk="${h(k.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>'}</div>
   <div class="karte"><div class="kopfzeile"><p class="titel">Einzahlungen ${J}</p>${buch ? '<button class="btn pri" id="eneu">＋ Einzahlung</button>' : ''}</div>
-    ${ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${e.id}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>'}
+    ${ejahr.length ? ejahr.map((e) => `<div class="b" style="padding:10px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(e.datum).slice(0, 6)} · CHF ${chf(e.betrag)}</div><div class="meta">${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}</div></div>${buch && eigener(e) ? `<button class="kl" data-de="${h(e.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>'}
     ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}</div>`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };

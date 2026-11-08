@@ -11,6 +11,18 @@ const tagNr = (iso) => {
   return Date.UTC(j, m - 1, t) / MS_TAG;
 };
 
+// Echtes Kalenderdatum (JJJJ-MM-TT)? «2027-02-31» ist kein Datum.
+export function datumGueltig(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return false;
+  return new Date(tagNr(iso) * MS_TAG).toISOString().slice(0, 10) === iso;
+}
+
+// Kilometer aus Text: nur Ziffern, Leerzeichen und Apostroph (12'450). Punkt, Komma und Buchstaben gelten als Fehler (NaN).
+export function kmZahl(txt) {
+  const t = String(txt ?? '').trim().replace(/['’\s]/g, '');
+  return /^\d{1,7}$/.test(t) ? parseInt(t, 10) : NaN;
+}
+
 // Gesamtdauer einer Buchung in Tagen (beide Randtage zaehlen).
 export const dauer = (b) => tagNr(b.bis) - tagNr(b.von) + 1;
 
@@ -89,7 +101,7 @@ export function tageListe(von, bis) {
 // Pruefung vor dem Speichern. Liefert { ok, fehler: [Text] }.
 export function pruefeBuchung(b, personen) {
   const fehler = [];
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.von || '') || !/^\d{4}-\d{2}-\d{2}$/.test(b.bis || '')) fehler.push('Datum fehlt oder hat ein falsches Format.');
+  if (!datumGueltig(b.von) || !datumGueltig(b.bis)) fehler.push('Datum fehlt oder ist kein gültiges Datum.');
   else if (b.von > b.bis) fehler.push('Die Rückkehr liegt vor der Abreise.');
   else if (dauer(b) > MAX_TAGE) fehler.push(`Eine Reservierung darf höchstens ${MAX_TAGE} Tage dauern.`);
   const eig = eigentuemer(b, personen);
@@ -99,7 +111,9 @@ export function pruefeBuchung(b, personen) {
     if (!(a && a.name && a.freigabeAm && a.freigabeAm < b.von && personen[a.verantwortlichId]))
       fehler.push('Ohne Eigentümer als Fahrer braucht es die Freigabe des Familienrats vor der Reise und einen verantwortlichen Eigentümer.');
   }
-  if (eig.length + (b.gaeste || 0) > MAX_PERSONEN) fehler.push('Mehr als 4 Personen im Fahrzeug.');
+  const gaeste = b.gaeste ?? 0;
+  if (!Number.isInteger(gaeste) || gaeste < 0) fehler.push('Die Zahl der Gäste muss 0 oder mehr sein.');
+  else if (eig.length + (b.fahrerId ? 0 : 1) + gaeste > MAX_PERSONEN) fehler.push('Mehr als 4 Personen im Fahrzeug (ein Ausnahmefahrer zählt mit).');
   return { ok: fehler.length === 0, fehler };
 }
 
@@ -130,6 +144,7 @@ export function kmPlausibel(neu, uebergaben, buchungen) {
   let vor = 0, nach = Infinity;
   for (const u of uebergaben) {
     if (u.buchungId === neu.buchungId && u.phase === neu.phase) continue;
+    if (!buchungen[u.buchungId]) continue;   // Waise: Reservierung wurde gelöscht
     const k = key(u);
     if (k < mein) vor = Math.max(vor, u.km); else if (k > mein) nach = Math.min(nach, u.km);
   }
@@ -158,6 +173,7 @@ export function pruefeUebergabe(u, uebergaben, buchungen) {
 export function kmStatistik(uebergaben, buchungen, J) {
   const proBuchung = {};
   let stand = 0;
+  uebergaben = uebergaben.filter((u) => buchungen[u.buchungId]);   // Waisen (gelöschte Reservierung) zählen nicht
   for (const u of uebergaben) stand = Math.max(stand, u.km);
   const ab = {}, rueck = {};
   for (const u of uebergaben) (u.phase === 'ab' ? ab : rueck)[u.buchungId] = u.km;
@@ -283,7 +299,7 @@ const reserviert = (datum, buchungen) => Object.values(buchungen).some((b) => b.
 
 export function pruefeAlltag(a, buchungen, personen) {
   const fehler = [];
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(a.datum || '')) fehler.push('Datum fehlt oder hat ein falsches Format.');
+  if (!datumGueltig(a.datum)) fehler.push('Datum fehlt oder ist kein gültiges Datum.');
   else if (reserviert(a.datum, buchungen)) fehler.push('An diesem Tag ist das Fahrzeug für eine Reise reserviert. Reisen gehen immer vor.');
   if (!personen[a.personId] || personen[a.personId].konto !== 'eltern') fehler.push('Alltagsfahrten sind nur für Vater und Mutter.');
   if (!Number.isInteger(a.km) || a.km < 0 || a.km > ALLTAG_MAX_KM) fehler.push(`Die gefahrenen Kilometer fehlen oder sind ungültig (0 bis ${ALLTAG_MAX_KM}).`);
@@ -314,4 +330,19 @@ export function tankOffen(uebergaben, fuellungen) {
   ].sort((a, b) => (a.datumZeit < b.datumZeit ? -1 : a.datumZeit > b.datumZeit ? 1 : 0));
   const l = alle[alle.length - 1];
   return l && l.tank !== 'voll' ? l : null;
+}
+
+// Vorschau vor dem Speichern: Konten, die mit der neuen Reservierung ueber der Schwelle liegen (je Jahr), und Alltagstage, die dadurch entfallen.
+export function vorschauBuchung(b, buchungen, personen, alltag) {
+  const ohne = Object.values(buchungen).filter((x) => x.id !== b.id);
+  const mit = [...ohne, b];
+  const bm = Object.fromEntries(mit.map((x) => [x.id || '_neu', x]));
+  const ueber = [];
+  const j1 = +b.von.slice(0, 4), j2 = +b.bis.slice(0, 4);
+  for (let J = j1; J <= j2; J++) {
+    const st = kontostaendeMitAlltag(mit, personen, J, alltag, bm);
+    for (const k of konten(b, personen)) if (st[k] > SCHWELLE[k]) ueber.push({ konto: k, jahr: J, tage: st[k], schwelle: SCHWELLE[k] });
+  }
+  const entfallen = Object.values(alltag || {}).filter((a) => a.datum >= b.von && a.datum <= b.bis).map((a) => a.datum);
+  return { ueber, entfallen: [...new Set(entfallen)].sort() };
 }

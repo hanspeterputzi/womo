@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js';
+import { tageListe } from './regeln.js?v=20261108o';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -112,7 +112,10 @@ export async function buchungSpeichern(d, b) {
     batch.set(fs.doc(db, 'familien', code, 'buchungen', id), voll);
     try { await batch.commit(); }
     catch (e) {
-      if (e && e.code === 'permission-denied') throw new Error('Dieser Zeitraum wurde soeben von jemand anderem reserviert. Bitte ein anderes Datum wählen.');
+      if (e && e.code === 'permission-denied') {
+        if (neu.some((t) => !alt.includes(t))) throw new Error('Dieser Zeitraum wurde soeben von jemand anderem reserviert. Bitte ein anderes Datum wählen.');
+        throw new Error('Keine Berechtigung zum Speichern. Bitte die Seite neu laden.');
+      }
       throw e;
     }
   }
@@ -125,9 +128,11 @@ export async function buchungLoeschen(d, id) {
     await fsInit();
     const batch = fs.writeBatch(db);
     for (const t of tageVon(d.buchungen[id])) batch.delete(fs.doc(db, 'familien', code, 'tage', t));
+    for (const ph of ['ab', 'rueck']) if (d.uebergaben[id + '_' + ph]) batch.delete(fs.doc(db, 'familien', code, 'uebergaben', id + '_' + ph));
     batch.delete(fs.doc(db, 'familien', code, 'buchungen', id));
     await batch.commit();
   }
+  for (const ph of ['ab', 'rueck']) delete d.uebergaben[id + '_' + ph];   // Übernahme und Rückgabe gehören zur Reservierung
   delete d.buchungen[id];
   if (!online) schreiben(d);
 }
