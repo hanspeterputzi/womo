@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, stufe, kollision, ueberschneidungen, pruefeBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261108a';
-import * as S from './speicher.js?v=20261108a';
+} from './regeln.js?v=20261108b';
+import * as S from './speicher.js?v=20261108b';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -336,7 +336,7 @@ function uebergabeForm(bid, phase) {
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
   <label for="u_bem">Bemerkung (bei Nein: den Mangel beschreiben)</label><textarea id="u_bem" ${dis}>${h(ex?.bemerkung || '')}</textarea>
   <label for="u_sch">Neue Schäden oder Mängel</label><textarea id="u_sch" ${dis}>${h(ex?.schaeden || '')}</textarea>
-  ${phase === 'rueck' ? `<label>Schlüssel (letzte Pflicht der Rückgabe)</label><p class="info" style="margin:0 0 6px">Der Schlüssel hängt am Schlüsselbrett der Eltern. Ohne Ja ist die Rückgabe nicht abgeschlossen.</p><div class="mitw">${radio('u_schl', 'ja', 'Ja, Schlüssel hängt am Schlüsselbrett', 'ja', ex?.schluessel === 'ja')}${radio('u_schl', 'nein', 'Nein, noch nicht', 'nein', ex && ex.schluessel !== 'ja')}</div>${ex?.schluesselAm ? `<p class="info">Quittiert am ${fmt(ex.schluesselAm.slice(0, 10))}, ${ex.schluesselAm.slice(11, 16)} Uhr, von ${h(D.personen[ex.schluesselVon]?.name || '?')}.</p>` : ''}` : ''}
+  ${phase === 'rueck' ? `<label>Schlüssel (letzte Pflicht der Rückgabe)</label><p class="info" style="margin:0 0 6px">Der Schlüssel hängt am Schlüsselbrett der Eltern. Ohne Häkchen ist die Rückgabe nicht abgeschlossen.</p><div class="mitw"><span class="chk ja"><input type="checkbox" id="u_schl" ${ex?.schluessel === 'ja' ? 'checked' : ''} ${dis}><label for="u_schl">Schlüssel hängt am Schlüsselbrett der Eltern</label></span></div>${ex?.schluesselAm ? `<p class="info">Quittiert am ${fmt(ex.schluesselAm.slice(0, 10))}, ${ex.schluesselAm.slice(11, 16)} Uhr, von ${h(D.personen[ex.schluesselVon]?.name || '?')}.</p>` : ''}` : ''}
   <div id="msg"></div>
   <div class="aktion"><button id="abb">${darf ? 'Abbrechen' : 'Schliessen'}</button>${darf ? '<button class="primaer" id="spei">Speichern</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
@@ -349,8 +349,7 @@ function uebergabeForm(bid, phase) {
     const u = { buchungId: bid, phase, datumZeit: val('u_dt'), km: kmTxt === '' ? NaN : parseInt(kmTxt, 10), tank: tankEl ? tankEl.value.replace('-', '/') : '',
       punkte, bemerkung: val('u_bem').trim(), schaeden: val('u_sch').trim(), erfasstVon: ex?.erfasstVon || ich };
     if (phase === 'rueck') {
-      const sl = formEl.querySelector('input[name="u_schl"]:checked');
-      u.schluessel = sl ? sl.value : '';
+      u.schluessel = document.getElementById('u_schl').checked ? 'ja' : '';
       if (u.schluessel === 'ja') { u.schluesselAm = ex?.schluessel === 'ja' && ex.schluesselAm ? ex.schluesselAm : lokal; u.schluesselVon = ex?.schluessel === 'ja' && ex.schluesselVon ? ex.schluesselVon : ich; }
     }
     const p = pruefeUebergabe(u, Object.values(D.uebergaben), D.buchungen);
