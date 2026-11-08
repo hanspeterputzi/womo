@@ -106,9 +106,10 @@ export function pruefeBuchung(b, personen) {
 // =====================================================================
 // Version 2: Uebergabe-Checkliste (Anhang B) und Kilometerstand
 // =====================================================================
-export const TANK = ['leer', '1/4', '1/2', '3/4', 'voll'];
+export const TANK = ['auf Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
 export const CHECKPUNKTE = [
   ['innen', 'Innenraum sauber, kein Geruch, nicht geraucht'],
+  ['kuehlschrank', 'Kühlschrank geleert und geputzt'],
   ['aussen', 'Aussen sauber, keine neuen Kratzer oder Dellen'],
   ['wasser', 'Frischwasser- und Abwassertank geleert'],
   ['gas', 'Gasflasche und Gasanlage in Ordnung'],
@@ -147,7 +148,7 @@ export function pruefeUebergabe(u, uebergaben, buchungen) {
   if (offen.length) fehler.push(`Bitte bei jedem Punkt Ja oder Nein wählen (noch offen: ${offen.length}).`);
   const nein = CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein');
   if (nein.length && !(u.bemerkung || '').trim()) fehler.push('Bei Nein bitte den Mangel in der Bemerkung beschreiben.');
-  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Die Rückgabe ist erst abgeschlossen, wenn der Schlüssel am Schlüsselbrett der Eltern hängt. Bitte das Häkchen setzen.');
+  if (u.phase === 'rueck' && u.schluessel !== 'ja') fehler.push('Bitte zuerst den Schlüssel am Schlüsselbrett hinterlegen. Papa is watching you');
   if (Number.isInteger(u.km) && u.km >= 0) { const p = kmPlausibel(u, uebergaben, buchungen); if (!p.ok) fehler.push(p.text); }
   return { ok: fehler.length === 0, fehler };
 }

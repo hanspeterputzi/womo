@@ -101,12 +101,16 @@ test('Uebergabe-Pruefung', () => {
   const B3 = { ...B, b3: { von: '2026-09-01' } };
   assert.equal(pruefeUebergabe(ok, U, B3).ok, true);
   assert.equal(pruefeUebergabe({ ...ok, tank: '' }, U, B3).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, tank: '5/6' }, U, B3).ok, false);
+  assert.equal(pruefeUebergabe({ ...ok, tank: 'auf Reserve' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, tank: '3/4' }, U, B3).ok, false);                        // Tank nicht voll: gesperrt (Ziffer 10)
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck', tank: '1/2' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck' }, U, B3).ok, false);                       // Rueckgabe ohne Schluessel: nicht abschliessbar
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'nein' }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'ja' }, U, B3).ok, true);
   assert.equal(pruefeUebergabe({ ...ok, phase: 'ab' }, U, B3).ok, true);                           // Uebergabe braucht keinen Schluessel
+  assert.ok(CHECKPUNKTE.some(([k]) => k === 'kuehlschrank'));
+  assert.ok(pruefeUebergabe({ ...ok, phase: 'rueck', schluessel: 'nein' }, U, B3).fehler.some((f) => f.includes('Papa is watching you')));
   assert.equal(rueckgabeFertig({ schluessel: 'ja' }), true); assert.equal(rueckgabeFertig({}), false); assert.equal(rueckgabeFertig(undefined), false);
   assert.equal(pruefeUebergabe({ ...ok, km: -5 }, U, B3).ok, false);
   assert.equal(pruefeUebergabe({ ...ok, km: 1500 }, U, B3).ok, false);                           // tiefer als bekannter Stand
