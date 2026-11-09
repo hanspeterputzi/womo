@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261109e';
-import * as S from './speicher.js?v=20261109e';
+} from './regeln.js?v=20261109f';
+import * as S from './speicher.js?v=20261109f';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -68,10 +68,27 @@ async function sicher(fn) {
   try { await fn(); } catch (e) { fehler('Speichern fehlgeschlagen: ' + (e.message || e)); } finally { sicher.l = false; }
 }
 
+// Eingabe des Zugangscodes, falls die App ohne Code geoeffnet wird (z. B. Icon auf dem iPhone-Startbildschirm).
+function codeFeld(meldung) {
+  app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Zugang einrichten</p>
+  <p class="info">Füge den Link ein, den du per Nachricht bekommen hast (oder nur den Code dahinter). Das ist nur einmal nötig.</p>
+  <label for="cd">Link oder Code</label><input id="cd" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="300">
+  <div id="msg">${meldung ? `<div class="fehler">${h(meldung)}</div>` : ''}</div><button id="cok">Weiter</button></div>`;
+  const los = () => {
+    if (S.codeSetzen(document.getElementById('cd').value)) location.reload();
+    else document.getElementById('msg').innerHTML = '<div class="fehler">Das sieht nicht nach dem Link oder Code aus. Bitte den ganzen Link aus der Nachricht einfügen.</div>';
+  };
+  document.getElementById('cok').onclick = los;
+  document.getElementById('cd').onkeydown = (e) => { if (e.key === 'Enter') los(); };
+}
+
 async function start() {
   app.innerHTML = '<div class="login"><p class="gross">Womo</p><p class="sub">Daten werden geladen …</p></div>';
   try { D = await S.laden(); }
-  catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div></div>`; return; }
+  catch (e) {
+    if (!S.online || /ungültig/.test(e.message || '')) { codeFeld(!S.online ? '' : 'Dieser Code ist ungültig.'); return; }
+    app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div></div>`; return;
+  }
   try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div><button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
   try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id]) ich = id; } catch {}

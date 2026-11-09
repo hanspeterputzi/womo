@@ -14,6 +14,16 @@ let gemerkt = '';
 try { if (imLink) localStorage.setItem(KEY_CODE, imLink); else gemerkt = localStorage.getItem(KEY_CODE) || ''; } catch {}
 export const code = imLink || gemerkt;
 export const online = code.length > 0;
+
+// Code von Hand eingeben (wenn das Startbildschirm-Icon ohne Code oeffnet). Akzeptiert den ganzen Link oder nur den Code.
+export function codeSetzen(eingabe) {
+  let c = String(eingabe || '').trim();
+  const i = c.indexOf('#'); if (i >= 0) c = c.slice(i + 1);
+  c = decodeURIComponent(c).trim();
+  if (!/^[A-Za-z0-9_-]{16,}$/.test(c)) return false;
+  try { localStorage.setItem(KEY_CODE, c); } catch { return false; }
+  return true;
+}
 const lokalerTest = ['localhost', '127.0.0.1'].includes(location.hostname);
 const emulator = new URLSearchParams(location.search).has('emulator');
 
