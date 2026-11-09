@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261109d';
-import * as S from './speicher.js?v=20261109d';
+} from './regeln.js?v=20261109e';
+import * as S from './speicher.js?v=20261109e';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -89,15 +89,15 @@ function anmeldung() {
   app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Wer bist du?</p>
   <label for="p">Name</label>
   <select id="p">${personenGeordnet().map(([i, p]) => `<option value="${i}"${i === zuletzt ? ' selected' : ''}>${h(p.name)}</option>`).join('')}</select>
-  <label for="pin">PIN (4 Ziffern)</label><input id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" type="password">
+  <label for="pin">Passwort</label><input id="pin" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" type="password">
   <div id="msg"></div><button id="ok">Weiter</button>
-  <p class="klein-t" style="margin-top:14px">Der PIN zeigt nur, wer eine Eintragung erfasst. Er schützt keine Daten.</p></div>`;
+  <p class="klein-t" style="margin-top:14px">Das Passwort zeigt nur, wer eine Eintragung erfasst. Er schützt keine Daten.</p></div>`;
   const los = async () => {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
     if (Date.now() < sp.bis) { document.getElementById('msg').innerHTML = `<div class="fehler">Zu viele Fehlversuche. Bitte ${Math.ceil((sp.bis - Date.now()) / 1000)} Sekunden warten.</div>`; return; }
     if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} zeige(); }
-    else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">PIN für ${h(D.personen[id].name)} falsch. Name oben richtig gewählt?</div>`; }
+    else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">Passwort für ${h(D.personen[id].name)} falsch (Gross- und Kleinschreibung beachten). Name oben richtig gewählt?</div>`; }
   };
   document.getElementById('ok').onclick = los;
   document.getElementById('pin').onkeydown = (e) => { if (e.key === 'Enter') los(); };
