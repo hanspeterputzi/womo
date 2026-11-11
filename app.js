@@ -1,9 +1,9 @@
 import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
-  KOSTENARTEN, ZWECKE, TERMINARTEN, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261109f';
-import * as S from './speicher.js?v=20261109f';
+  KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
+} from './regeln.js?v=20261111a';
+import * as S from './speicher.js?v=20261111a';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -588,6 +588,24 @@ function kosten() {
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
 
+  const an = anschaffung(el, D.personen, ids);
+  const elternIds = ids.filter((i) => D.personen[i].konto === 'eltern'), kinderIds = ids.filter((i) => D.personen[i].konto !== 'eltern');
+  const sumA = (liste, o) => liste.reduce((x, i) => x + o[i], 0);
+  const anZeile = (titel, liste) => {
+    const bez = sumA(liste, an.bezahlt), ant = sumA(liste, an.anteile), sal = bez - ant;
+    const chip = an.gesamt === 0 ? '<span class="chipk">–</span>' : sal > 0 ? `<span class="chipk ok">Vorschuss ${chf(sal)}</span>` : sal < 0 ? `<span class="chipk gelb">noch ${chf(-sal)}</span>` : '<span class="chipk ok">ausgeglichen</span>';
+    return `<div class="z"><div class="l"><strong>${titel}</strong><div class="meta">bezahlt ${chf(bez)} · Anteil ${chf(ant)}</div></div><div class="r">${chip}</div></div>`;
+  };
+  const anschaffungen = el.filter((e) => e.zweck === 'anschaffung').sort((a, b) => (a.datum < b.datum ? 1 : -1));
+  const anInhalt = `<p class="info" style="margin-top:0">Geplant: höchstens CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt. Versicherung gehört zu den laufenden Kosten.</p>
+    <div class="zeilen">${anZeile('Vater und Mutter', elternIds)}${kinderIds.map((i) => anZeile(name(i), [i])).join('')}</div>
+    ${an.ueber > 0 ? `<div class="hinweiskarte rot">Die Anschaffungen liegen CHF ${chf(an.ueber)} über der Obergrenze. Der Mehrbetrag ist nicht aufgeteilt und muss neu verhandelt werden (Vertrag Ziffer 3a).</div>` : ''}
+    <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
+    <div class="z"><div class="l"><strong>Rückzahlungen von Tochter und Sohn</strong><div class="meta">Darlehensraten bisher</div></div><div class="r"><strong>CHF ${chf(an.rueckgezahlt)}</strong></div></div>
+    <div class="z"><div class="l"><strong>Noch vorgeschossen (netto)</strong></div><div class="r"><strong>CHF ${chf(an.nettoVorschuss)}</strong></div></div></div>
+    ${anschaffungen.length ? anschaffungen.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + (e.text ? ' · ' + h(e.text) : ''))).join('') : '<p class="leer-t">Noch keine Zahlungen erfasst.</p>'}
+    ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}`;
+
   const anteile = ids.map((i) => {
     const ein = eingezahlt(el, i, 'betrieb', von, bis), saldo = r.anteil[i] - ein;
     const chip = r.total === 0 && ein === 0 ? '<span class="chipk">–</span>' : saldo > 0 ? `<span class="chipk rot">noch ${chf(saldo)}</span>` : saldo < 0 ? `<span class="chipk ok">Guthaben ${chf(-saldo)}</span>` : '<span class="chipk ok">ausgeglichen</span>';
@@ -626,11 +644,12 @@ function kosten() {
       ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}`;
   })() : '';
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
-  const zeileK = (attr, id, titel, sub) => `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
+  function zeileK(attr, id, titel, sub) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
   app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Erfassen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
+  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max), anInhalt, true)}
   ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
   ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
@@ -641,7 +660,7 @@ function kosten() {
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
   const kn = document.getElementById('kneu'); if (kn) kn.onclick = kostenForm;
-  const en = document.getElementById('eneu'); if (en) en.onclick = einzahlungForm;
+  const en = document.getElementById('eneu'); if (en) en.onclick = () => einzahlungForm();
   const eintragSheet = (titel, info, x, loeschen) => {
     const darf = buch && eigener(x);
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
@@ -652,8 +671,8 @@ function kosten() {
   app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
   app.querySelectorAll('[data-de]').forEach((b) => b.onclick = () => { const e = D.einzahlungen[b.dataset.de]; if (e) eintragSheet('CHF ' + chf(e.betrag), `${fmt(e.datum)} · ${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}<br>Erfasst von ${name(e.erfasstVon)}.`, e, () => S.loeschen(D, 'einzahlungen', e.id)); });
   const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => {
-    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Kosten erfassen</button><button class="gross-btn" id="k_e">Einzahlung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
-    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = kostenForm; document.getElementById('k_e').onclick = einzahlungForm;
+    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Kosten erfassen</button><button class="gross-btn" id="k_e">Einzahlung erfassen</button><button class="gross-btn" id="k_a">Anschaffung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = kostenForm; document.getElementById('k_e').onclick = () => einzahlungForm(); document.getElementById('k_a').onclick = () => einzahlungForm('anschaffung');
   };
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
@@ -690,14 +709,15 @@ function kostenForm() {
   };
 }
 
-function einzahlungForm() {
+function einzahlungForm(zweck0) {
   const ids = idsGeordnet();
   sheet(`<h3>Einzahlung erfassen</h3>
   <div class="zwei"><div><label for="e_datum">Datum</label><input type="date" id="e_datum" value="${heute()}"></div>
   <div><label for="e_betrag">Betrag in CHF</label><input id="e_betrag" inputmode="decimal" placeholder="z. B. 120"></div></div>
   <label for="e_person">Eigentümer</label><select id="e_person">${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select>
-  <label for="e_zweck">Zweck</label><select id="e_zweck">${Object.entries(ZWECKE).map(([k, n]) => `<option value="${k}">${h(n)}</option>`).join('')}</select>
-  <label for="e_text">Beschreibung</label><input id="e_text" maxlength="100" placeholder="optional">
+  <label for="e_zweck">Zweck</label><select id="e_zweck">${Object.entries(ZWECKE).map(([k, n]) => `<option value="${k}"${k === zweck0 ? ' selected' : ''}>${h(n)}</option>`).join('')}</select>
+  <label for="e_text">Beschreibung</label><input id="e_text" maxlength="100" placeholder="optional, z. B. Anzahlung">
+  <p class="info">Anschaffung: Vater und Mutter zählen zusammen. Zahlungen vom gemeinsamen Konto bitte bei einem der beiden eintragen.</p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
