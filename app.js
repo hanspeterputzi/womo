@@ -1,9 +1,9 @@
 import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
-  KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261111f';
-import * as S from './speicher.js?v=20261111f';
+  KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
+} from './regeln.js?v=20261111g';
+import * as S from './speicher.js?v=20261111g';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -280,6 +280,7 @@ function bindRahmen() {
 }
 
 // Hinweise oben im Kalender: Zahlungsverzug, faellige Termine
+const fzText = (f) => f.rueckstand ? `überfällig CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}` : f.naechste ? `nächste CHF ${chf(f.naechste.betrag)} am ${fmt(f.naechste.datum)}` : 'nichts mehr offen';
 function hinweiseHtml() {
   const t = heute(); let out = '';
   const to = tankOffen(Object.values(D.uebergaben), tankFuellungen());
@@ -287,6 +288,10 @@ function hinweiseHtml() {
   const sp = zahlungsSperre(D.zahlstatus[ich], t);
   if (sp.stufe === 'gesperrt') out += `<div class="hinweiskarte rot">Nutzungsverbot wegen Zahlungsverzug seit ${fmt(sp.ab)}, bis die Zahlung erfolgt ist (Vertrag Ziffer 4).</div>`;
   else if (sp.stufe === 'erinnert') out += `<div class="hinweiskarte gelb">Zahlungserinnerung: Bitte bis ${fmt(sp.frist)} zahlen, sonst gilt ein Nutzungsverbot.</div>`;
+  if (D.start && D.personen[ich]) faelligkeiten(D.start, t, Object.values(D.einzahlungen), D.personen[ich], ich).forEach((f) => {
+    if (f.rueckstand) out += `<div class="hinweiskarte rot">${ZWECKE[f.zweck]} überfällig: CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}.</div>`;
+    else if (f.naechste && f.naechste.datum <= addTage(t, VORLAUF_TAGE)) out += `<div class="hinweiskarte gelb">${ZWECKE[f.zweck]} fällig am ${fmt(f.naechste.datum)}: CHF ${chf(f.naechste.betrag)}.</div>`;
+  });
   termineEcht().filter((x) => ['ueberfaellig', 'bald'].includes(terminStufe(x, t))).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1)).slice(0, 3).forEach((x) => {
     const u = terminStufe(x, t) === 'ueberfaellig';
     out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
@@ -603,7 +608,7 @@ function kosten() {
     return `<div class="z"><div class="l"><strong>${titel}</strong><div class="meta">bezahlt ${chf(bez)} · Anteil ${chf(ant)}</div></div><div class="r">${chip}</div></div>`;
   };
   const anschaffungen = el.filter((e) => e.zweck === 'anschaffung').sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const anInhalt = `<p class="info" style="margin-top:0">Geplant: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt.</p>
+  const anInhalt = `<p class="info" style="margin-top:0">Obergrenze: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)}. Anschaffungskosten laut Vertrag: CHF 59 930.87 (Kaufpreis, Zoll, Mehrwertsteuer, Umtriebskosten, Überführung, Zulassung, Zubehör). Alles wird geviertelt.</p>
     <div class="zeilen">${anZeile('Vater und Mutter', elternIds)}${kinderIds.map((i) => anZeile(name(i), [i])).join('')}</div>
     ${an.ueber > 0 ? `<div class="hinweiskarte gelb">Die Anschaffungen liegen CHF ${chf(an.ueber)} über CHF ${chf(an.max)}. Dafür müssen alle Beteiligten ihr Einverständnis geben (Vertrag Ziffer 3). Aufgeteilt wird weiterhin in Viertel.</div>` : ''}
     <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
@@ -629,9 +634,13 @@ function kosten() {
       ids.map((i) => {
         const zp = zahlplan(D.start, t, el, D.personen[i], i);
         return `<div class="z"><div class="l"><strong>${name(i)}</strong>${zp.posten.map((p) => `<div class="meta">${ZWECKE[p.zweck]}: Soll ${chf(p.soll)} · bezahlt ${chf(p.ist)}</div>`).join('')}</div><div class="r">${zp.posten.map((p) => `<div><span class="chipk ${p.offen > 0 ? 'gelb' : 'ok'}">${p.offen > 0 ? 'offen ' + chf(p.offen) : 'bezahlt'}</span></div>`).join('')}</div></div>`;
-      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, bei Kaufpreis CHF 60 000).</p>${ich === D.adminId ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
+      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, Rückzahlung je CHF 9 600).</p>${ich === D.adminId ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
   }
 
+  const fzInhalt = !D.start ? '<p class="info" style="margin-top:0">Das Übernahmedatum fehlt (siehe Zahlplan).</p>' : `<div class="zeilen">${ids.map((i) => {
+    const fz = faelligkeiten(D.start, t, el, D.personen[i], i);
+    return `<div class="z"><div class="l"><strong>${name(i)}</strong>${fz.map((f) => `<div class="meta">${ZWECKE[f.zweck]}: ${fzText(f)}</div>`).join('')}</div><div class="r">${fz.some((f) => f.rueckstand) ? '<span class="chipk rot">überfällig</span>' : '<span class="chipk ok">pünktlich</span>'}</div></div>`;
+  }).join('')}</div><p class="info">Darlehensraten (Tochter und Sohn): monatlich am letzten Tag des Monats, die erste Rate Ende des Monats der Übernahme (Ziffer 4). Rücklage: jährlich bis 31. Dezember (Ziffer 5). Es zählen alle erfassten Einzahlungen, auch im Voraus bezahlte.</p>`;
   const status = ids.map((i) => {
     const sp = zahlungsSperre(D.zahlstatus[i], t);
     const chip = sp.stufe === 'gesperrt' ? `<span class="chipk rot">Nutzungsverbot seit ${fmt(sp.ab)}</span>` : sp.stufe === 'erinnert' ? `<span class="chipk gelb">Erinnert, Frist bis ${fmt(sp.frist)}</span>` : '<span class="chipk ok">in Ordnung</span>';
@@ -645,9 +654,11 @@ function kosten() {
     const ein = eingezahlt(el, ich, 'betrieb', von, bis), saldo = r.anteil[ich] - ein;
     const zp = D.start && vertragsJahr(D.start, t) !== null && vertragsJahr(D.start, t) <= 8 ? zahlplan(D.start, t, el, D.personen[ich], ich) : null;
     const offen = zp && zp.posten ? zp.posten.filter((p) => p.offen > 0) : [];
+    const fz = D.start && D.personen[ich] ? faelligkeiten(D.start, t, el, D.personen[ich], ich) : [];
+    const fzZeilen = fz.map((f) => f.rueckstand ? `<div class="hero-stand rot">${ZWECKE[f.zweck]} überfällig: CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}.</div>` : f.naechste ? `<div class="hero-stand ${f.naechste.datum <= addTage(t, VORLAUF_TAGE) ? 'gelb' : 'ok'}">Nächste ${ZWECKE[f.zweck]}: CHF ${chf(f.naechste.betrag)} am ${fmt(f.naechste.datum)}.</div>` : '').join('');
     return `<div class="hero-zeile"><div><div class="hero-l">Dein Anteil ${J}</div><div class="hero-z">CHF ${chf(r.anteil[ich])}</div></div><div><div class="hero-l">Davon bezahlt</div><div class="hero-z">CHF ${chf(ein)}</div></div></div>
       <div class="hero-stand ${saldo > 0 ? 'rot' : 'ok'}">${saldo > 0 ? `Du musst noch CHF ${chf(saldo)} einzahlen.` : saldo < 0 ? `Du hast ${chf(-saldo)} CHF Guthaben.` : r.total === 0 ? 'Noch keine Kosten erfasst.' : 'Alles bezahlt.'}</div>
-      ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}`;
+      ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}${fzZeilen}`;
   })() : '';
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
@@ -655,9 +666,10 @@ function kosten() {
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
-  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' geplant', anInhalt, true)}
+  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' Obergrenze', anInhalt, true)}
   ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
   ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
+  ${sek('Fälligkeiten', D.start ? '' : 'Datum fehlt', fzInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
   ${sek('Kosten ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), kjahr.length ? kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''))).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}

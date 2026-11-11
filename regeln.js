@@ -181,7 +181,7 @@ export function kmStatistik(uebergaben, buchungen, J) {
 // Version 3: Kosten, Rücklage, Zahlungsstatus (Betraege in Rappen, ganze Zahlen)
 // =====================================================================
 export const RUECKLAGE_CHF = [100, 120, 150, 180, 220, 250, 275, 300];          // Vertrag Ziffer 5, je Eigentuemer
-export const DARLEHEN_CHF = [360, 600, 840, 1080, 1320, 1560, 1800, 2040];     // Anhang A, nur Tochter und Sohn, bei Kaufpreis CHF 60 000
+export const DARLEHEN_CHF = [360, 600, 840, 1080, 1320, 1560, 1800, 2040];     // Anhang A, nur Tochter und Sohn, gilt unabhaengig von den tatsaechlichen Anschaffungskosten (Rueckzahlung je CHF 9 600)
 export const ANSCHAFFUNG_MAX_CHF = 60000;                                        // Richtwert der Anschaffung (Vertrag Ziffer 3), darueber braucht es das Einverstaendnis aller
 export const FRIST_TAGE = 10;                                                    // Vertrag Ziffer 4, Zahlungsverzug
 export const KOSTENARTEN = {
@@ -275,6 +275,33 @@ export function zahlplan(startIso, heuteIso, einzahlungen, person, personId) {
   const posten = [['ruecklage', RUECKLAGE_CHF[n - 1] * 100]];
   if (person.konto !== 'eltern') posten.push(['darlehen', DARLEHEN_CHF[n - 1] * 100]);
   return { jahr: n, von, bis, posten: posten.map(([zweck, soll]) => { const ist = eingezahlt(einzahlungen, personId, zweck, von, bis); return { zweck, soll, ist, offen: Math.max(0, soll - ist) }; }) };
+}
+
+// Faelligkeiten (Vertrag Ziffer 4 und 5), Betraege in Rappen:
+// Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, die erste Rate im Monat der Uebernahme;
+// Ruecklage jaehrlich bis 31. Dezember, Jahr 1 im Kalenderjahr der Uebernahme.
+export const VORLAUF_TAGE = 14;   // so viele Tage vor dem Termin erscheint der Hinweis
+const monatsEnde = (j, m0) => new Date(Date.UTC(j, m0 + 1, 0)).toISOString().slice(0, 10);
+export function sollTermine(startIso, zweck) {
+  const [sj, sm] = startIso.split('-').map(Number);
+  if (zweck === 'darlehen') return Array.from({ length: 96 }, (_, m) => ({ datum: monatsEnde(sj, sm - 1 + m), betrag: DARLEHEN_CHF[Math.floor(m / 12)] * 100 / 12 }));
+  return RUECKLAGE_CHF.map((c, k) => ({ datum: `${sj + k}-12-31`, betrag: c * 100 }));
+}
+// Je Person und Zweck: Rueckstand (faellig und nicht bezahlt) und naechste Faelligkeit. Es zaehlen alle Einzahlungen, auch im Voraus bezahlte.
+export function faelligkeiten(startIso, heuteIso, einzahlungen, person, personId) {
+  if (!startIso) return [];
+  const zwecke = person.konto === 'eltern' ? ['ruecklage'] : ['ruecklage', 'darlehen'];
+  return zwecke.map((zweck) => {
+    const ist = einzahlungen.filter((e) => e.personId === personId && e.zweck === zweck).reduce((s, e) => s + e.betrag, 0);
+    let cum = 0, rueckstand = null, naechste = null;
+    for (const t of sollTermine(startIso, zweck)) {
+      const vor = cum; cum += t.betrag;
+      if (cum <= ist) continue;
+      if (t.datum < heuteIso) { if (!rueckstand) rueckstand = { seit: t.datum, betrag: 0 }; rueckstand.betrag = cum - ist; }
+      else { naechste = { datum: t.datum, betrag: cum - Math.max(ist, vor) }; break; }
+    }
+    return { zweck, ist, rueckstand, naechste };
+  });
 }
 
 // Zahlungsverzug (Ziffer 4): Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung.
