@@ -108,7 +108,7 @@ export function pruefeBuchung(b, personen) {
 }
 
 // =====================================================================
-// Version 2: Uebergabe-Checkliste (Anhang B) und Kilometerstand
+// Version 2: Uebergabe-Checkliste und Kilometerstand
 // =====================================================================
 export const TANK = ['Reserve', '1/6', '1/3', '1/2', '2/3', '5/6', 'voll'];
 export const CHECKPUNKTE = [

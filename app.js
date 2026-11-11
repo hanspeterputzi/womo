@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261111c';
-import * as S from './speicher.js?v=20261111c';
+} from './regeln.js?v=20261111d';
+import * as S from './speicher.js?v=20261111d';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -245,12 +245,12 @@ function unterwegs() {
   bindRahmen();
 }
 const VERTRAG_REGELN = [
-  ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Im Fahrzeug reisen höchstens 4 Personen.', 'Übernahme und Rückgabe immer zu Hause in Chur, mit der Checkliste.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
-  ['Alltagsfahrten der Eltern (Ziffer 7a)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.', 'Vor Beginn einer Reise von Tochter oder Sohn sind Vater und Mutter dafür verantwortlich, dass das Fahrzeug mit vollem Tank bereitsteht.']],
-  ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.', 'Kinder reisen nur auf zugelassenen Sitzplätzen mit passendem Rückhaltesystem.']],
-  ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Nicht auf Autobahnraststätten übernachten, wenn immer möglich.', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
-  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.']],
-  ['Übernahme-Checkliste (Anhang B)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
+  ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Übernahme und Rückgabe immer zu Hause in Chur.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
+  ['Alltagsfahrten der Eltern (Ziffer 7a)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.']],
+  ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein Eigentümer mit, auch bei freigegebenen Fahrern.']],
+  ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien.', 'Verboten: andere Kontinente, Serbien, Türkei, Russland, Rumänien und ex-russische Staaten ausser dem Baltikum.', 'Auf Autobahnraststätten wird aus Sicherheitsgründen nicht übernachtet. Mögliche Plätze zeigt «Unterwegs».', 'Winter: Gebrauch grundsätzlich möglich. Weil weder Allrad noch winterfest, sind höhere Lagen mit Schneewahrscheinlichkeit nicht vorgesehen.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
+  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.', 'Bei jeder Übernahme und Rückgabe wird die Checkliste in der App (Fahrten) ausgefüllt.']],
+  ['Übernahme-Checkliste (Fahrten)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
 function vertrag() {
   app.innerHTML = rahmen(`${seitenkopf('Vertrag')}
@@ -417,7 +417,7 @@ function formularZeigen(tag, ex) {
 }
 
 // =====================================================================
-// Fahrten: Uebergabe-Checkliste (Anhang B) und Kilometerstand (Version 2)
+// Fahrten: Uebergabe-Checkliste und Kilometerstand (Version 2)
 // =====================================================================
 const FAHRT_ICON = '<path d="M3 17V8a2 2 0 0 1 2-2h9l5 5v6M3 17h2M9 17h6M19 17h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
 const KOSTEN_ICON = '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/>';
@@ -469,7 +469,7 @@ function fahrten() {
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
   ${alltagSek(J)}
   ${vorbei.length ? `<details class="sek"><summary><span>Vergangene Reisen</span><b>${vorbei.length}</b></summary><div class="sek-in">${vorbei.map(zeile).join('')}</div></details>` : ''}
-  <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste nach Anhang B.</p>`);
+  <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste.</p>`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
@@ -535,7 +535,7 @@ function uebergabeForm(bid, phase) {
   <div class="tank" id="tankg">${TANK.map((t, i) => `<span class="tk ${i <= 1 ? 'tr' : i <= 3 ? 'tg' : 'to'}${t === 'voll' ? ' tv' : ''}"><input type="radio" name="u_tank" id="u_tank_${i}" value="${i}" ${ex?.tank === t ? 'checked' : ''} ${dis}><label for="u_tank_${i}">${t}</label></span>`).join('')}</div>
   <div class="tankanz" id="tankanz"></div>
   <div id="tankw"></div>
-  <label>Checkliste (Anhang B)</label>
+  <label>Checkliste</label>
   ${darf && phase === 'ab' ? '<div class="btnzeile" style="margin:0 0 4px"><button class="btn" id="alleja" type="button">Alle auf Ja setzen</button></div>' : ''}
   <div>${CHECKPUNKTE.map(([k, text]) => `<div class="cp"><div class="pt">${h(text)}</div><div class="mitw">${radio('p_' + k, 'ja', 'Ja', 'ja', ex?.punkte?.[k] === 'ja')}${radio('p_' + k, 'nein', 'Nein', 'nein', ex?.punkte?.[k] === 'nein')}</div></div>`).join('')}</div>
   <label for="u_bem">Bemerkung (bei Nein: den Mangel beschreiben)</label><textarea id="u_bem" ${dis}>${h(ex?.bemerkung || '')}</textarea>
