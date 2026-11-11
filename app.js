@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261111b';
-import * as S from './speicher.js?v=20261111b';
+} from './regeln.js?v=20261111c';
+import * as S from './speicher.js?v=20261111c';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -597,7 +597,7 @@ function kosten() {
     return `<div class="z"><div class="l"><strong>${titel}</strong><div class="meta">bezahlt ${chf(bez)} · Anteil ${chf(ant)}</div></div><div class="r">${chip}</div></div>`;
   };
   const anschaffungen = el.filter((e) => e.zweck === 'anschaffung').sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const anInhalt = `<p class="info" style="margin-top:0">Geplant: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt. Versicherung gehört zu den laufenden Kosten.</p>
+  const anInhalt = `<p class="info" style="margin-top:0">Geplant: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt.</p>
     <div class="zeilen">${anZeile('Vater und Mutter', elternIds)}${kinderIds.map((i) => anZeile(name(i), [i])).join('')}</div>
     ${an.ueber > 0 ? `<div class="hinweiskarte gelb">Die Anschaffungen liegen CHF ${chf(an.ueber)} über CHF ${chf(an.max)}. Dafür müssen alle Beteiligten ihr Einverständnis geben (Vertrag Ziffer 3). Aufgeteilt wird weiterhin in Viertel.</div>` : ''}
     <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
