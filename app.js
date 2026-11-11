@@ -2,8 +2,8 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261111a';
-import * as S from './speicher.js?v=20261111a';
+} from './regeln.js?v=20261111b';
+import * as S from './speicher.js?v=20261111b';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -597,9 +597,9 @@ function kosten() {
     return `<div class="z"><div class="l"><strong>${titel}</strong><div class="meta">bezahlt ${chf(bez)} · Anteil ${chf(ant)}</div></div><div class="r">${chip}</div></div>`;
   };
   const anschaffungen = el.filter((e) => e.zweck === 'anschaffung').sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const anInhalt = `<p class="info" style="margin-top:0">Geplant: höchstens CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt. Versicherung gehört zu den laufenden Kosten.</p>
+  const anInhalt = `<p class="info" style="margin-top:0">Geplant: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)} (Kaufpreis, Zoll, Mehrwertsteuer, Überführung, Zulassung, Zubehör). Alles wird geviertelt. Versicherung gehört zu den laufenden Kosten.</p>
     <div class="zeilen">${anZeile('Vater und Mutter', elternIds)}${kinderIds.map((i) => anZeile(name(i), [i])).join('')}</div>
-    ${an.ueber > 0 ? `<div class="hinweiskarte rot">Die Anschaffungen liegen CHF ${chf(an.ueber)} über der Obergrenze. Der Mehrbetrag ist nicht aufgeteilt und muss neu verhandelt werden (Vertrag Ziffer 3a).</div>` : ''}
+    ${an.ueber > 0 ? `<div class="hinweiskarte gelb">Die Anschaffungen liegen CHF ${chf(an.ueber)} über CHF ${chf(an.max)}. Dafür müssen alle Beteiligten ihr Einverständnis geben (Vertrag Ziffer 3). Aufgeteilt wird weiterhin in Viertel.</div>` : ''}
     <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
     <div class="z"><div class="l"><strong>Rückzahlungen von Tochter und Sohn</strong><div class="meta">Darlehensraten bisher</div></div><div class="r"><strong>CHF ${chf(an.rueckgezahlt)}</strong></div></div>
     <div class="z"><div class="l"><strong>Noch vorgeschossen (netto)</strong></div><div class="r"><strong>CHF ${chf(an.nettoVorschuss)}</strong></div></div></div>
@@ -649,7 +649,7 @@ function kosten() {
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
-  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max), anInhalt, true)}
+  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' geplant', anInhalt, true)}
   ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
   ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}

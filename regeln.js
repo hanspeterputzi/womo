@@ -182,7 +182,7 @@ export function kmStatistik(uebergaben, buchungen, J) {
 // =====================================================================
 export const RUECKLAGE_CHF = [100, 120, 150, 180, 220, 250, 275, 300];          // Vertrag Ziffer 5, je Eigentuemer
 export const DARLEHEN_CHF = [360, 600, 840, 1080, 1320, 1560, 1800, 2040];     // Anhang A, nur Tochter und Sohn, bei Kaufpreis CHF 60 000
-export const ANSCHAFFUNG_MAX_CHF = 60000;                                        // Obergrenze der Anschaffung (Vertrag Ziffer 3 und 3a), was darueber liegt wird neu verhandelt
+export const ANSCHAFFUNG_MAX_CHF = 60000;                                        // Richtwert der Anschaffung (Vertrag Ziffer 3), darueber braucht es das Einverstaendnis aller
 export const FRIST_TAGE = 10;                                                    // Vertrag Ziffer 4, Zahlungsverzug
 export const KOSTENARTEN = {
   betrieb: 'Laufende Kosten (Versicherung, Steuer, Vignette, Konto, Kleines)',
@@ -240,21 +240,21 @@ export function eingezahlt(einzahlungen, personId, zweck, vonIso, bisIsoExkl) {
   return einzahlungen.filter((e) => e.personId === personId && e.zweck === zweck && e.datum >= vonIso && e.datum < bisIsoExkl).reduce((s, e) => s + e.betrag, 0);
 }
 
-// Anschaffung (Kaufpreis, Zoll, Mehrwertsteuer, Ueberfuehrung, Zulassung, Zubehoer): alle Zahlungen zaehlen, geviertelt bis ANSCHAFFUNG_MAX_CHF.
-// Der Mehrbetrag darueber wird nicht aufgeteilt (neu verhandeln). Versicherung gehoert nicht dazu (laufende Kosten).
+// Anschaffung (Kaufpreis, Zoll, Mehrwertsteuer, Ueberfuehrung, Zulassung, Zubehoer): alle Zahlungen zaehlen und werden geviertelt.
+// Ueber ANSCHAFFUNG_MAX_CHF brauchen alle Beteiligten ihr Einverstaendnis (Vertrag Ziffer 3), geviertelt wird weiter. Versicherung gehoert nicht dazu.
 // saldo = bezahlt minus Anteil: positiv = hat mehr bezahlt als sein Anteil (Vorschuss), negativ = muss noch beitragen.
 // Rueckzahlungen: Darlehensraten von Tochter und Sohn, ohne Erlass (der Erlass ist eine zeitabhaengige Schenkung).
 export function anschaffung(einzahlungen, personen, ids, maxChf = ANSCHAFFUNG_MAX_CHF) {
   const zahlungen = einzahlungen.filter((e) => e.zweck === 'anschaffung');
   const gesamt = zahlungen.reduce((s, e) => s + e.betrag, 0), max = maxChf * 100;
-  const gezaehlt = Math.min(gesamt, max), ueber = Math.max(0, gesamt - max);
+  const gezaehlt = gesamt, ueber = Math.max(0, gesamt - max);
   const anteile = teile(gezaehlt, ids, 0);
   const bezahlt = Object.fromEntries(ids.map((i) => [i, zahlungen.filter((e) => e.personId === i).reduce((s, e) => s + e.betrag, 0)]));
   const rueck = Object.fromEntries(ids.map((i) => [i, einzahlungen.filter((e) => e.zweck === 'darlehen' && e.personId === i).reduce((s, e) => s + e.betrag, 0)]));
   const saldo = Object.fromEntries(ids.map((i) => [i, bezahlt[i] - anteile[i]]));
   const eltern = ids.filter((i) => personen[i]?.konto === 'eltern'), kinder = ids.filter((i) => personen[i]?.konto !== 'eltern');
   const sum = (liste, o) => liste.reduce((s, i) => s + o[i], 0);
-  const vorschuss = Math.max(0, sum(eltern, saldo) - ueber);               // was Vater und Mutter ueber ihren Anteil hinaus fuer Tochter und Sohn bezahlt haben (Mehrbetrag ueber der Obergrenze zaehlt nicht)
+  const vorschuss = Math.max(0, sum(eltern, saldo));                       // was Vater und Mutter ueber ihren Anteil hinaus fuer Tochter und Sohn bezahlt haben
   const rueckgezahlt = sum(kinder, rueck);
   return { gesamt, gezaehlt, ueber, max, offen: Math.max(0, max - gesamt), anteile, bezahlt, saldo, rueck, vorschuss, rueckgezahlt, nettoVorschuss: Math.max(0, vorschuss - rueckgezahlt) };
 }
