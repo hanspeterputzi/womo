@@ -486,7 +486,7 @@ export const KONTEN_BASIS = [
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
   K('2000', 'Kreditoren', 'passiv'), K('2300', 'TP (Transitorische Passiven)', 'passiv'),
-  K('2400', 'Darlehen von Eltern', 'passiv'), K('2600', 'Rückstellung (Rücklage)', 'passiv'),
+  K('2400', 'Darlehen von Eltern', 'passiv'),
   K('3000', 'Übriger Ertrag (Erstattungen, Zinsen, Kursgewinne)', 'ertrag'), K('3010', 'Geschenkbeitrag Eltern', 'ertrag'),
   K('4000', 'Versicherung', 'aufwand'), K('4010', 'Motorfahrzeugsteuer', 'aufwand'), K('4020', 'Service', 'aufwand'), K('4030', 'Reparaturen', 'aufwand'),
   K('4040', 'Pneus', 'aufwand'), K('4060', 'Vignette', 'aufwand'), K('4070', 'Parkplatzmiete', 'aufwand'),
@@ -497,6 +497,7 @@ export const KONTEN_BASIS = [
 ];
 // Eigenkapital: ein Konto je Eigentuemer (2800 bis 2803), in der Reihenfolge Vater, Mutter, Tochter, Sohn.
 export const EK_BASIS = 2800;
+export const RUECKLAGE_BASIS = 2600;   // Ruecklage: ein Konto je Eigentuemer (2600 bis 2603), gleiche Reihenfolge wie das Eigenkapital
 const EK_REIHENFOLGE = ['hp', 'fr', 't', 's'];
 export function eigentuemerGeordnet(personen) {
   const ids = Object.keys(personen || {});
@@ -512,8 +513,9 @@ export function kontenListe(personen) {
     const person = p.find((x) => x.konto === k.kind);
     return { nr: k.nr, name: person ? k.vorsilbe + person.name : k.name, typ: k.typ };
   });
-  const i = liste.findIndex((k) => k.nr === '2600') + 1;
-  return [...liste.slice(0, i), ...ek, ...liste.slice(i)];
+  const rl = [0, 1, 2, 3].map((i) => ({ nr: String(RUECKLAGE_BASIS + i), name: 'Rücklage ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'passiv' }));
+  const i = liste.findIndex((k) => k.nr === '2400') + 1;
+  return [...liste.slice(0, i), ...rl, ...ek, ...liste.slice(i)];
 }
 export function buchVorlagen(personen) {
   const ids = eigentuemerGeordnet(personen);
@@ -521,12 +523,31 @@ export function buchVorlagen(personen) {
     { id: 'ausgabe-bank', name: 'Ausgabe, von der Bank bezahlt', soll: '4900', haben: '1020' },
     { id: 'ausgabe-bar', name: 'Ausgabe, bar bezahlt', soll: '4900', haben: '1000' },
     ...ids.map((id, i) => ({ id: 'einlage-' + id, name: 'Einzahlung von ' + personen[id].name + ' auf die Bank', soll: '1020', haben: String(EK_BASIS + i) })),
+    ...ids.map((id, i) => ({ id: 'ruecklage-' + id, name: 'Rücklage von ' + personen[id].name + ' auf die Bank', soll: '1020', haben: String(RUECKLAGE_BASIS + i) })),
+    ...KONTEN_BASIS.filter((k) => k.kind).map((k) => { const p = Object.values(personen || {}).find((x) => x.konto === k.kind); return p ? { id: 'rate-' + k.kind, name: 'Darlehensrate von ' + p.name + ' auf die Bank', soll: '1020', haben: k.nr } : null; }).filter(Boolean),
     { id: 'abhebung', name: 'Bargeld von der Bank abgehoben', soll: '1000', haben: '1020' },
     { id: 'euro', name: 'Franken in Euro gewechselt', soll: '1021', haben: '1020' },
     { id: 'fahrzeug', name: 'Fahrzeug von der Bank bezahlt', soll: '1530', haben: '1020' },
     { id: 'parkplatz', name: 'Parkplatzmiete (Geschenk der Eltern)', soll: '4070', haben: '3010' },
     { id: 'frei', name: 'Freie Buchung', soll: '', haben: '' },
   ];
+}
+// Zahlplan aus der Buchhaltung: Als Zahlung zaehlt eine Buchung von einem Geldkonto (Kasse, Bank CHF, Bank Euro) an
+//   - «Darlehen an <Kind>»  = Darlehensrate des Kindes,
+//   - «Ruecklage <Eigentuemer>» = Ruecklage dieses Eigentuemers.
+// Liefert Eintraege im Format des Zahlplans: { personId, zweck: 'darlehen' | 'ruecklage', betrag, datum }.
+export const GELDKONTEN = ['1000', '1020', '1021'];
+export function zahlungenAusJournal(journal, personen) {
+  const ids = eigentuemerGeordnet(personen), darlehen = {}, ruecklage = {};
+  for (const k of KONTEN_BASIS) if (k.kind) { const e = Object.entries(personen || {}).find(([, p]) => p.konto === k.kind); if (e) darlehen[k.nr] = e[0]; }
+  ids.forEach((id, i) => { ruecklage[String(RUECKLAGE_BASIS + i)] = id; });
+  const out = [];
+  for (const b of Object.values(journal || {})) {
+    if (!GELDKONTEN.includes(b.soll)) continue;
+    if (darlehen[b.haben]) out.push({ personId: darlehen[b.haben], zweck: 'darlehen', betrag: b.betrag, datum: b.datum });
+    else if (ruecklage[b.haben]) out.push({ personId: ruecklage[b.haben], zweck: 'ruecklage', betrag: b.betrag, datum: b.datum });
+  }
+  return out;
 }
 export const BUCH_TEXT_MAX = 100;
 export const BUCH_BETRAG_MAX = 100000000;   // CHF 1 Million, gleiche Grenze wie die Datenbankregel

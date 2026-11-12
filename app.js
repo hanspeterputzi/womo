@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  achtJahrePlan, ERLASS_CHF, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112g';
-import * as S from './speicher.js?v=20261112g';
+  achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261112h';
+import * as S from './speicher.js?v=20261112h';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -321,7 +321,7 @@ function hinweiseHtml() {
   const sp = zahlungsSperre(D.zahlstatus[ich], t);
   if (sp.stufe === 'gesperrt') out += `<div class="hinweiskarte rot">Nutzungsverbot wegen Zahlungsverzug seit ${fmt(sp.ab)}, bis die Zahlung erfolgt ist (Vertrag Ziffer 4).</div>`;
   else if (sp.stufe === 'erinnert') out += `<div class="hinweiskarte gelb">Zahlungserinnerung: Bitte bis ${fmt(sp.frist)} zahlen, sonst gilt ein Nutzungsverbot.</div>`;
-  if (D.start && D.personen[ich]) faelligkeiten(D.start, t, Object.values(D.einzahlungen), D.personen[ich], ich).forEach((f) => {
+  if (D.start && D.personen[ich]) faelligkeiten(D.start, t, zahlungenAusJournal(D.journal, D.personen), D.personen[ich], ich).forEach((f) => {
     if (f.rueckstand) out += `<div class="hinweiskarte rot">${ZWECKE[f.zweck]} überfällig: CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}.</div>`;
     else if (f.naechste && f.naechste.datum <= addTage(t, VORLAUF_TAGE)) out += `<div class="hinweiskarte gelb">${ZWECKE[f.zweck]} fällig am ${fmt(f.naechste.datum)}: CHF ${chf(f.naechste.betrag)}.</div>`;
   });
@@ -635,27 +635,11 @@ function uebergabeForm(bid, phase) {
 // =====================================================================
 function kosten() {
   const J = jahrK, ids = idsGeordnet(), t = heute(), buch = buchhalter();
-  const kl = Object.values(D.kosten), el = Object.values(D.einzahlungen);
+  const kl = Object.values(D.kosten), eAlt = Object.values(D.einzahlungen), el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
 
-  const an = anschaffung(el, D.personen, ids);
   const elternIds = ids.filter((i) => D.personen[i].konto === 'eltern'), kinderIds = ids.filter((i) => D.personen[i].konto !== 'eltern');
-  const sumA = (liste, o) => liste.reduce((x, i) => x + o[i], 0);
-  const anZeile = (titel, liste) => {
-    const bez = sumA(liste, an.bezahlt), ant = sumA(liste, an.anteile), sal = bez - ant;
-    const chip = an.gesamt === 0 ? '<span class="chipk">–</span>' : sal > 0 ? `<span class="chipk ok">Vorschuss ${chf(sal)}</span>` : sal < 0 ? `<span class="chipk gelb">noch ${chf(-sal)}</span>` : '<span class="chipk ok">ausgeglichen</span>';
-    return `<div class="z"><div class="l"><strong>${titel}</strong><div class="meta">bezahlt ${chf(bez)} · Anteil ${chf(ant)}</div></div><div class="r">${chip}</div></div>`;
-  };
-  const anschaffungen = el.filter((e) => e.zweck === 'anschaffung').sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const anInhalt = `<p class="info" style="margin-top:0">Obergrenze: CHF ${chf(ANSCHAFFUNG_MAX_CHF * 100)}. Anschaffungskosten laut Vertrag: CHF 59 930.87 (Kaufpreis, Zoll, Mehrwertsteuer, Umtriebskosten, Überführung, Zulassung, Zubehör). Alles wird geviertelt.</p>
-    <div class="zeilen">${anZeile('Vater und Mutter', elternIds)}${kinderIds.map((i) => anZeile(name(i), [i])).join('')}</div>
-    ${an.ueber > 0 ? `<div class="hinweiskarte gelb">Die Anschaffungen liegen CHF ${chf(an.ueber)} über CHF ${chf(an.max)}. Dafür müssen alle Beteiligten ihr Einverständnis geben (Vertrag Ziffer 3). Aufgeteilt wird weiterhin in Viertel.</div>` : ''}
-    <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
-    <div class="z"><div class="l"><strong>Rückzahlungen von Tochter und Sohn</strong><div class="meta">Darlehensraten bisher</div></div><div class="r"><strong>CHF ${chf(an.rueckgezahlt)}</strong></div></div>
-    <div class="z"><div class="l"><strong>Noch vorgeschossen (netto)</strong></div><div class="r"><strong>CHF ${chf(an.nettoVorschuss)}</strong></div></div></div>
-    ${anschaffungen.length ? anschaffungen.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Noch keine Zahlungen erfasst.</p>'}
-    ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}`;
 
   let plan;
   if (!D.start) {
@@ -686,7 +670,7 @@ function kosten() {
       return `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3>
         <div class="hero-stand ${ueberTotal > 0 ? 'rot' : 'ok'}" style="margin:0 0 6px">${ueberTotal > 0 ? `Überfällig insgesamt: CHF ${chf(ueberTotal)}` : 'Nichts überfällig.'}</div>
         <div class="zeilen">${zeilen}</div>
-        <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle erfassten Einzahlungen, auch im Voraus bezahlte. Eintragen: ＋ Erfassen → Zahlplan: Einzahlung erfassen.</p></div>`;
+        <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte. Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».</p></div>`;
     })();
   const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
   const kinderPlan = kinderIds.filter((i) => plaene[i]).map((i) => {
@@ -705,7 +689,7 @@ function kosten() {
   }).join('');
 
   const kjahr = kl.filter((k) => k.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const ejahr = el.filter((e) => e.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
+  const eAltListe = eAlt.sort((a, b) => (a.datum < b.datum ? 1 : -1));
   // ---- Einfache doppelte Buchhaltung ----
   const jn = D.journal, kname = Object.fromEntries(kontenListe(D.personen).map((k) => [k.nr, k.name]));
   const stichtag = t.slice(0, 4) === String(J) ? t : `${J}-12-31`;
@@ -720,6 +704,7 @@ function kosten() {
       <div class="hero-stand ${bi.stimmt ? 'ok' : 'rot'}">${!Object.keys(jn).length ? 'Noch keine Buchungen erfasst.' : bi.stimmt ? `Bilanz stimmt: Aktiven und Passiven je CHF ${chf(bi.sAktiven)}.` : 'Achtung: Die Bilanz geht nicht auf. Bitte die Buchungen prüfen.'}</div>`;
   const bilanzInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Konten ohne Buchungen sind ausgeblendet. Antippen zeigt das Kontoblatt.</p>
     <div class="zeilen">${kopf('Aktiven')}${bi.aktiven.length ? bi.aktiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}${total('Total Aktiven', bi.sAktiven)}</div>
+    ${(() => { const fz = sal['1530'].saldo + sal['1531'].saldo, max = ANSCHAFFUNG_MAX_CHF * 100; return `<p class="info" style="margin:8px 0 0">Fahrzeug und Zubehör: CHF ${chf(fz)} von CHF ${chf(max)} Obergrenze (Vertrag Ziffer 3).${fz > max ? ' Darüber müssen alle Beteiligten einverstanden sein.' : ''}</p>`; })()}
     <div class="zeilen" style="margin-top:12px">${kopf('Passiven')}${bi.passiven.length ? bi.passiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}
     <div class="z"><div class="l"><strong>Gewinn / Verlust</strong><div class="meta">Ertrag minus Aufwand, alle Jahre bis zum Stand</div></div><div class="r">${chf(bi.ergebnis)}</div></div>${total('Total Passiven', bi.sPassivenMitErgebnis)}</div>`;
   const erfInhalt = `<p class="info" style="margin-top:0">${fmt(von)} bis ${fmt(`${J}-12-31`)}.</p>
@@ -732,7 +717,7 @@ function kosten() {
     + (buch ? '' : '<p class="info">Buchen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>');
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
-  app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Erfassen')}
+  app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Buchen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
@@ -741,16 +726,14 @@ function kosten() {
   ${sek('Erfolgsrechnung', J + ': ' + chf(er.ergebnis), erfInhalt, false)}
   ${sek('Buchungen ' + J, jahrBuch.length + (jahrBuch.length === 1 ? ' Eintrag' : ' Einträge'), journalInhalt, jahrBuch.length > 0 && jahrBuch.length <= 3)}
   ${sek('Alle Konten', '', kontenInhalt, false)}
-  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' Obergrenze', anInhalt, false)}
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
   ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}
-  ${sek('Einzahlungen ' + J, ejahr.length + (ejahr.length === 1 ? ' Eintrag' : ' Einträge'), (ejahr.length ? ejahr.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum).slice(0, 6) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
+  ${eAltListe.length ? sek('Frühere Einzahlungen', eAltListe.length + (eAltListe.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Einzahlungen wurden vor der Buchhaltung erfasst. Sie zählen nicht mehr für den Zahlplan. Bitte als Buchung erfassen.</p>' + eAltListe.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''), e)).join(''), false) : ''}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
-  const en = document.getElementById('eneu'); if (en) en.onclick = () => einzahlungForm();
   const eintragSheet = (titel, info, x, loeschen) => {
     const darf = buch && eigener(x);
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
@@ -769,10 +752,7 @@ function kosten() {
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
   });
-  const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => {
-    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Buchung erfassen</button><button class="gross-btn" id="k_e">Zahlplan: Einzahlung erfassen</button><button class="gross-btn" id="k_a">Zahlplan: Anschaffung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
-    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = buchungForm; document.getElementById('k_e').onclick = () => einzahlungForm(); document.getElementById('k_a').onclick = () => einzahlungForm('anschaffung');
-  };
+  const kp = document.getElementById('kplus'); if (kp) kp.onclick = buchungForm;
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
@@ -807,27 +787,6 @@ function buchungForm() {
     const p = pruefeBuchsatz(b, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => { await S.speichern(D, 'journal', null, b); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
-  };
-}
-
-function einzahlungForm(zweck0) {
-  const ids = idsGeordnet();
-  sheet(`<h3>Einzahlung erfassen</h3>
-  <div class="zwei"><div><label for="e_datum">Datum</label><input type="date" id="e_datum" value="${heute()}"></div>
-  <div><label for="e_betrag">Betrag in CHF</label><input id="e_betrag" inputmode="decimal" placeholder="z. B. 120"></div></div>
-  <label for="e_person">Eigentümer/in</label><select id="e_person">${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select>
-  <label for="e_zweck">Zweck</label><select id="e_zweck">${Object.entries(ZWECKE).map(([k, n]) => `<option value="${k}"${k === zweck0 ? ' selected' : ''}>${h(n)}</option>`).join('')}</select>
-  <label for="e_text">Beschreibung</label><input id="e_text" maxlength="100" placeholder="optional, z. B. Anzahlung">
-  <p class="info">Anschaffung: Vater und Mutter zählen zusammen. Zahlungen vom gemeinsamen Konto bitte bei einem der beiden eintragen.</p>
-  <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
-  document.getElementById('abb').onclick = schliessen;
-  document.getElementById('spei').onclick = async () => {
-    const betrag = rappen(val('e_betrag')), f = [];
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(val('e_datum'))) f.push('Datum fehlt.');
-    if (!(betrag > 0)) f.push('Bitte einen Betrag über 0 eingeben, höchstens zwei Nachkommastellen.');
-    if (f.length) { fehler(f); return; }
-    const e = { datum: val('e_datum'), betrag, zweck: val('e_zweck'), personId: val('e_person'), text: val('e_text').trim(), erfasstVon: ich };
-    await sicher(async () => { await S.speichern(D, 'einzahlungen', null, e); jahrK = parseInt(e.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Einzahlung gespeichert.'); });
   };
 }
 
