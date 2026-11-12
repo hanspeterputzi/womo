@@ -387,14 +387,15 @@ export function vorschauBuchung(b, buchungen, personen, alltag) {
 // =====================================================================
 // Wunschliste (Vertrag Ziffer 5, Absatz «Einrichtung»). Betraege in Rappen.
 // Einrichtungsgegenstaende bis CHF 200 pro Stueck: vorher in der Wunschliste vorschlagen, 5 Tage Frist,
-// wer nicht antwortet stimmt zu, bei Widerspruch entscheidet die Mehrheit (Ziffer 13, bei 2 zu 2 der Halter).
-// Antworten, Stichentscheid und Erstattung sind eigene Eintraege (Sammlung 'wunschaktionen'), damit niemand
+// wer nicht antwortet stimmt zu. Es braucht immer die qualifizierte Mehrheit (Ziffer 13): alle Stimmen ausser einer.
+// Bei Gleichstand (2 zu 2) ist der Kauf abgelehnt, einen Stichentscheid des Halters gibt es nicht.
+// Antworten und Erstattung sind eigene Eintraege (Sammlung 'wunschaktionen'), damit niemand
 // einen Eintrag einer anderen Person aendert.
 // =====================================================================
 export const WUNSCH_MAX_RAPPEN = 20000;     // CHF 200 pro Stueck bzw. fuer gleichartige Stuecke zusammen
 export const WUNSCH_FRIST_TAGE = 5;
 export const WUNSCH_FOTO_MAX = 250000;      // Zeichen des Fotos (JPEG als Text), ein Foto im Handy wird auf etwa 150 KB verkleinert; Firestore erlaubt 1 MiB pro Eintrag
-export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', patt: 'Stichentscheid offen', abgelehnt: 'Abgelehnt', gekauft: 'Gekauft' };
+export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', abgelehnt: 'Abgelehnt', gekauft: 'Gekauft' };
 
 export const wunschTotal = (w) => (Number.isInteger(w.preis) ? w.preis : 0) * (Number.isInteger(w.menge) ? w.menge : 1);
 
@@ -412,8 +413,8 @@ export function pruefeWunsch(w) {
 }
 
 // Stand eines Wunsches. aktionen: alle Eintraege der Sammlung 'wunschaktionen' (werden hier nach wunschId gefiltert).
-// ids: alle Eigentuemer, halterId: der Halter (Stichentscheid bei 2 zu 2).
-export function wunschStand(w, aktionen, ids, heute, halterId) {
+// ids: alle Eigentuemer. Freigegeben nur mit qualifizierter Mehrheit (mindestens alle ausser einer, und mehr Ja als Nein).
+export function wunschStand(w, aktionen, ids, heute) {
   const mine = (aktionen || []).filter((a) => a.wunschId === w.id);
   const frist = addTage(w.datum, WUNSCH_FRIST_TAGE);
   const abgelaufen = heute > frist;
@@ -422,17 +423,14 @@ export function wunschStand(w, aktionen, ids, heute, halterId) {
   const andere = ids.filter((i) => i !== w.erfasstVon);
   const ohneAntwort = andere.filter((i) => !antworten[i]);
   const nein = andere.filter((i) => antworten[i] && antworten[i].stimme === 'nein');
-  const stichA = mine.find((a) => a.art === 'stich' && a.erfasstVon === halterId && ['ja', 'nein'].includes(a.stimme));
   const erstattet = mine.find((a) => a.art === 'erstattet') || null;
   const entschieden = abgelaufen || ohneAntwort.length === 0;
   const ja = ids.length - nein.length;             // Vorschlagende/r und alle ohne Antwort (nach der Frist) zaehlen als Ja
   let status;
   if (w.gekauftAm) status = 'gekauft';
   else if (!entschieden) status = 'offen';
-  else if (ja > nein.length) status = 'freigegeben';
-  else if (ja < nein.length) status = 'abgelehnt';
-  else status = stichA ? (stichA.stimme === 'ja' ? 'freigegeben' : 'abgelehnt') : 'patt';
-  return { frist, abgelaufen, antworten, ohneAntwort, nein, ja, stich: stichA || null, erstattet, status };
+  else status = ja >= ids.length - 1 && ja > nein.length ? 'freigegeben' : 'abgelehnt';   // Gleichstand = abgelehnt
+  return { frist, abgelaufen, antworten, ohneAntwort, nein, ja, erstattet, status };
 }
 
 export function pruefeKauf(w, betrag, datum) {
@@ -445,13 +443,111 @@ export function pruefeKauf(w, betrag, datum) {
 }
 
 // =====================================================================
+// Einfache doppelte Buchhaltung (Tab «Kosten»). Betraege in Rappen, alles in CHF.
+// Jede Buchung: Datum, Soll-Konto, Haben-Konto, Betrag, Text. Sammlung 'journal'.
+// Aktiv und Aufwand nehmen im Soll zu, Passiv und Ertrag im Haben.
+// Namen von Personen stehen nie im Code: die beiden Darlehen an Tochter und Sohn nehmen den Namen aus den Personen.
+// =====================================================================
+export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' };
+const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
+export const KONTEN_BASIS = [
+  K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'), K('1021', 'Bank Euro (in CHF)', 'aktiv'),
+  K('1100', 'Forderungen an Eigentümer', 'aktiv'), K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
+  K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
+  K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
+  K('2000', 'Verbindlichkeiten (offene Rechnungen)', 'passiv'), K('2300', 'TP (Transitorische Passiven)', 'passiv'),
+  K('2400', 'Darlehen von Eltern', 'passiv'), K('2600', 'Rückstellung (Rücklage)', 'passiv'), K('2800', 'Eigenkapital', 'passiv'),
+  K('3000', 'Übriger Ertrag (Erstattungen, Zinsen, Kursgewinne)', 'ertrag'),
+  K('4000', 'Versicherung', 'aufwand'), K('4010', 'Motorfahrzeugsteuer', 'aufwand'), K('4020', 'Service', 'aufwand'), K('4030', 'Reparaturen', 'aufwand'),
+  K('4040', 'Pneus', 'aufwand'), K('4050', 'Treibstoff', 'aufwand'), K('4060', 'Vignette und Maut', 'aufwand'), K('4070', 'Winterlager und Einstellplatz', 'aufwand'),
+  K('4080', 'MFK und Gebühren', 'aufwand'),
+  K('4100', 'Reinigungsmaterial', 'aufwand'), K('4110', 'Küchenmaterial', 'aufwand'), K('4120', 'Allgemeine Esswaren', 'aufwand'), K('4130', 'Gas', 'aufwand'),
+  K('4140', 'Toilettenartikel', 'aufwand'), K('4150', 'Kleinmaterial', 'aufwand'),
+  K('4900', 'Allgemeiner Betriebsaufwand', 'aufwand'), K('4910', 'Bankspesen und Zinsen', 'aufwand'), K('4920', 'Kursdifferenzen (Euro)', 'aufwand'), K('4930', 'Abschreibungen', 'aufwand'),
+];
+// personen: Objekt id -> { name, konto }. Liefert die Konten mit den echten Namen bei den Darlehen.
+export function kontenListe(personen) {
+  const p = Object.values(personen || {});
+  return KONTEN_BASIS.map((k) => {
+    if (!k.kind) return { nr: k.nr, name: k.name, typ: k.typ };
+    const person = p.find((x) => x.konto === k.kind);
+    return { nr: k.nr, name: person ? k.vorsilbe + person.name : k.name, typ: k.typ };
+  });
+}
+export const BUCH_VORLAGEN = [
+  { id: 'ausgabe-bank', name: 'Ausgabe, von der Bank bezahlt', soll: '4900', haben: '1020' },
+  { id: 'ausgabe-bar', name: 'Ausgabe, bar bezahlt', soll: '4900', haben: '1000' },
+  { id: 'einlage', name: 'Eigentümer zahlt auf die Bank ein', soll: '1020', haben: '2800' },
+  { id: 'abhebung', name: 'Bargeld von der Bank abgehoben', soll: '1000', haben: '1020' },
+  { id: 'euro', name: 'Franken in Euro gewechselt', soll: '1021', haben: '1020' },
+  { id: 'fahrzeug', name: 'Fahrzeug von der Bank bezahlt', soll: '1530', haben: '1020' },
+  { id: 'frei', name: 'Freie Buchung', soll: '', haben: '' },
+];
+export const BUCH_TEXT_MAX = 100;
+export const BUCH_BETRAG_MAX = 100000000;   // CHF 1 Million, gleiche Grenze wie die Datenbankregel
+
+export function pruefeBuchsatz(b, personen) {
+  const f = [], nrs = kontenListe(personen).map((k) => k.nr);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.datum || '') || !datumGueltig(b.datum)) f.push('Datum fehlt oder ist ungültig.');
+  if (!nrs.includes(b.soll)) f.push('Bitte das Soll-Konto wählen.');
+  if (!nrs.includes(b.haben)) f.push('Bitte das Haben-Konto wählen.');
+  if (b.soll && b.soll === b.haben) f.push('Soll und Haben müssen verschiedene Konten sein.');
+  if (!Number.isInteger(b.betrag) || b.betrag <= 0) f.push('Bitte einen Betrag über 0 eingeben, höchstens zwei Nachkommastellen.');
+  else if (b.betrag >= BUCH_BETRAG_MAX) f.push('Der Betrag ist zu gross (höchstens CHF 999 999.99).');
+  if (!(b.text || '').trim()) f.push('Bitte einen Buchungstext eingeben, zum Beispiel was gekauft wurde.');
+  else if (b.text.length > BUCH_TEXT_MAX) f.push(`Der Text ist zu lang (höchstens ${BUCH_TEXT_MAX} Zeichen).`);
+  return { ok: f.length === 0, fehler: f };
+}
+
+// Saldi aller Konten. von/bis: nur Buchungen von <= datum <= bis (beide einschliesslich, leer = unbegrenzt).
+// saldo ist in der normalen Richtung des Kontos (Aktiv und Aufwand: Soll minus Haben; Passiv und Ertrag: Haben minus Soll).
+export function kontoSalden(journal, personen, von, bis) {
+  const liste = kontenListe(personen), m = {};
+  for (const k of liste) m[k.nr] = { ...k, soll: 0, haben: 0, saldo: 0 };
+  for (const b of Object.values(journal || {})) {
+    if (von && b.datum < von) continue;
+    if (bis && b.datum > bis) continue;
+    if (m[b.soll]) m[b.soll].soll += b.betrag;
+    if (m[b.haben]) m[b.haben].haben += b.betrag;
+  }
+  for (const k of liste) { const e = m[k.nr]; e.saldo = (e.typ === 'aktiv' || e.typ === 'aufwand') ? e.soll - e.haben : e.haben - e.soll; }
+  return m;
+}
+const summe = (konten, typ) => konten.filter((k) => k.typ === typ).reduce((s, k) => s + k.saldo, 0);
+// Erfolgsrechnung eines Zeitraums
+export function erfolgsrechnung(journal, personen, von, bis) {
+  const k = Object.values(kontoSalden(journal, personen, von, bis));
+  const ertrag = k.filter((x) => x.typ === 'ertrag' && (x.soll || x.haben)), aufwand = k.filter((x) => x.typ === 'aufwand' && (x.soll || x.haben));
+  const sErtrag = summe(k, 'ertrag'), sAufwand = summe(k, 'aufwand');
+  return { ertrag, aufwand, sErtrag, sAufwand, ergebnis: sErtrag - sAufwand };
+}
+// Bilanz per Stichtag. Gewinn/Verlust aus allen Jahren bis zum Stichtag steht als eigene Zeile bei den Passiven
+// (es gibt noch keinen Jahresabschluss, der das Ergebnis ins Eigenkapital bucht).
+export function bilanz(journal, personen, stichtag) {
+  const k = Object.values(kontoSalden(journal, personen, '', stichtag));
+  const aktiven = k.filter((x) => x.typ === 'aktiv' && (x.soll || x.haben)), passiven = k.filter((x) => x.typ === 'passiv' && (x.soll || x.haben));
+  const sA = summe(k, 'aktiv'), sP = summe(k, 'passiv'), ergebnis = summe(k, 'ertrag') - summe(k, 'aufwand');
+  return { aktiven, passiven, sAktiven: sA, sPassiven: sP, ergebnis, sPassivenMitErgebnis: sP + ergebnis, stimmt: sA === sP + ergebnis };
+}
+// Kontoblatt: alle Buchungen eines Kontos bis zum Stichtag, mit laufendem Saldo (neueste zuletzt).
+export function kontoblatt(journal, personen, nr, bis) {
+  const k = kontenListe(personen).find((x) => x.nr === nr); if (!k) return { konto: null, zeilen: [], saldo: 0 };
+  const plus = k.typ === 'aktiv' || k.typ === 'aufwand' ? 'soll' : 'haben';
+  const alle = Object.values(journal || {}).filter((b) => (b.soll === nr || b.haben === nr) && (!bis || b.datum <= bis))
+    .sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? -1 : 1));
+  let s = 0;
+  const zeilen = alle.map((b) => { const betrag = b[plus] === nr ? b.betrag : -b.betrag; s += betrag; return { b, betrag, saldo: s }; });
+  return { konto: k, zeilen, saldo: s };
+}
+
+// =====================================================================
 // «Neu seit deinem letzten Besuch» (Eintraege anderer Personen, erfasst nach dem Zeitpunkt seit)
 // =====================================================================
 export const NEU_BEREICHE = { kalender: 'Kalender', termine: 'Termine', fahrten: 'Fahrten', kosten: 'Kosten', wunschliste: 'Wunschliste' };
 export function istNeu(x, seit, ich) {
   return !!x && !!seit && !!ich && typeof x.erfasstAm === 'string' && x.erfasstAm > seit && x.erfasstVon !== ich;
 }
-// d: { buchungen, uebergaben, termine, kosten, einzahlungen, wuensche, wunschaktionen } (je als Objekt id -> Eintrag)
+// d: { buchungen, uebergaben, termine, kosten, einzahlungen, journal, wuensche, wunschaktionen } (je als Objekt id -> Eintrag)
 export function neuZaehlen(d, seit, ich) {
   const z = { kalender: 0, termine: 0, fahrten: 0, kosten: 0, wunschliste: 0 };
   if (!seit || !ich) return { gesamt: 0, nach: z, wunschIds: new Set() };
@@ -461,6 +557,7 @@ export function neuZaehlen(d, seit, ich) {
   Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank') return; if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
   Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
+  Object.values(d.journal || {}).forEach((x) => { if (n(x)) z.kosten++; });
   const wunschIds = new Set();
   Object.values(d.wuensche || {}).forEach((x) => { if (n(x)) wunschIds.add(x.id); });
   Object.values(d.wunschaktionen || {}).forEach((a) => { if (n(a) && d.wuensche && d.wuensche[a.wunschId]) wunschIds.add(a.wunschId); });

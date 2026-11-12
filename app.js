@@ -3,8 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-} from './regeln.js?v=20261112b';
-import * as S from './speicher.js?v=20261112b';
+  kontenListe, BUCH_VORLAGEN, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261112c';
+import * as S from './speicher.js?v=20261112c';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -333,7 +334,6 @@ function hinweiseHtml() {
     const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
     const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
     if (st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]) karte('gelb', `${titel} wartet auf deine Antwort bis ${fmt(st.frist)}.`);
-    else if (st.status === 'patt' && ich === D.adminId) karte('gelb', `${titel}: 2 zu 2, du entscheidest als Halter.`);
     else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
     else if (st.status === 'gekauft' && ich === D.adminId && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
   });
@@ -636,7 +636,6 @@ function uebergabeForm(bid, phase) {
 function kosten() {
   const J = jahrK, ids = idsGeordnet(), t = heute(), buch = buchhalter();
   const kl = Object.values(D.kosten), el = Object.values(D.einzahlungen);
-  const r = kostenAnteile(kl, el, ids, J);
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
 
@@ -657,12 +656,6 @@ function kosten() {
     <div class="z"><div class="l"><strong>Noch vorgeschossen (netto)</strong></div><div class="r"><strong>CHF ${chf(an.nettoVorschuss)}</strong></div></div></div>
     ${anschaffungen.length ? anschaffungen.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Noch keine Zahlungen erfasst.</p>'}
     ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}`;
-
-  const anteile = ids.map((i) => {
-    const ein = eingezahlt(el, i, 'betrieb', von, bis), saldo = r.anteil[i] - ein;
-    const chip = r.total === 0 && ein === 0 ? '<span class="chipk">–</span>' : saldo > 0 ? `<span class="chipk rot">noch ${chf(saldo)}</span>` : saldo < 0 ? `<span class="chipk ok">Guthaben ${chf(-saldo)}</span>` : '<span class="chipk ok">ausgeglichen</span>';
-    return `<div class="z"><div class="l"><strong>${name(i)}</strong><div class="meta">Anteil ${chf(r.anteil[i])} · einbezahlt ${chf(ein)}</div></div><div class="r">${chip}</div></div>`;
-  }).join('');
 
   let plan;
   if (!D.start) {
@@ -691,34 +684,49 @@ function kosten() {
 
   const kjahr = kl.filter((k) => k.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
   const ejahr = el.filter((e) => e.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const mein = ids.includes(ich) ? (() => {
-    const ein = eingezahlt(el, ich, 'betrieb', von, bis), saldo = r.anteil[ich] - ein;
-    const zp = D.start && vertragsJahr(D.start, t) !== null && vertragsJahr(D.start, t) <= 8 ? zahlplan(D.start, t, el, D.personen[ich], ich) : null;
-    const offen = zp && zp.posten ? zp.posten.filter((p) => p.offen > 0) : [];
-    const fz = D.start && D.personen[ich] ? faelligkeiten(D.start, t, el, D.personen[ich], ich) : [];
-    const fzZeilen = fz.map((f) => f.rueckstand ? `<div class="hero-stand rot">${ZWECKE[f.zweck]} überfällig: CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}.</div>` : f.naechste ? `<div class="hero-stand ${f.naechste.datum <= addTage(t, VORLAUF_TAGE) ? 'gelb' : 'ok'}">Nächste ${ZWECKE[f.zweck]}: CHF ${chf(f.naechste.betrag)} am ${fmt(f.naechste.datum)}.</div>` : '').join('');
-    return `<div class="hero-zeile"><div><div class="hero-l">Dein Anteil ${J}</div><div class="hero-z">CHF ${chf(r.anteil[ich])}</div></div><div><div class="hero-l">Davon bezahlt</div><div class="hero-z">CHF ${chf(ein)}</div></div></div>
-      <div class="hero-stand ${saldo > 0 ? 'rot' : 'ok'}">${saldo > 0 ? `Du musst noch CHF ${chf(saldo)} einzahlen.` : saldo < 0 ? `Du hast ${chf(-saldo)} CHF Guthaben.` : r.total === 0 ? 'Noch keine Kosten erfasst.' : 'Alles bezahlt.'}</div>
-      ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}${fzZeilen}`;
-  })() : '';
+  // ---- Einfache doppelte Buchhaltung ----
+  const jn = D.journal, kname = Object.fromEntries(kontenListe(D.personen).map((k) => [k.nr, k.name]));
+  const stichtag = t.slice(0, 4) === String(J) ? t : `${J}-12-31`;
+  const bi = bilanz(jn, D.personen, stichtag), er = erfolgsrechnung(jn, D.personen, von, `${J}-12-31`);
+  const sal = kontoSalden(jn, D.personen, '', stichtag);
+  const jahrBuch = Object.values(jn).filter((b) => b.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1));
+  const kz = (k) => `<button class="z bz" data-kb="${k.nr}"><span class="l"><strong>${h(k.name)}</strong><span class="meta"> ${k.nr}</span></span><span class="r">${chf(k.saldo)}</span></button>`;
+  const total = (titel, rp) => `<div class="z" style="border-top:2px solid var(--line)"><div class="l"><strong>${titel}</strong></div><div class="r"><strong>${chf(rp)}</strong></div></div>`;
+  const kopf = (titel) => `<div class="z" style="padding-bottom:2px"><div class="l"><span class="meta" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">${titel}</span></div></div>`;
+  const leerZ = (txt) => `<div class="z"><div class="l"><span class="meta">${txt}</span></div></div>`;
+  const mein = `<div class="hero-zeile"><div><div class="hero-l">Bank CHF</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">${er.ergebnis >= 0 ? 'Gewinn' : 'Verlust'} ${J}</div><div class="hero-z">${chf(er.ergebnis)}</div></div></div>
+      <div class="hero-stand ${bi.stimmt ? 'ok' : 'rot'}">${!Object.keys(jn).length ? 'Noch keine Buchungen erfasst.' : bi.stimmt ? `Bilanz stimmt: Aktiven und Passiven je CHF ${chf(bi.sAktiven)}.` : 'Achtung: Die Bilanz geht nicht auf. Bitte die Buchungen prüfen.'}</div>`;
+  const bilanzInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Konten ohne Buchungen sind ausgeblendet. Antippen zeigt das Kontoblatt.</p>
+    <div class="zeilen">${kopf('Aktiven')}${bi.aktiven.length ? bi.aktiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}${total('Total Aktiven', bi.sAktiven)}</div>
+    <div class="zeilen" style="margin-top:12px">${kopf('Passiven')}${bi.passiven.length ? bi.passiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}
+    <div class="z"><div class="l"><strong>Gewinn / Verlust</strong><div class="meta">Ertrag minus Aufwand, alle Jahre bis zum Stand</div></div><div class="r">${chf(bi.ergebnis)}</div></div>${total('Total Passiven', bi.sPassivenMitErgebnis)}</div>`;
+  const erfInhalt = `<p class="info" style="margin-top:0">${fmt(von)} bis ${fmt(`${J}-12-31`)}.</p>
+    <div class="zeilen">${kopf('Ertrag')}${er.ertrag.length ? er.ertrag.map(kz).join('') : leerZ('Kein Ertrag.')}${total('Total Ertrag', er.sErtrag)}</div>
+    <div class="zeilen" style="margin-top:12px">${kopf('Aufwand')}${er.aufwand.length ? er.aufwand.map(kz).join('') : leerZ('Kein Aufwand.')}${total('Total Aufwand', er.sAufwand)}</div>
+    <div class="zeilen" style="margin-top:12px">${total(er.ergebnis >= 0 ? 'Gewinn' : 'Verlust', er.ergebnis)}</div>`;
+  const alleKonten = kontenListe(D.personen).map((k) => ({ ...k, saldo: sal[k.nr].saldo }));
+  const kontenInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Antippen zeigt das Kontoblatt.</p>${Object.entries({ aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }).map(([typ, tt]) => `<div class="zeilen">${kopf(tt)}${alleKonten.filter((k) => k.typ === typ).map(kz).join('')}</div>`).join('')}`;
+  const journalInhalt = (jahrBuch.length ? jahrBuch.map((b) => zeileK('data-dj', b.id, 'CHF ' + chf(b.betrag), fmt(b.datum).slice(0, 6) + ' · ' + h(b.text) + '<br>' + h(kname[b.soll] || b.soll) + ' an ' + h(kname[b.haben] || b.haben), b)).join('') : '<p class="leer-t">Keine Buchungen erfasst.</p>')
+    + (buch ? '' : '<p class="info">Buchen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>');
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
   app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Erfassen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
-  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' Obergrenze', anInhalt, true)}
-  ${sek('Alle Anteile ' + J, 'CHF ' + chf(r.total), `<div class="zeilen">${anteile}</div><p class="info">Laufende Kosten tragen alle je ein Viertel. Beim Selbstbehalt zahlt der Verursacher allein, beim Bonusverlust 5/8 (Ziffer 12). «Einbezahlt» zählt nur Einzahlungen für laufende Kosten.</p>`, false)}
-  ${sek('Rücklage', 'CHF ' + chf(r.ruecklagePool), `<p class="info" style="margin-top:0">Guthaben aus allen Einzahlungen auf die Rücklage minus Reparaturen, Reifen und grosse Services (diese werden zuerst aus der Rücklage bezahlt, Ziffer 5).${r.ausRuecklage ? ` Aus der Rücklage bezahlt ${J}: CHF ${chf(r.ausRuecklage)}.` : ''}</p>`, false)}
+  ${sek('Bilanz', 'CHF ' + chf(bi.sAktiven), bilanzInhalt, true)}
+  ${sek('Erfolgsrechnung', J + ': ' + chf(er.ergebnis), erfInhalt, false)}
+  ${sek('Buchungen ' + J, jahrBuch.length + (jahrBuch.length === 1 ? ' Eintrag' : ' Einträge'), journalInhalt, jahrBuch.length > 0 && jahrBuch.length <= 3)}
+  ${sek('Alle Konten', '', kontenInhalt, false)}
+  ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' Obergrenze', anInhalt, false)}
   ${sek('Fälligkeiten', D.start ? '' : 'Datum fehlt', fzInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
-  ${sek('Kosten ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), kjahr.length ? kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
+  ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}
   ${sek('Einzahlungen ' + J, ejahr.length + (ejahr.length === 1 ? ' Eintrag' : ' Einträge'), (ejahr.length ? ejahr.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum).slice(0, 6) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
-  const kn = document.getElementById('kneu'); if (kn) kn.onclick = kostenForm;
   const en = document.getElementById('eneu'); if (en) en.onclick = () => einzahlungForm();
   const eintragSheet = (titel, info, x, loeschen) => {
     const darf = buch && eigener(x);
@@ -729,9 +737,18 @@ function kosten() {
   };
   app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
   app.querySelectorAll('[data-de]').forEach((b) => b.onclick = () => { const e = D.einzahlungen[b.dataset.de]; if (e) eintragSheet('CHF ' + chf(e.betrag), `${fmt(e.datum)} · ${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}<br>Erfasst von ${name(e.erfasstVon)}.`, e, () => S.loeschen(D, 'einzahlungen', e.id)); });
+  app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.`, j, () => S.loeschen(D, 'journal', j.id)); });
+  app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
+    const kb = kontoblatt(jn, D.personen, b.dataset.kb, stichtag); if (!kb.konto) return;
+    const vz = (rp) => (rp < 0 ? '−' : '') + chf(Math.abs(rp));
+    sheet(`<h3 style="margin:0 0 4px">${h(kb.konto.name)}</h3><p class="info" style="margin:0 0 8px">Konto ${kb.konto.nr} · Stand ${fmt(stichtag)}: <strong>CHF ${chf(kb.saldo)}</strong></p>
+      <div class="zeilen">${kb.zeilen.length ? kb.zeilen.slice().reverse().map((z) => `<div class="z"><div class="l"><strong>${h(z.b.text)}</strong><div class="meta">${fmt(z.b.datum)} · Gegenkonto: ${h(kname[z.b.soll === kb.konto.nr ? z.b.haben : z.b.soll] || '?')}</div></div><div class="r">${vz(z.betrag)}<div class="meta">Saldo ${vz(z.saldo)}</div></div></div>`).join('') : '<p class="leer-t">Noch keine Buchungen auf diesem Konto.</p>'}</div>
+      <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
+    document.getElementById('abb').onclick = schliessen;
+  });
   const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => {
-    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Kosten erfassen</button><button class="gross-btn" id="k_e">Einzahlung erfassen</button><button class="gross-btn" id="k_a">Anschaffung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
-    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = kostenForm; document.getElementById('k_e').onclick = () => einzahlungForm(); document.getElementById('k_a').onclick = () => einzahlungForm('anschaffung');
+    sheet(`<h3 style="margin:0 0 10px">Was möchtest du erfassen?</h3><div class="t-akt2"><button class="gross-btn pri" id="k_k">Buchung erfassen</button><button class="gross-btn" id="k_e">Zahlplan: Einzahlung erfassen</button><button class="gross-btn" id="k_a">Zahlplan: Anschaffung erfassen</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+    document.getElementById('abb').onclick = schliessen; document.getElementById('k_k').onclick = buchungForm; document.getElementById('k_e').onclick = () => einzahlungForm(); document.getElementById('k_a').onclick = () => einzahlungForm('anschaffung');
   };
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
@@ -744,27 +761,29 @@ function startFeld(wert) {
   return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übernahmedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
 }
 
-function kostenForm() {
-  const ids = idsGeordnet();
-  sheet(`<h3>Kosten erfassen</h3>
-  <div class="zwei"><div><label for="k_datum">Datum</label><input type="date" id="k_datum" value="${heute()}"></div>
-  <div><label for="k_betrag">Betrag in CHF</label><input id="k_betrag" inputmode="decimal" placeholder="z. B. 120.50"></div></div>
-  <label for="k_art">Art</label><select id="k_art">${Object.entries(KOSTENARTEN).map(([k, n]) => `<option value="${k}">${h(n)}</option>`).join('')}</select>
-  <div id="k_ver" class="versteckt"><label for="k_verursacher">Verursacher</label><select id="k_verursacher">${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select></div>
-  <label for="k_text">Beschreibung</label><input id="k_text" maxlength="100" placeholder="optional">
-  <p class="info">Alle Kosten laufen über das gemeinsame Konto.</p>
+function buchungForm() {
+  const gruppen = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }, kl = kontenListe(D.personen);
+  const optionen = (sel) => Object.entries(gruppen).map(([typ, tt]) => `<optgroup label="${tt}">${kl.filter((k) => k.typ === typ).map((k) => `<option value="${k.nr}"${k.nr === sel ? ' selected' : ''}>${k.nr} ${h(k.name)}</option>`).join('')}</optgroup>`).join('');
+  const v0 = BUCH_VORLAGEN[0];
+  sheet(`<h3>Buchung erfassen</h3>
+  <label for="b_vorlage">Vorlage</label><select id="b_vorlage">${BUCH_VORLAGEN.map((v) => `<option value="${v.id}">${h(v.name)}</option>`).join('')}</select>
+  <div class="zwei"><div><label for="b_datum">Datum</label><input type="date" id="b_datum" value="${heute()}"></div>
+  <div><label for="b_betrag">Betrag in CHF</label><input id="b_betrag" inputmode="decimal" placeholder="z. B. 45.50"></div></div>
+  <label for="b_soll">Soll (wohin geht es?)</label><select id="b_soll">${optionen(v0.soll)}</select>
+  <label for="b_haben">Haben (woher kommt es?)</label><select id="b_haben">${optionen(v0.haben)}</select>
+  <label for="b_text">Buchungstext</label><input id="b_text" maxlength="${BUCH_TEXT_MAX}" placeholder="z. B. Gasflasche">
+  <p class="info" id="b_hilfe" style="margin-bottom:0"></p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
-  const art = document.getElementById('k_art');
-  art.onchange = () => document.getElementById('k_ver').classList.toggle('versteckt', !['selbstbehalt', 'praemie'].includes(art.value));
+  const kn = Object.fromEntries(kl.map((k) => [k.nr, k.name])), hilfe = document.getElementById('b_hilfe');
+  const zeigeHilfe = () => { hilfe.textContent = `Gebucht wird: ${kn[val('b_soll')] || '?'} an ${kn[val('b_haben')] || '?'}. Betrag immer positiv eingeben.`; };
+  document.getElementById('b_vorlage').onchange = () => { const v = BUCH_VORLAGEN.find((x) => x.id === val('b_vorlage')); if (v && v.soll) { document.getElementById('b_soll').value = v.soll; document.getElementById('b_haben').value = v.haben; } zeigeHilfe(); };
+  document.getElementById('b_soll').onchange = zeigeHilfe; document.getElementById('b_haben').onchange = zeigeHilfe; zeigeHilfe();
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
-    const betrag = rappen(val('k_betrag')), f = [];
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(val('k_datum'))) f.push('Datum fehlt.');
-    if (!(betrag > 0)) f.push('Bitte einen Betrag über 0 eingeben, höchstens zwei Nachkommastellen.');
-    if (f.length) { fehler(f); return; }
-    const k = { datum: val('k_datum'), betrag, art: art.value, text: val('k_text').trim(), erfasstVon: ich };
-    if (['selbstbehalt', 'praemie'].includes(art.value)) k.verursacherId = val('k_verursacher');
-    await sicher(async () => { await S.speichern(D, 'kosten', null, k); jahrK = parseInt(k.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Kosten gespeichert.'); });
+    const b = { datum: val('b_datum'), soll: val('b_soll'), haben: val('b_haben'), betrag: rappen(val('b_betrag')), text: val('b_text').trim(), erfasstVon: ich };
+    const p = pruefeBuchsatz(b, D.personen);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => { await S.speichern(D, 'journal', null, b); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
   };
 }
 
@@ -894,9 +913,9 @@ function terminForm() {
 // =====================================================================
 const WUNSCH_ICON = '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>';
 const wunschListe = () => Object.values(D.wuensche);
-const wunschStandVon = (w) => wunschStand(w, Object.values(D.wunschaktionen), idsGeordnet(), heute(), D.adminId);
+const wunschStandVon = (w) => wunschStand(w, Object.values(D.wunschaktionen), idsGeordnet(), heute());
 const wunschPreisText = (w) => w.menge > 1 ? `${w.menge} × CHF ${chf(w.preis)} = CHF ${chf(wunschTotal(w))}` : `CHF ${chf(w.preis)}`;
-const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', patt: 'gelb', abgelehnt: 'rot', gekauft: 'ok' })[s];
+const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', gekauft: 'ok' })[s];
 
 function wunschliste() {
   const t = heute();
@@ -918,14 +937,13 @@ function wunschliste() {
   const gruppe = (titel, xs, offen) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
   const dein = alle.filter((e) => e.s.status === 'offen' && e.w.erfasstVon !== ich && !e.s.antworten[ich]);
   const laufend = alle.filter((e) => e.s.status === 'offen' && !dein.includes(e));
-  const patt = alle.filter((e) => e.s.status === 'patt');
   const frei = alle.filter((e) => e.s.status === 'freigegeben');
   const gekauft = alle.filter((e) => e.s.status === 'gekauft'), abgelehnt = alle.filter((e) => e.s.status === 'abgelehnt');
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}
-    <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch entscheidet die Mehrheit (bei 2 zu 2 der Halter). Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
+    <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
       <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
-    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Stichentscheid des Halters', patt)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
+    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
     ${gekauft.length ? `<details class="sek" style="margin-top:20px"><summary><span>Gekauft</span><b>${gekauft.length}</b></summary><div class="sek-in">${gekauft.map(zeile).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu();
@@ -997,13 +1015,11 @@ function wunschDetail(id) {
   };
   const zeilen = ids.map((i) => { const a = s.antworten[i]; return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${a && a.stimme === 'nein' ? `<div class="meta">${a.grund ? 'Grund: ' + h(a.grund) : ''}${a.grund && a.alternative ? '<br>' : ''}${a.alternative ? 'Alternative: ' + h(a.alternative) : ''}</div>` : ''}</div><div class="r">${stimmeChip(i)}</div></div>`; }).join('');
   const stand = s.status === 'offen' ? `Antworten bis ${fmt(s.frist)} (einschliesslich). Wer nicht antwortet, stimmt zu.`
-    : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein${s.stich ? ' (Stichentscheid des Halters)' : ''}. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
-    : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.stich ? ' (Stichentscheid des Halters)' : ''}. Nicht kaufen.`
-    : s.status === 'patt' ? `2 zu 2. Nach Ziffer 13 entscheidet der Halter (${h(D.personen[D.adminId]?.name || '?')}).`
+    : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
+    : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.nein.length === s.ja ? ' (Gleichstand gilt als abgelehnt, Ziffer 13)' : ''}. Nicht kaufen.`
     : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}`;
   const waText = `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(s.frist)} antworten (Ja oder Nein).`;
   const meinAntwort = s.status === 'offen' && !mein;
-  const stich = s.status === 'patt' && halter;
   const kaufen = s.status === 'freigegeben' && mein;
   const erstatten = s.status === 'gekauft' && halter && !s.erstattet;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><div><h3 style="margin:0">${h(w.titel)}</h3><div class="info" style="margin:2px 0 0">${wunschPreisText(w)} · von ${h(D.personen[w.erfasstVon]?.name || '?')}, ${fmt(w.datum)}</div></div></div>
@@ -1015,7 +1031,6 @@ function wunschDetail(id) {
     ${kaufen ? `<div class="zwei"><div><label for="w_betrag">Bezahlt, CHF</label><input id="w_betrag" inputmode="decimal" value="${chf(wunschTotal(w)).replace(/[’' ]/g, '')}"></div><div><label for="w_kdatum">Kaufdatum</label><input type="date" id="w_kdatum" value="${heute()}"></div></div>` : ''}
     <div id="msg"></div>
     <div class="t-akt2">${meinAntwort ? `<button class="gross-btn pri" id="w_ja">${s.antworten[ich] ? 'Antwort ändern: Ja' : 'Ja, einverstanden'}</button><button class="gross-btn rot" id="w_nein">${s.antworten[ich] ? 'Antwort ändern: Nein' : 'Nein'}</button>` : ''}
-      ${stich ? '<button class="gross-btn pri" id="w_sja">Stichentscheid: Ja, kaufen</button><button class="gross-btn rot" id="w_snein">Stichentscheid: Nein</button>' : ''}
       ${kaufen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
       ${erstatten ? '<button class="gross-btn pri" id="w_erst">Betrag erstattet</button>' : ''}
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
@@ -1031,10 +1046,6 @@ function wunschDetail(id) {
       if (!grund && !alt) { fehler('Bei Nein bitte einen Grund oder eine Alternative angeben. Nur Nein zu sagen genügt nicht.'); return; }
       aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'nein', grund, alternative: alt }, 'Danke, dein Nein ist gespeichert.');
     };
-  }
-  if (stich) {
-    document.getElementById('w_sja').onclick = () => aktion(`${w.id}_stich`, { art: 'stich', stimme: 'ja' }, 'Stichentscheid: Ja.');
-    document.getElementById('w_snein').onclick = () => aktion(`${w.id}_stich`, { art: 'stich', stimme: 'nein' }, 'Stichentscheid: Nein.');
   }
   if (kaufen) document.getElementById('w_kauf').onclick = async () => {
     const betrag = rappen(val('w_betrag')), datum = val('w_kdatum'), p = pruefeKauf(w, betrag, datum);
