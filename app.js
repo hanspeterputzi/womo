@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112m';
-import * as S from './speicher.js?v=20261112m';
+} from './regeln.js?v=20261112n';
+import * as S from './speicher.js?v=20261112n';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -733,6 +733,7 @@ function kosten() {
   ${sek('Alle Konten', '', kontenInhalt, false)}
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
+  ${(S.online && ich === D.adminId) ? sek('Stellvertretung ' + name('t'), '', `<p class="info" style="margin-top:0">${name('t')} bucht nur als Stellvertretung, wenn du nicht mehr kannst. Dafür braucht ${name('t')} einen eigenen Schlüssel. Du erzeugst ihn hier, die App zeigt ihn nur einmal an, und du gibst ihn ${name('t')} selbst weiter. Ein bisheriger Schlüssel von ${name('t')} gilt danach nicht mehr.</p><div class="btnzeile"><button class="btn pri" id="stv_neu">Neuen Schlüssel für ${name('t')} erzeugen</button></div>`, false) : ''}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
   ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}`);
   bindRahmen();
@@ -756,6 +757,18 @@ function kosten() {
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
   });
+  const sn = document.getElementById('stv_neu'); if (sn) sn.onclick = () => {
+    const los = () => { if (!confirm('Neuen Schlüssel erzeugen? Ein bisheriger Schlüssel gilt danach nicht mehr.')) return;
+      sicher(async () => {
+        const neu = await S.stvSchluesselErzeugen(ich);
+        sheet(`<h3>Schlüssel für ${name('t')}</h3><div class="hinweiskarte gelb" style="margin:0 0 10px">Dieser Schlüssel wird nur jetzt angezeigt. Gib ihn ${name('t')} selbst weiter (nicht per Mail oder Chat, wenn es sich vermeiden lässt) und schliesse dann das Fenster.</div>
+          <div style="font:700 17px/1.5 ui-monospace,Menlo,monospace;word-break:break-all;background:var(--soft);border-radius:12px;padding:14px;user-select:all" id="stv_wert">${h(neu)}</div>
+          <div class="t-akt2" style="margin-top:12px"><button class="gross-btn pri" id="stv_kop">Kopieren</button><button class="gross-btn" id="abb">Schliessen, ich habe ihn weitergegeben</button></div>`);
+        document.getElementById('abb').onclick = schliessen;
+        document.getElementById('stv_kop').onclick = async () => { try { await navigator.clipboard.writeText(neu); hinweis('Schlüssel kopiert.'); } catch { hinweis('Kopieren nicht möglich, bitte den Text markieren und kopieren.'); } };
+      }); };
+    if (!S.schluesselGet(ich)) buchenStarten(() => sn.onclick()); else los();
+  };
   const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchenStarten(() => buchungForm());
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
