@@ -452,37 +452,52 @@ export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertr
 const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
 export const KONTEN_BASIS = [
   K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'), K('1021', 'Bank Euro (in CHF)', 'aktiv'),
-  K('1100', 'Forderungen an Eigentümer', 'aktiv'), K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
+  K('1100', 'Guthaben bei Eigentümer', 'aktiv'), K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
-  K('2000', 'Verbindlichkeiten (offene Rechnungen)', 'passiv'), K('2300', 'TP (Transitorische Passiven)', 'passiv'),
-  K('2400', 'Darlehen von Eltern', 'passiv'), K('2600', 'Rückstellung (Rücklage)', 'passiv'), K('2800', 'Eigenkapital', 'passiv'),
-  K('3000', 'Übriger Ertrag (Erstattungen, Zinsen, Kursgewinne)', 'ertrag'),
+  K('2000', 'Kreditoren', 'passiv'), K('2300', 'TP (Transitorische Passiven)', 'passiv'),
+  K('2400', 'Darlehen von Eltern', 'passiv'), K('2600', 'Rückstellung (Rücklage)', 'passiv'),
+  K('3000', 'Übriger Ertrag (Erstattungen, Zinsen, Kursgewinne)', 'ertrag'), K('3010', 'Geschenkbeitrag Eltern', 'ertrag'),
   K('4000', 'Versicherung', 'aufwand'), K('4010', 'Motorfahrzeugsteuer', 'aufwand'), K('4020', 'Service', 'aufwand'), K('4030', 'Reparaturen', 'aufwand'),
-  K('4040', 'Pneus', 'aufwand'), K('4050', 'Treibstoff', 'aufwand'), K('4060', 'Vignette und Maut', 'aufwand'), K('4070', 'Winterlager und Einstellplatz', 'aufwand'),
+  K('4040', 'Pneus', 'aufwand'), K('4050', 'Treibstoff', 'aufwand'), K('4060', 'Vignette', 'aufwand'), K('4070', 'Parkplatzmiete', 'aufwand'),
   K('4080', 'MFK und Gebühren', 'aufwand'),
   K('4100', 'Reinigungsmaterial', 'aufwand'), K('4110', 'Küchenmaterial', 'aufwand'), K('4120', 'Allgemeine Esswaren', 'aufwand'), K('4130', 'Gas', 'aufwand'),
   K('4140', 'Toilettenartikel', 'aufwand'), K('4150', 'Kleinmaterial', 'aufwand'),
   K('4900', 'Allgemeiner Betriebsaufwand', 'aufwand'), K('4910', 'Bankspesen und Zinsen', 'aufwand'), K('4920', 'Kursdifferenzen (Euro)', 'aufwand'), K('4930', 'Abschreibungen', 'aufwand'),
 ];
-// personen: Objekt id -> { name, konto }. Liefert die Konten mit den echten Namen bei den Darlehen.
+// Eigenkapital: ein Konto je Eigentuemer (2800 bis 2803), in der Reihenfolge Vater, Mutter, Tochter, Sohn.
+export const EK_BASIS = 2800;
+const EK_REIHENFOLGE = ['hp', 'fr', 't', 's'];
+export function eigentuemerGeordnet(personen) {
+  const ids = Object.keys(personen || {});
+  return [...EK_REIHENFOLGE.filter((i) => ids.includes(i)), ...ids.filter((i) => !EK_REIHENFOLGE.includes(i)).sort()].slice(0, 4);
+}
+export const ekNr = (personen, personId) => { const i = eigentuemerGeordnet(personen).indexOf(personId); return i < 0 ? null : String(EK_BASIS + i); };
+// personen: Objekt id -> { name, konto }. Liefert die Konten mit den echten Namen (Darlehen, Eigenkapital).
 export function kontenListe(personen) {
-  const p = Object.values(personen || {});
-  return KONTEN_BASIS.map((k) => {
+  const p = Object.values(personen || {}), ids = eigentuemerGeordnet(personen);
+  const ek = [0, 1, 2, 3].map((i) => ({ nr: String(EK_BASIS + i), name: 'Eigenkapital ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'passiv' }));
+  const liste = KONTEN_BASIS.map((k) => {
     if (!k.kind) return { nr: k.nr, name: k.name, typ: k.typ };
     const person = p.find((x) => x.konto === k.kind);
     return { nr: k.nr, name: person ? k.vorsilbe + person.name : k.name, typ: k.typ };
   });
+  const i = liste.findIndex((k) => k.nr === '2600') + 1;
+  return [...liste.slice(0, i), ...ek, ...liste.slice(i)];
 }
-export const BUCH_VORLAGEN = [
-  { id: 'ausgabe-bank', name: 'Ausgabe, von der Bank bezahlt', soll: '4900', haben: '1020' },
-  { id: 'ausgabe-bar', name: 'Ausgabe, bar bezahlt', soll: '4900', haben: '1000' },
-  { id: 'einlage', name: 'Eigentümer zahlt auf die Bank ein', soll: '1020', haben: '2800' },
-  { id: 'abhebung', name: 'Bargeld von der Bank abgehoben', soll: '1000', haben: '1020' },
-  { id: 'euro', name: 'Franken in Euro gewechselt', soll: '1021', haben: '1020' },
-  { id: 'fahrzeug', name: 'Fahrzeug von der Bank bezahlt', soll: '1530', haben: '1020' },
-  { id: 'frei', name: 'Freie Buchung', soll: '', haben: '' },
-];
+export function buchVorlagen(personen) {
+  const ids = eigentuemerGeordnet(personen);
+  return [
+    { id: 'ausgabe-bank', name: 'Ausgabe, von der Bank bezahlt', soll: '4900', haben: '1020' },
+    { id: 'ausgabe-bar', name: 'Ausgabe, bar bezahlt', soll: '4900', haben: '1000' },
+    ...ids.map((id, i) => ({ id: 'einlage-' + id, name: 'Einzahlung von ' + personen[id].name + ' auf die Bank', soll: '1020', haben: String(EK_BASIS + i) })),
+    { id: 'abhebung', name: 'Bargeld von der Bank abgehoben', soll: '1000', haben: '1020' },
+    { id: 'euro', name: 'Franken in Euro gewechselt', soll: '1021', haben: '1020' },
+    { id: 'fahrzeug', name: 'Fahrzeug von der Bank bezahlt', soll: '1530', haben: '1020' },
+    { id: 'parkplatz', name: 'Parkplatzmiete (Geschenk der Eltern)', soll: '4070', haben: '3010' },
+    { id: 'frei', name: 'Freie Buchung', soll: '', haben: '' },
+  ];
+}
 export const BUCH_TEXT_MAX = 100;
 export const BUCH_BETRAG_MAX = 100000000;   // CHF 1 Million, gleiche Grenze wie die Datenbankregel
 

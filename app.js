@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  kontenListe, BUCH_VORLAGEN, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112c';
-import * as S from './speicher.js?v=20261112c';
+  kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261112d';
+import * as S from './speicher.js?v=20261112d';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -764,9 +764,9 @@ function startFeld(wert) {
 function buchungForm() {
   const gruppen = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }, kl = kontenListe(D.personen);
   const optionen = (sel) => Object.entries(gruppen).map(([typ, tt]) => `<optgroup label="${tt}">${kl.filter((k) => k.typ === typ).map((k) => `<option value="${k.nr}"${k.nr === sel ? ' selected' : ''}>${k.nr} ${h(k.name)}</option>`).join('')}</optgroup>`).join('');
-  const v0 = BUCH_VORLAGEN[0];
+  const vorl = buchVorlagen(D.personen), v0 = vorl[0];
   sheet(`<h3>Buchung erfassen</h3>
-  <label for="b_vorlage">Vorlage</label><select id="b_vorlage">${BUCH_VORLAGEN.map((v) => `<option value="${v.id}">${h(v.name)}</option>`).join('')}</select>
+  <label for="b_vorlage">Vorlage</label><select id="b_vorlage">${vorl.map((v) => `<option value="${v.id}">${h(v.name)}</option>`).join('')}</select>
   <div class="zwei"><div><label for="b_datum">Datum</label><input type="date" id="b_datum" value="${heute()}"></div>
   <div><label for="b_betrag">Betrag in CHF</label><input id="b_betrag" inputmode="decimal" placeholder="z. B. 45.50"></div></div>
   <label for="b_soll">Soll (wohin geht es?)</label><select id="b_soll">${optionen(v0.soll)}</select>
@@ -776,7 +776,7 @@ function buchungForm() {
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
   const kn = Object.fromEntries(kl.map((k) => [k.nr, k.name])), hilfe = document.getElementById('b_hilfe');
   const zeigeHilfe = () => { hilfe.textContent = `Gebucht wird: ${kn[val('b_soll')] || '?'} an ${kn[val('b_haben')] || '?'}. Betrag immer positiv eingeben.`; };
-  document.getElementById('b_vorlage').onchange = () => { const v = BUCH_VORLAGEN.find((x) => x.id === val('b_vorlage')); if (v && v.soll) { document.getElementById('b_soll').value = v.soll; document.getElementById('b_haben').value = v.haben; } zeigeHilfe(); };
+  document.getElementById('b_vorlage').onchange = () => { const v = vorl.find((x) => x.id === val('b_vorlage')); if (v && v.soll) { document.getElementById('b_soll').value = v.soll; document.getElementById('b_haben').value = v.haben; } zeigeHilfe(); };
   document.getElementById('b_soll').onchange = zeigeHilfe; document.getElementById('b_haben').onchange = zeigeHilfe; zeigeHilfe();
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
