@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112q';
-import * as S from './speicher.js?v=20261112q';
+} from './regeln.js?v=20261112r';
+import * as S from './speicher.js?v=20261112r';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -674,7 +674,7 @@ function kosten() {
         <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte. Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».</p></div>`;
     })();
   const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen);
-  const zbKarte = !zb.length ? '' : `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Zu buchen: Wünsche</h3>
+  const zbKarte = !zb.length ? '' : `<div class="karte" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"><h3 style="margin:0 0 6px;font-size:17px;color:var(--gelb-t)">📒 Zu buchen: Wünsche</h3>
     <div class="zeilen">${zb.map((z, i) => `<div class="z"><div class="l"><strong>${h(z.titel)}</strong><div class="meta">${z.art === 'kauf' ? 'Kauf' : 'Erstattung'} · CHF ${chf(z.betrag)} · ${fmt(z.datum)} · ${name(z.personId)}</div></div><div class="r">${buch ? `<button class="btn pri" data-zb="${i}">Buchen</button>` : '<span class="chipk gelb">HP bucht</span>'}</div></div>`).join('')}</div>
     <p class="info" style="margin-bottom:0">Gekaufte Wünsche kommen erst jetzt in die Buchhaltung. Beim Kauf wählst du das Aufwandskonto, die Gegenbuchung läuft über den Kreditor der Person, die ausgelegt hat.</p></div>`;
   const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
