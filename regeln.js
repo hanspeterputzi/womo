@@ -304,6 +304,36 @@ export function faelligkeiten(startIso, heuteIso, einzahlungen, person, personId
   });
 }
 
+// Zahlungsplan ueber alle 8 Vertragsjahre je Person (Ruecklage fuer alle, Darlehensraten nur Tochter und Sohn).
+// Erfasste Einzahlungen werden der Reihe nach den Jahren zugeordnet (aeltestes Jahr zuerst, auch Vorauszahlungen).
+// Je Jahr und Zweck: soll, bezahlt, offen, offenFaellig (heute schon faellig und nicht bezahlt) und Status
+// 'ueberfaellig' | 'bezahlt' | 'offen' (noch nicht faellig). restschuldPlan: Restschuld laut Anhang A (Erlass eingerechnet).
+export const ERLASS_CHF = 675;
+export const DARLEHEN_TOTAL_CHF = 15000;     // Anhang A: Darlehen je Kind vor Erlass und Rueckzahlung
+export function achtJahrePlan(startIso, heuteIso, einzahlungen, person, personId) {
+  if (!startIso) return null;
+  const kind = person.konto !== 'eltern';
+  const zwecke = kind ? ['ruecklage', 'darlehen'] : ['ruecklage'];
+  const rest = {}, jahre = [];
+  for (const z of zwecke) rest[z] = einzahlungen.filter((e) => e.personId === personId && e.zweck === z).reduce((s, e) => s + e.betrag, 0);
+  const termine = Object.fromEntries(zwecke.map((z) => [z, sollTermine(startIso, z)]));
+  let restschuld = DARLEHEN_TOTAL_CHF * 100;
+  for (let y = 0; y < 8; y++) {
+    const jahr = { jahr: y + 1 };
+    for (const z of zwecke) {
+      const items = z === 'darlehen' ? termine[z].slice(12 * y, 12 * y + 12) : [termine[z][y]];
+      const soll = items.reduce((s, t) => s + t.betrag, 0), bezahlt = Math.min(rest[z], soll); rest[z] -= bezahlt;
+      const faellig = items.filter((t) => t.datum < heuteIso).reduce((s, t) => s + t.betrag, 0);
+      const offenFaellig = Math.max(0, faellig - bezahlt), offen = soll - bezahlt;
+      jahr[z] = { soll, bezahlt, offen, offenFaellig, von: items[0].datum, bis: items[items.length - 1].datum, monatlich: z === 'darlehen' ? items[0].betrag : null, status: offenFaellig > 0 ? 'ueberfaellig' : offen === 0 ? 'bezahlt' : 'offen' };
+    }
+    if (kind) { restschuld -= (DARLEHEN_CHF[y] + ERLASS_CHF) * 100; jahr.restschuldPlan = restschuld; }
+    jahre.push(jahr);
+  }
+  const summe = (f) => jahre.reduce((s, j) => s + zwecke.reduce((t, z) => t + j[z][f], 0), 0);
+  return { jahre, zwecke, total: { soll: summe('soll'), bezahlt: summe('bezahlt'), offen: summe('offen'), offenFaellig: summe('offenFaellig') } };
+}
+
 // Zahlungsverzug (Ziffer 4): Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung.
 export function zahlungsSperre(status, heuteIso) {
   if (!status || status.status !== 'erinnert' || !status.erinnertAm) return { stufe: 'ok' };

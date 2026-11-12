@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112f';
-import * as S from './speicher.js?v=20261112f';
+  achtJahrePlan, ERLASS_CHF, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261112g';
+import * as S from './speicher.js?v=20261112g';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -671,10 +671,32 @@ function kosten() {
       }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, Rückzahlung je CHF 9 600).</p>${ich === D.adminId ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
   }
 
-  const fzInhalt = !D.start ? '<p class="info" style="margin-top:0">Das Übernahmedatum fehlt (siehe Zahlplan).</p>' : `<div class="zeilen">${ids.map((i) => {
-    const fz = faelligkeiten(D.start, t, el, D.personen[i], i);
-    return `<div class="z"><div class="l"><strong>${name(i)}</strong>${fz.map((f) => `<div class="meta">${ZWECKE[f.zweck]}: ${fzText(f)}</div>`).join('')}</div><div class="r">${fz.some((f) => f.rueckstand) ? '<span class="chipk rot">überfällig</span>' : '<span class="chipk ok">pünktlich</span>'}</div></div>`;
-  }).join('')}</div><p class="info">Darlehensraten (Tochter und Sohn): monatlich am letzten Tag des Monats, die erste Rate Ende des Monats der Übernahme (Ziffer 4). Rücklage: jährlich bis 31. Dezember (Ziffer 5). Es zählen alle erfassten Einzahlungen, auch im Voraus bezahlte.</p>`;
+  // ---- Offene Zahlungen (immer sichtbar) und Zahlungen der Kinder ueber 8 Jahre ----
+  const plaene = Object.fromEntries(ids.map((i) => [i, D.start && D.personen[i] ? achtJahrePlan(D.start, t, el, D.personen[i], i) : null]));
+  const offenKarte = !D.start
+    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${ich === D.adminId ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
+    : (() => {
+      const zeilen = ids.map((i) => {
+        const fz = faelligkeiten(D.start, t, el, D.personen[i], i), pl = plaene[i];
+        const ueber = fz.some((f) => f.rueckstand), bald = fz.some((f) => f.naechste && f.naechste.datum <= addTage(t, VORLAUF_TAGE));
+        const chip = ueber ? `<span class="chipk rot">überfällig ${chf(pl.total.offenFaellig)}</span>` : bald ? '<span class="chipk gelb">bald fällig</span>' : '<span class="chipk ok">pünktlich</span>';
+        return `<div class="z"><div class="l"><strong>${name(i)}</strong>${fz.map((f) => `<div class="meta">${ZWECKE[f.zweck]}: ${fzText(f)}</div>`).join('')}<div class="meta">Noch zu zahlen bis Vertragsende: CHF ${chf(pl.total.offen)}</div></div><div class="r">${chip}</div></div>`;
+      }).join('');
+      const ueberTotal = ids.reduce((s, i) => s + plaene[i].total.offenFaellig, 0), offenTotal = ids.reduce((s, i) => s + plaene[i].total.offen, 0);
+      return `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3>
+        <div class="hero-stand ${ueberTotal > 0 ? 'rot' : 'ok'}" style="margin:0 0 6px">${ueberTotal > 0 ? `Überfällig insgesamt: CHF ${chf(ueberTotal)}` : 'Nichts überfällig.'}</div>
+        <div class="zeilen">${zeilen}</div>
+        <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle erfassten Einzahlungen, auch im Voraus bezahlte. Eintragen: ＋ Erfassen → Zahlplan: Einzahlung erfassen.</p></div>`;
+    })();
+  const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
+  const kinderPlan = kinderIds.filter((i) => plaene[i]).map((i) => {
+    const pl = plaene[i];
+    return `<div class="zeilen" style="margin-bottom:14px"><div class="z" style="padding-bottom:2px"><div class="l"><strong style="font-size:16px">${name(i)}</strong><div class="meta">Bezahlt CHF ${chf(pl.total.bezahlt)} von ${chf(pl.total.soll)} · noch offen CHF ${chf(pl.total.offen)}</div></div></div>${pl.jahre.map((j) => {
+      const d = j.darlehen, r = j.ruecklage, s = [d.status, r.status].includes('ueberfaellig') ? 'ueberfaellig' : d.status === 'bezahlt' && r.status === 'bezahlt' ? 'bezahlt' : 'offen';
+      return `<div class="z"><div class="l"><strong>Jahr ${j.jahr}</strong><div class="meta">Raten ${fmt(d.von)} bis ${fmt(d.bis)}</div><div class="meta">Darlehen: ${chf(d.bezahlt)} von ${chf(d.soll)} (${chf(d.monatlich)} pro Monat)</div><div class="meta">Rücklage: ${chf(r.bezahlt)} von ${chf(r.soll)}, bis ${fmt(r.bis)}</div><div class="meta">Restschuld nach Plan: ${chf(j.restschuldPlan)}</div></div><div class="r">${chipJ(s)}</div></div>`;
+    }).join('')}</div>`;
+  }).join('');
+  const kinderInhalt = !D.start ? '<p class="info" style="margin-top:0">Das Übernahmedatum fehlt.</p>' : `${kinderPlan}<p class="info" style="margin-top:0">Soll laut Anhang A (Darlehen, Rückzahlung je CHF 9 600) und Ziffer 5 (Rücklage). Die Restschuld nach Plan rechnet den Erlass von CHF ${ERLASS_CHF} pro Jahr ein. Erfasste Zahlungen werden der Reihe nach den Jahren zugeordnet, das älteste Jahr zuerst.</p>`;
   const status = ids.map((i) => {
     const sp = zahlungsSperre(D.zahlstatus[i], t);
     const chip = sp.stufe === 'gesperrt' ? `<span class="chipk rot">Nutzungsverbot seit ${fmt(sp.ab)}</span>` : sp.stufe === 'erinnert' ? `<span class="chipk gelb">Erinnert, Frist bis ${fmt(sp.frist)}</span>` : '<span class="chipk ok">in Ordnung</span>';
@@ -714,12 +736,13 @@ function kosten() {
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
   </div>
+  ${offenKarte}
   ${sek('Bilanz', 'CHF ' + chf(bi.sAktiven), bilanzInhalt, true)}
   ${sek('Erfolgsrechnung', J + ': ' + chf(er.ergebnis), erfInhalt, false)}
   ${sek('Buchungen ' + J, jahrBuch.length + (jahrBuch.length === 1 ? ' Eintrag' : ' Einträge'), journalInhalt, jahrBuch.length > 0 && jahrBuch.length <= 3)}
   ${sek('Alle Konten', '', kontenInhalt, false)}
   ${sek('Anschaffung', 'CHF ' + chf(an.gesamt) + ' von ' + chf(an.max) + ' Obergrenze', anInhalt, false)}
-  ${sek('Fälligkeiten', D.start ? '' : 'Datum fehlt', fzInhalt, false)}
+  ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
   ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}
