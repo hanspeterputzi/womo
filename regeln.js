@@ -481,7 +481,7 @@ export function pruefeKauf(w, betrag, datum) {
 export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' };
 const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
 export const KONTEN_BASIS = [
-  K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'), K('1021', 'Bank Euro (in CHF)', 'aktiv'),
+  K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'),
   K('1100', 'Guthaben bei Eigentümer', 'aktiv'), K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
@@ -526,17 +526,16 @@ export function buchVorlagen(personen) {
     ...ids.map((id, i) => ({ id: 'ruecklage-' + id, name: 'Rücklage von ' + personen[id].name + ' auf die Bank', soll: '1020', haben: String(RUECKLAGE_BASIS + i) })),
     ...KONTEN_BASIS.filter((k) => k.kind).map((k) => { const p = Object.values(personen || {}).find((x) => x.konto === k.kind); return p ? { id: 'rate-' + k.kind, name: 'Darlehensrate von ' + p.name + ' auf die Bank', soll: '1020', haben: k.nr } : null; }).filter(Boolean),
     { id: 'abhebung', name: 'Bargeld von der Bank abgehoben', soll: '1000', haben: '1020' },
-    { id: 'euro', name: 'Franken in Euro gewechselt', soll: '1021', haben: '1020' },
     { id: 'fahrzeug', name: 'Fahrzeug von der Bank bezahlt', soll: '1530', haben: '1020' },
     { id: 'parkplatz', name: 'Parkplatzmiete (Geschenk der Eltern)', soll: '4070', haben: '3010' },
     { id: 'frei', name: 'Freie Buchung', soll: '', haben: '' },
   ];
 }
-// Zahlplan aus der Buchhaltung: Als Zahlung zaehlt eine Buchung von einem Geldkonto (Kasse, Bank CHF, Bank Euro) an
+// Zahlplan aus der Buchhaltung: Als Zahlung zaehlt eine Buchung von einem Geldkonto (Kasse, Bank CHF) an
 //   - «Darlehen an <Kind>»  = Darlehensrate des Kindes,
 //   - «Ruecklage <Eigentuemer>» = Ruecklage dieses Eigentuemers.
 // Liefert Eintraege im Format des Zahlplans: { personId, zweck: 'darlehen' | 'ruecklage', betrag, datum }.
-export const GELDKONTEN = ['1000', '1020', '1021'];
+export const GELDKONTEN = ['1000', '1020'];
 export function zahlungenAusJournal(journal, personen) {
   const ids = eigentuemerGeordnet(personen), darlehen = {}, ruecklage = {};
   for (const k of KONTEN_BASIS) if (k.kind) { const e = Object.entries(personen || {}).find(([, p]) => p.konto === k.kind); if (e) darlehen[k.nr] = e[0]; }

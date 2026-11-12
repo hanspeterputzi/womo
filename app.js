@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112h';
-import * as S from './speicher.js?v=20261112h';
+} from './regeln.js?v=20261112i';
+import * as S from './speicher.js?v=20261112i';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -635,7 +635,7 @@ function uebergabeForm(bid, phase) {
 // =====================================================================
 function kosten() {
   const J = jahrK, ids = idsGeordnet(), t = heute(), buch = buchhalter();
-  const kl = Object.values(D.kosten), eAlt = Object.values(D.einzahlungen), el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
+  const kl = Object.values(D.kosten), el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
 
@@ -689,7 +689,6 @@ function kosten() {
   }).join('');
 
   const kjahr = kl.filter((k) => k.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
-  const eAltListe = eAlt.sort((a, b) => (a.datum < b.datum ? 1 : -1));
   // ---- Einfache doppelte Buchhaltung ----
   const jn = D.journal, kname = Object.fromEntries(kontenListe(D.personen).map((k) => [k.nr, k.name]));
   const stichtag = t.slice(0, 4) === String(J) ? t : `${J}-12-31`;
@@ -729,8 +728,7 @@ function kosten() {
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
-  ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}
-  ${eAltListe.length ? sek('Frühere Einzahlungen', eAltListe.length + (eAltListe.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Einzahlungen wurden vor der Buchhaltung erfasst. Sie zählen nicht mehr für den Zahlplan. Bitte als Buchung erfassen.</p>' + eAltListe.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''), e)).join(''), false) : ''}`);
+  ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
@@ -742,7 +740,6 @@ function kosten() {
     if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
   };
   app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
-  app.querySelectorAll('[data-de]').forEach((b) => b.onclick = () => { const e = D.einzahlungen[b.dataset.de]; if (e) eintragSheet('CHF ' + chf(e.betrag), `${fmt(e.datum)} · ${name(e.personId)} · ${h(ZWECKE[e.zweck])}${e.text ? ' · ' + h(e.text) : ''}<br>Erfasst von ${name(e.erfasstVon)}.`, e, () => S.loeschen(D, 'einzahlungen', e.id)); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.`, j, () => S.loeschen(D, 'journal', j.id)); });
   app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
     const kb = kontoblatt(jn, D.personen, b.dataset.kb, stichtag); if (!kb.konto) return;
