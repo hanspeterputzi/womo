@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112n';
-import * as S from './speicher.js?v=20261112n';
+} from './regeln.js?v=20261112o';
+import * as S from './speicher.js?v=20261112o';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -742,7 +742,7 @@ function kosten() {
   const eintragSheet = (titel, info, x, loeschen) => {
     const darf = buch && eigener(x);
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
-      <div class="t-akt2">${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
+      <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button>${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}</div>`);
     document.getElementById('abb').onclick = schliessen;
     if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
   };
@@ -1053,7 +1053,7 @@ function wunschDetail(id) {
       ${kaufen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
       ${erstatten ? '<button class="gross-btn pri" id="w_erst">Betrag erstattet</button>' : ''}
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
-      ${mein && s.status !== 'gekauft' ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
+      <button class="gross-btn" id="abb">Schliessen</button>${mein && s.status !== 'gekauft' ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
   const fb = document.getElementById('w_fbig');
   if (fb) fb.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(w.foto)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); };
