@@ -459,7 +459,7 @@ export const KONTEN_BASIS = [
   K('2400', 'Darlehen von Eltern', 'passiv'), K('2600', 'Rückstellung (Rücklage)', 'passiv'),
   K('3000', 'Übriger Ertrag (Erstattungen, Zinsen, Kursgewinne)', 'ertrag'), K('3010', 'Geschenkbeitrag Eltern', 'ertrag'),
   K('4000', 'Versicherung', 'aufwand'), K('4010', 'Motorfahrzeugsteuer', 'aufwand'), K('4020', 'Service', 'aufwand'), K('4030', 'Reparaturen', 'aufwand'),
-  K('4040', 'Pneus', 'aufwand'), K('4050', 'Treibstoff', 'aufwand'), K('4060', 'Vignette', 'aufwand'), K('4070', 'Parkplatzmiete', 'aufwand'),
+  K('4040', 'Pneus', 'aufwand'), K('4060', 'Vignette', 'aufwand'), K('4070', 'Parkplatzmiete', 'aufwand'),
   K('4080', 'MFK und Gebühren', 'aufwand'),
   K('4100', 'Reinigungsmaterial', 'aufwand'), K('4110', 'Küchenmaterial', 'aufwand'), K('4120', 'Allgemeine Esswaren', 'aufwand'), K('4130', 'Gas', 'aufwand'),
   K('4140', 'Toilettenartikel', 'aufwand'), K('4150', 'Kleinmaterial', 'aufwand'),
