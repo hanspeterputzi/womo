@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261112l';
+import { tageListe } from './regeln.js?v=20261112m';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -104,6 +104,48 @@ export async function loeschen(d, sammlung, id) {
   delete d[sammlung][id];
   if (!online) schreiben(d);
 }
+// ---------- Buchhaltung: Buchungsschluessel ----------
+// Nur wer einen Schluessel kennt (HP: «buchung», Nanouk: «stellvertretung»), darf in 'journal' schreiben, aendern oder loeschen.
+// Der Schluessel wird je Person auf dem Geraet gemerkt, nie in der Datenbank gespeichert und nie angezeigt. Die App schreibt
+// im selben Schritt (Batch) ein einmaliges Ticket mit dem Schluessel, die Datenbankregeln pruefen es (siehe firestore.rules).
+const KEY_SCHL = 'womo-buchschluessel-';
+export const schluesselGet = (personId) => { try { return localStorage.getItem(KEY_SCHL + personId) || ''; } catch { return ''; } };
+export const schluesselSet = (personId, s) => { try { if (s) localStorage.setItem(KEY_SCHL + personId, String(s).trim()); else localStorage.removeItem(KEY_SCHL + personId); } catch {} };
+const zufall = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, '0')).join('');
+const abgelehnt = (e, personId) => {
+  if (e && e.code === 'permission-denied') { schluesselSet(personId, ''); return new Error('Die Buchhaltung hat die Buchung abgelehnt: Der Buchungsschlüssel fehlt oder ist falsch. Er wurde gelöscht, bitte beim nächsten Buchen neu eingeben.'); }
+  return e;
+};
+export async function journalSpeichern(d, daten, personId) {
+  const neuId = daten.id || 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const voll = sauber({ ...daten, id: neuId, erfasstAm: daten.erfasstAm || new Date().toISOString() });
+  if (online) {
+    await fsInit();
+    const s = schluesselGet(personId);
+    if (!s) throw new Error('Der Buchungsschlüssel fehlt.');
+    const ticket = 't' + zufall(), batch = fs.writeBatch(db);
+    batch.set(fs.doc(db, 'familien', code, 'tickets', ticket), { s });
+    batch.set(fs.doc(db, 'familien', code, 'journal', neuId), { ...voll, ticket });
+    try { await batch.commit(); } catch (e) { throw abgelehnt(e, personId); }
+  }
+  d.journal[neuId] = voll;
+  if (!online) schreiben(d);
+  return neuId;
+}
+export async function journalLoeschen(d, id, personId) {
+  if (online) {
+    await fsInit();
+    const s = schluesselGet(personId);
+    if (!s) throw new Error('Der Buchungsschlüssel fehlt.');
+    const batch = fs.writeBatch(db);
+    batch.set(fs.doc(db, 'familien', code, 'tickets', id + '_del'), { s });
+    batch.delete(fs.doc(db, 'familien', code, 'journal', id));
+    try { await batch.commit(); } catch (e) { throw abgelehnt(e, personId); }
+  }
+  delete d.journal[id];
+  if (!online) schreiben(d);
+}
+
 // Uebergabedatum des Fahrzeugs (Beginn Vertragsjahr 1)
 export async function startSetzen(d, iso) {
   if (online) await fs.updateDoc(fs.doc(db, 'familien', code), { start: iso });

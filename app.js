@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112l';
-import * as S from './speicher.js?v=20261112l';
+} from './regeln.js?v=20261112m';
+import * as S from './speicher.js?v=20261112m';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -717,7 +717,7 @@ function kosten() {
     <div class="zeilen" style="margin-top:12px">${total(er.ergebnis >= 0 ? 'Gewinn' : 'Verlust', er.ergebnis)}</div>`;
   const alleKonten = kontenListe(D.personen).map((k) => ({ ...k, saldo: sal[k.nr].saldo }));
   const kontenInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Antippen zeigt das Kontoblatt.</p>${Object.entries({ aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }).map(([typ, tt]) => `<div class="zeilen">${kopf(tt)}${alleKonten.filter((k) => k.typ === typ).map(kz).join('')}</div>`).join('')}`;
-  const journalInhalt = (jahrBuch.length ? jahrBuch.map((b) => zeileK('data-dj', b.id, 'CHF ' + chf(b.betrag), fmt(b.datum).slice(0, 6) + ' · ' + h(b.text) + '<br>' + h(kname[b.soll] || b.soll) + ' an ' + h(kname[b.haben] || b.haben), b)).join('') : '<p class="leer-t">Keine Buchungen erfasst.</p>')
+  const journalInhalt = (jahrBuch.length ? jahrBuch.map((b) => zeileK('data-dj', b.id, 'CHF ' + chf(b.betrag), fmt(b.datum).slice(0, 6) + ' · ' + h(b.text) + (b.stellvertretung ? ' · Stellvertretung' : '') + '<br>' + h(kname[b.soll] || b.soll) + ' an ' + h(kname[b.haben] || b.haben), b)).join('') : '<p class="leer-t">Keine Buchungen erfasst.</p>')
     + (buch ? '' : '<p class="info">Buchen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>');
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
@@ -746,8 +746,8 @@ function kosten() {
     if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
   };
   app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
-  app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchungForm(z); });
-  app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.`, j, () => S.loeschen(D, 'journal', j.id)); });
+  app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchenStarten(() => buchungForm(z)); });
+  app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.${j.stellvertretung ? `<br><strong>Gebucht als Stellvertretung</strong> am ${fmt((j.stellvertretungAm || j.erfasstAm || '').slice(0, 10))}.` : ''}`, j, () => S.journalLoeschen(D, j.id, ich)); });
   app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
     const kb = kontoblatt(jn, D.personen, b.dataset.kb, stichtag); if (!kb.konto) return;
     const vz = (rp) => (rp < 0 ? '−' : '') + chf(Math.abs(rp));
@@ -756,7 +756,7 @@ function kosten() {
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
   });
-  const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchungForm();
+  const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchenStarten(() => buchungForm());
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
@@ -768,6 +768,23 @@ function startFeld(wert) {
   return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übernahmedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
 }
 
+// Nanouk bucht nur als Stellvertreterin (Vertrag Ziffer 11 und 15): vor jeder Buchung kommt ein Hinweis.
+const stellvertretung = () => !!ich && ich !== D.adminId && ich === 't';
+function buchenStarten(weiter) {
+  const los = () => { if (!stellvertretung()) { weiter(); return; }
+    sheet(`<h3>Stellvertretung</h3><div class="hinweiskarte rot" style="margin:0 0 10px">${h(D.personen[D.adminId]?.name || 'HP')} führt die Buchhaltung. Du buchst nur, wenn ${h(D.personen[D.adminId]?.name || 'HP')} dazu aus eigener Kraft nicht mehr fähig ist (Vertrag Ziffer 11 und 15). Jede Buchung von dir wird als Stellvertretung gekennzeichnet.</div>
+      <div class="t-akt2"><button class="gross-btn rot" id="stv_ja">${h(D.personen[D.adminId]?.name || 'HP')} kann nicht mehr, ich buche</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+    document.getElementById('abb').onclick = schliessen; document.getElementById('stv_ja').onclick = () => { schliessen(); weiter(); }; };
+  if (S.online && !S.schluesselGet(ich)) {
+    sheet(`<h3>Buchungsschlüssel</h3><p class="info" style="margin:0 0 8px">Buchen darf nur, wer den Buchungsschlüssel kennt. Bitte den Schlüssel einmal eingeben, er wird nur auf diesem Gerät gemerkt.</p>
+      <label for="schl">Buchungsschlüssel</label><input id="schl" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="100"><div id="msg"></div>
+      <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="schl_ok">Speichern</button></div>`);
+    document.getElementById('abb').onclick = schliessen;
+    document.getElementById('schl_ok').onclick = () => { const s = val('schl').trim(); if (s.length < 20) { fehler('Der Schlüssel ist zu kurz. Bitte genau so eingeben, wie er mitgeteilt wurde.'); return; } S.schluesselSet(ich, s); schliessen(); los(); };
+    return;
+  }
+  los();
+}
 function buchungForm(vor) {
   const gruppen = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }, kl = kontenListe(D.personen);
   const optionen = (sel, platzhalter) => (platzhalter ? '<option value="" selected>Bitte Konto wählen</option>' : '') + Object.entries(gruppen).map(([typ, tt]) => `<optgroup label="${tt}">${kl.filter((k) => k.typ === typ).map((k) => `<option value="${k.nr}"${k.nr === sel && !platzhalter ? ' selected' : ''}>${k.nr} ${h(k.name)}</option>`).join('')}</optgroup>`).join('');
@@ -789,9 +806,10 @@ function buchungForm(vor) {
   document.getElementById('spei').onclick = async () => {
     const b = { datum: val('b_datum'), soll: val('b_soll'), haben: val('b_haben'), betrag: rappen(val('b_betrag')), text: val('b_text').trim(), erfasstVon: ich };
     if (vor) { b.wunschId = vor.wunschId; b.wunschArt = vor.art; }
+    if (stellvertretung()) { b.stellvertretung = true; b.stellvertretungAm = new Date().toISOString(); }
     const p = pruefeBuchsatz(b, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { await S.speichern(D, 'journal', null, b); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
+    await sicher(async () => { await S.journalSpeichern(D, b, ich); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
   };
 }
 
