@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112r';
-import * as S from './speicher.js?v=20261112r';
+} from './regeln.js?v=20261113a';
+import * as S from './speicher.js?v=20261113a';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -677,6 +677,19 @@ function kosten() {
   const zbKarte = !zb.length ? '' : `<div class="karte" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"><h3 style="margin:0 0 6px;font-size:17px;color:var(--gelb-t)">📒 Zu buchen: Wünsche</h3>
     <div class="zeilen">${zb.map((z, i) => `<div class="z"><div class="l"><strong>${h(z.titel)}</strong><div class="meta">${z.art === 'kauf' ? 'Kauf' : 'Erstattung'} · CHF ${chf(z.betrag)} · ${fmt(z.datum)} · ${name(z.personId)}</div></div><div class="r">${buch ? `<button class="btn pri" data-zb="${i}">Buchen</button>` : '<span class="chipk gelb">HP bucht</span>'}</div></div>`).join('')}</div>
     <p class="info" style="margin-bottom:0">Gekaufte Wünsche kommen erst jetzt in die Buchhaltung. Beim Kauf wählst du das Aufwandskonto, die Gegenbuchung läuft über den Kreditor der Person, die ausgelegt hat.</p></div>`;
+  // Anleitung (nur fuer die Buchhaltung: HP und Stellvertreterin). Bewusst ohne Namen, der Code der App ist oeffentlich.
+  const schritte = [
+    ['Der Wunsch wird bewilligt', 'ok', 'Macht: die App', 'Es wird noch nichts gebucht. Die Person, die den Wunsch vorgeschlagen hat, sieht im Kalender «freigegeben, du kannst kaufen». Der Wunsch steht im Tab «Wünsche» und im Archiv.'],
+    ['Die Person kauft und bezahlt aus eigener Tasche', '', 'Ausserhalb der App', ''],
+    ['Der Kauf wird eingetragen', '', 'Macht: die kaufende Person', 'Tab «Wünsche» → auf den Wunsch tippen → Betrag und Kaufdatum prüfen → «Gekauft eintragen». Das kann nur die Person, die den Wunsch vorgeschlagen hat. Danach erscheinen bei der Buchhaltung die orange Karte «Zu buchen: Wünsche» im Tab «Kosten» und ein Hinweis im Kalender.'],
+    ['Den Kauf buchen', 'gelb', 'Macht: die Buchhaltung', 'Tab «Kosten» → orange Karte «Zu buchen» → «Buchen» → bei «Soll» das Aufwandskonto wählen (das entscheidet die Buchhaltung, alles andere ist schon ausgefüllt) → «Speichern».<br>Gebucht wird: Aufwand an das Kreditor-Konto der kaufenden Person. Das Womo schuldet ihr jetzt den Betrag.'],
+    ['Das Geld zurückzahlen', '', 'Ausserhalb der App', 'Vom gemeinsamen Konto an die kaufende Person.'],
+    ['Die Rückzahlung bestätigen', '', 'Macht: der Halter', 'Tab «Wünsche» → auf den Wunsch tippen → «Betrag erstattet». Diesen Knopf sieht nur der Halter.'],
+    ['Die Rückzahlung buchen', 'gelb', 'Macht: die Buchhaltung', 'Tab «Kosten» → die orange Karte zeigt jetzt «Erstattung» → «Buchen» → «Speichern». Hier muss kein Konto gewählt werden.<br>Gebucht wird: Kreditor-Konto der kaufenden Person an Bank CHF. Das Kreditor-Konto steht danach wieder auf 0.'],
+  ];
+  const anleitung = `<p class="info" style="margin-top:0">Ein Wunsch kommt erst in die Buchhaltung, wenn er bewilligt und gekauft ist. <strong>Automatisch gebucht wird nie etwas.</strong> Die App zeigt nur, was zu buchen ist, und füllt die Buchung vor. Beispiel: ein Wunsch über CHF 12.00.</p>
+    <div class="zeilen">${schritte.map(([titel, k, wer, text], i) => `<div class="z" style="align-items:flex-start"><div class="l"><strong>${i + 1}. ${titel}</strong><div style="margin:4px 0"><span class="chipk ${k}">${wer}</span></div>${text ? `<div class="meta">${text}</div>` : ''}</div></div>`).join('')}</div>
+    <p class="info" style="margin-bottom:0"><strong>Wichtig:</strong> Zuerst den Kauf buchen (Schritt 4), erst danach die Rückzahlung (Schritt 7). Hast du eine Buchung von Hand erfasst, erkennt die App sie, wenn Betrag und Kreditor-Konto stimmen, und bietet sie nicht nochmals an.</p>`;
   const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
   const kinderPlan = kinderIds.filter((i) => plaene[i]).map((i) => {
     const pl = plaene[i];
@@ -733,6 +746,7 @@ function kosten() {
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${(S.online && ich === D.adminId) ? sek('Stellvertretung ' + name('t'), '', `<p class="info" style="margin-top:0">${name('t')} bucht nur als Stellvertretung, wenn du nicht mehr kannst. Dafür braucht ${name('t')} einen eigenen Schlüssel. Du erzeugst ihn hier, die App zeigt ihn nur einmal an, und du gibst ihn ${name('t')} selbst weiter. Ein bisheriger Schlüssel von ${name('t')} gilt danach nicht mehr.</p><div class="btnzeile"><button class="btn pri" id="stv_neu">Neuen Schlüssel für ${name('t')} erzeugen</button></div>`, false) : ''}
+  ${buch ? sek('Anleitung: Wunsch buchen', '7 Schritte', anleitung, false) : ''}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
