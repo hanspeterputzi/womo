@@ -185,7 +185,7 @@ export const DARLEHEN_CHF = [360, 600, 840, 1080, 1320, 1560, 1800, 2040];     /
 export const ANSCHAFFUNG_MAX_CHF = 60000;                                        // Richtwert der Anschaffung (Vertrag Ziffer 3), darueber braucht es das Einverstaendnis aller
 export const FRIST_TAGE = 10;                                                    // Vertrag Ziffer 4, Zahlungsverzug
 export const KOSTENARTEN = {
-  betrieb: 'Laufende Kosten (Versicherung, Steuer, Vignette, Konto, Kleines)',
+  betrieb: 'Laufende Kosten (Versicherung, Steuer, Vignette, Konto, Verbrauchsmaterial, Einrichtung)',
   ruecklage: 'Reparatur, Reifen, grosser Service (zuerst aus der Rücklage)',
   selbstbehalt: 'Selbstbehalt nach Schaden (Verursacher)',
   praemie: 'Bonusverlust und höhere Prämie nach Schaden',
@@ -382,4 +382,86 @@ export function vorschauBuchung(b, buchungen, personen, alltag) {
   }
   const entfallen = Object.values(alltag || {}).filter((a) => a.datum >= b.von && a.datum <= b.bis).map((a) => a.datum);
   return { ueber, entfallen: [...new Set(entfallen)].sort() };
+}
+
+// =====================================================================
+// Wunschliste (Vertrag Ziffer 5, Absatz «Einrichtung»). Betraege in Rappen.
+// Einrichtungsgegenstaende bis CHF 200 pro Stueck: vorher in der Wunschliste vorschlagen, 5 Tage Frist,
+// wer nicht antwortet stimmt zu, bei Widerspruch entscheidet die Mehrheit (Ziffer 13, bei 2 zu 2 der Halter).
+// Antworten, Stichentscheid und Erstattung sind eigene Eintraege (Sammlung 'wunschaktionen'), damit niemand
+// einen Eintrag einer anderen Person aendert.
+// =====================================================================
+export const WUNSCH_MAX_RAPPEN = 20000;     // CHF 200 pro Stueck bzw. fuer gleichartige Stuecke zusammen
+export const WUNSCH_FRIST_TAGE = 5;
+export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', patt: 'Stichentscheid offen', abgelehnt: 'Abgelehnt', gekauft: 'Gekauft' };
+
+export const wunschTotal = (w) => (Number.isInteger(w.preis) ? w.preis : 0) * (Number.isInteger(w.menge) ? w.menge : 1);
+
+export function pruefeWunsch(w) {
+  const f = [];
+  if (!(w.titel || '').trim()) f.push('Bitte angeben, was gekauft werden soll (Produkt).');
+  if (!Number.isInteger(w.preis) || w.preis <= 0) f.push('Bitte den Preis pro Stück angeben (grösser als 0).');
+  if (!Number.isInteger(w.menge) || w.menge < 1 || w.menge > 99) f.push('Die Stückzahl muss zwischen 1 und 99 liegen.');
+  if (Number.isInteger(w.preis) && w.preis > WUNSCH_MAX_RAPPEN) f.push('Ein Stück kostet mehr als CHF 200. Das ist keine Kleinanschaffung: bitte im Familienrat besprechen (Vertrag Ziffer 5 und 3).');
+  else if (Number.isInteger(w.preis) && Number.isInteger(w.menge) && w.menge >= 1 && wunschTotal(w) > WUNSCH_MAX_RAPPEN) f.push('Gleichartige Stücke kosten zusammen mehr als CHF 200. Bitte im Familienrat besprechen (Vertrag Ziffer 5).');
+  if ((w.link || '').trim() && !/^https?:\/\/\S+$/i.test(w.link.trim())) f.push('Der Link muss mit http:// oder https:// beginnen.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(w.datum || '')) f.push('Datum fehlt.');
+  return { ok: f.length === 0, fehler: f };
+}
+
+// Stand eines Wunsches. aktionen: alle Eintraege der Sammlung 'wunschaktionen' (werden hier nach wunschId gefiltert).
+// ids: alle Eigentuemer, halterId: der Halter (Stichentscheid bei 2 zu 2).
+export function wunschStand(w, aktionen, ids, heute, halterId) {
+  const mine = (aktionen || []).filter((a) => a.wunschId === w.id);
+  const frist = addTage(w.datum, WUNSCH_FRIST_TAGE);
+  const abgelaufen = heute > frist;
+  const antworten = {};
+  for (const a of mine) if (a.art === 'antwort' && ids.includes(a.personId) && a.personId !== w.erfasstVon && ['ja', 'nein'].includes(a.stimme)) antworten[a.personId] = a;
+  const andere = ids.filter((i) => i !== w.erfasstVon);
+  const ohneAntwort = andere.filter((i) => !antworten[i]);
+  const nein = andere.filter((i) => antworten[i] && antworten[i].stimme === 'nein');
+  const stichA = mine.find((a) => a.art === 'stich' && a.erfasstVon === halterId && ['ja', 'nein'].includes(a.stimme));
+  const erstattet = mine.find((a) => a.art === 'erstattet') || null;
+  const entschieden = abgelaufen || ohneAntwort.length === 0;
+  const ja = ids.length - nein.length;             // Vorschlagende/r und alle ohne Antwort (nach der Frist) zaehlen als Ja
+  let status;
+  if (w.gekauftAm) status = 'gekauft';
+  else if (!entschieden) status = 'offen';
+  else if (ja > nein.length) status = 'freigegeben';
+  else if (ja < nein.length) status = 'abgelehnt';
+  else status = stichA ? (stichA.stimme === 'ja' ? 'freigegeben' : 'abgelehnt') : 'patt';
+  return { frist, abgelaufen, antworten, ohneAntwort, nein, ja, stich: stichA || null, erstattet, status };
+}
+
+export function pruefeKauf(w, betrag, datum) {
+  const f = [];
+  if (!Number.isInteger(betrag) || betrag <= 0) f.push('Bitte den bezahlten Betrag angeben (grösser als 0).');
+  else if (betrag > WUNSCH_MAX_RAPPEN) f.push('Der bezahlte Betrag liegt über CHF 200. Das geht nicht als Kleinanschaffung, bitte zuerst im Familienrat besprechen.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datum || '')) f.push('Kaufdatum fehlt.');
+  else if (w.datum && datum < w.datum) f.push('Das Kaufdatum liegt vor dem Vorschlag.');
+  return { ok: f.length === 0, fehler: f };
+}
+
+// =====================================================================
+// «Neu seit deinem letzten Besuch» (Eintraege anderer Personen, erfasst nach dem Zeitpunkt seit)
+// =====================================================================
+export const NEU_BEREICHE = { kalender: 'Kalender', termine: 'Termine', fahrten: 'Fahrten', kosten: 'Kosten', wunschliste: 'Wunschliste' };
+export function istNeu(x, seit, ich) {
+  return !!x && !!seit && !!ich && typeof x.erfasstAm === 'string' && x.erfasstAm > seit && x.erfasstVon !== ich;
+}
+// d: { buchungen, uebergaben, termine, kosten, einzahlungen, wuensche, wunschaktionen } (je als Objekt id -> Eintrag)
+export function neuZaehlen(d, seit, ich) {
+  const z = { kalender: 0, termine: 0, fahrten: 0, kosten: 0, wunschliste: 0 };
+  if (!seit || !ich) return { gesamt: 0, nach: z, wunschIds: new Set() };
+  const n = (x) => istNeu(x, seit, ich);
+  Object.values(d.buchungen || {}).forEach((x) => { if (n(x)) z.kalender++; });
+  Object.values(d.uebergaben || {}).forEach((x) => { if (n(x)) z.fahrten++; });
+  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank') return; if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
+  Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
+  Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
+  const wunschIds = new Set();
+  Object.values(d.wuensche || {}).forEach((x) => { if (n(x)) wunschIds.add(x.id); });
+  Object.values(d.wunschaktionen || {}).forEach((a) => { if (n(a) && d.wuensche && d.wuensche[a.wunschId]) wunschIds.add(a.wunschId); });
+  z.wunschliste = wunschIds.size;
+  return { gesamt: z.kalender + z.termine + z.fahrten + z.kosten + z.wunschliste, nach: z, wunschIds };
 }

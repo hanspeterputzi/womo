@@ -2,8 +2,9 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-} from './regeln.js?v=20261111g';
-import * as S from './speicher.js?v=20261111g';
+  WUNSCH_MAX_RAPPEN, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
+} from './regeln.js?v=20261112a';
+import * as S from './speicher.js?v=20261112a';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -27,6 +28,21 @@ const jetztLokal = () => ZH.format(new Date()).replace(' ', 'T');
 const heute = () => jetztLokal().slice(0, 10);
 
 let D, ich = null, tab = 'kalender', ansicht = new Date(), jahrK = new Date().getFullYear();
+
+// «Neu seit deinem letzten Besuch»: Zeitpunkt des letzten Besuchs wird je Person auf dem Gerät gemerkt (beim Verlassen der App).
+// Neu ist, was andere nach diesem Zeitpunkt erfasst haben. Geänderte Einträge zählen nicht als neu (nur neu erfasste).
+let seit = '';
+const keySeit = () => 'womo-zuletzt-' + ich;
+function seitLesen() { try { seit = localStorage.getItem(keySeit()) || ''; } catch { seit = ''; } }
+function besuchMerken() { if (!ich) return; try { localStorage.setItem(keySeit(), new Date().toISOString()); } catch {} }
+function besuchStart() { seitLesen(); if (!seit) besuchMerken(); }   // erster Besuch: nichts ist neu
+const neuZ = () => neuZaehlen(D, seit, ich);
+const neuPille = (x) => istNeu(x, seit, ich) ? '<span class="neu">NEU</span>' : '';
+document.addEventListener('visibilitychange', () => {
+  if (!ich || !D) return;
+  if (document.visibilityState === 'hidden') besuchMerken();
+  else { seitLesen(); if (formEl.innerHTML === '') zeige(); }
+});
 
 // Buchhaltung: HP fuehrt sie, die Tochter ist Stellvertreterin (Vertrag Ziffer 11).
 const buchhalter = () => ich === D.adminId || ich === 't';
@@ -91,13 +107,13 @@ async function start() {
   }
   try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div><button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
-  try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id]) ich = id; } catch {}
+  try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id]) { ich = id; besuchStart(); } } catch {}
   zeige();
 }
 
 function zeige() {
   if (!ich) return anmeldung();
-  ({ kalender, fahrten, kosten, termine, vertrag, unterwegs })[tab]();
+  ({ kalender, fahrten, kosten, wunschliste, termine, vertrag, unterwegs })[tab]();
 }
 
 function anmeldung() {
@@ -113,7 +129,7 @@ function anmeldung() {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
     if (Date.now() < sp.bis) { document.getElementById('msg').innerHTML = `<div class="fehler">Zu viele Fehlversuche. Bitte ${Math.ceil((sp.bis - Date.now()) / 1000)} Sekunden warten.</div>`; return; }
-    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} zeige(); }
+    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} besuchStart(); zeige(); }
     else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">Passwort für ${h(D.personen[id].name)} falsch (Gross- und Kleinschreibung beachten). Name oben richtig gewählt?</div>`; }
   };
   document.getElementById('ok').onclick = los;
@@ -128,8 +144,10 @@ const ICON = {
   termine: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/>',
   unterwegs: '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>',
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+  wunschliste: '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>',
 };
-const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+// Der Tab «Wunschliste» heisst in der Leiste «Wünsche» (7 Tabs, sonst ist die Beschriftung zu breit). Die Seite heisst «Wunschliste».
+const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['wunschliste', 'Wünsche'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
   ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [
@@ -269,13 +287,27 @@ function vertrag() {
   bindRahmen();
 }
 function rahmen(inhalt) {
+  const nz = neuZ().nach;
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
     <button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div>
   <main>${inhalt}</main>
-  <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}</button>`).join('')}</nav>`;
+  <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}${nz[k] ? `<i class="tb" aria-label="${nz[k]} neu">${nz[k]}</i>` : ''}</button>`).join('')}</nav>`;
+}
+// Anzeige «Neu seit deinem letzten Besuch» (oben im Kalender)
+function neuKarte() {
+  const r = neuZ();
+  if (!r.gesamt) return '';
+  const teile = Object.entries(r.nach).filter(([, n]) => n > 0);
+  return `<div class="neu-karte"><div class="neu-kopf"><span class="neu-zahl">${r.gesamt}</span><strong>Neu seit deinem letzten Besuch</strong><button class="neu-ok" id="neugesehen">Gesehen</button></div>
+    <div class="neu-chips">${teile.map(([k, n]) => `<button class="neu-chip" data-neu="${k}">${NEU_BEREICHE[k]} <b>${n}</b></button>`).join('')}</div></div>`;
+}
+function bindNeu() {
+  const g = document.getElementById('neugesehen');
+  if (g) g.onclick = () => { besuchMerken(); seitLesen(); zeige(); };
+  app.querySelectorAll('[data-neu]').forEach((b) => b.onclick = () => { tab = b.dataset.neu; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
 function bindRahmen() {
-  document.getElementById('aus').onclick = (e) => { e.preventDefault(); ich = null; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
+  document.getElementById('aus').onclick = (e) => { e.preventDefault(); besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
   app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.t; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
 
@@ -295,6 +327,15 @@ function hinweiseHtml() {
   termineEcht().filter((x) => ['ueberfaellig', 'bald'].includes(terminStufe(x, t))).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1)).slice(0, 3).forEach((x) => {
     const u = terminStufe(x, t) === 'ueberfaellig';
     out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
+  });
+  // Wunschliste: was auf dich wartet (ein Tipp öffnet den Tab)
+  wunschListe().forEach((w) => {
+    const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
+    const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
+    if (st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]) karte('gelb', `${titel} wartet auf deine Antwort bis ${fmt(st.frist)}.`);
+    else if (st.status === 'patt' && ich === D.adminId) karte('gelb', `${titel}: 2 zu 2, du entscheidest als Halter.`);
+    else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
+    else if (st.status === 'gekauft' && ich === D.adminId && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
   });
   return out;
 }
@@ -337,7 +378,7 @@ function kalender() {
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
   const monatsT = termineEcht().filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
   const TCHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
-  app.innerHTML = rahmen(`${seitenkopf('Kalender', 'resneu', '＋ Reservieren')}${hinweiseHtml()}${ringe(J)}
+  app.innerHTML = rahmen(`${seitenkopf('Kalender', 'resneu', '＋ Reservieren')}${neuKarte()}${hinweiseHtml()}${ringe(J)}
   <div class="karte">
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
@@ -346,8 +387,8 @@ function kalender() {
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
-  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
-  bindRahmen();
+  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
+  bindRahmen(); bindNeu();
   const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
@@ -369,7 +410,7 @@ function buchungHtml(b) {
   const zaehlt = konten(b, D.personen).map((k) => KONTO_NAME[k]).join(' und ');
   const av = b.fahrerId ? avatar(b.fahrerId) : `<span class="av" style="background:var(--muted)">${initial(wer)}</span>`;
   return `<div class="b">${av}<div class="inhalt">
-    <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)}</div>
+    <div class="zeit">${fmt(b.von).slice(0, 6)} – ${fmt(b.bis)}${neuPille(b)}</div>
     <div class="meta"><span class="tagetxt">${dauer(b)} Tage</span> · ${h(wer)}${mit.length ? ' mit ' + h(mit.join(', ')) : ''}${b.gaeste ? ` · ${b.gaeste} Gast/Gäste` : ''}${b.ziel ? ' · ' + h(b.ziel) : ''}</div>
     <div class="meta">Zählt für ${h(zaehlt)} · erfasst von ${h(D.personen[b.erfasstVon]?.name || '?')}</div></div>
     ${darf ? `<div style="display:flex;flex-direction:column;gap:10px;align-self:flex-start"><button class="kl" style="color:var(--acc)" data-edit="${h(b.id)}">Ändern</button><button class="kl" data-del="${h(b.id)}">Löschen</button></div>` : ''}</div>`;
@@ -470,7 +511,7 @@ function fahrten() {
     if (b.bis < t) return f.fertigR ? ['ok', '✓ fertig'] : f.ab ? ['gelb', 'Rückgabe offen'] : ['rot', 'ohne Checkliste'];
     const d = nr(b.von) - nr(t); return ['blau', d <= 0 ? 'unterwegs' : `in ${d} ${d === 1 ? 'Tag' : 'Tagen'}`];
   };
-  const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
+  const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}${neuPille(b)}${neuPille(f.ab)}${neuPille(f.rk)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
   app.innerHTML = rahmen(`${seitenkopf('Fahrten', elternIch ? 'aneu' : null, '＋ Alltagsfahrt')}
   <div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
@@ -505,7 +546,7 @@ function alltagSek(J) {
     <p class="info" style="margin:0 0 6px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
     ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
     <p class="info" style="margin:0 0 8px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
-    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div></details>`;
+    ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km${neuPille(a)}</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div></details>`;
 }
 
 function alltagForm() {
@@ -614,7 +655,7 @@ function kosten() {
     <div class="zeilen"><div class="z"><div class="l"><strong>Vorschuss von Vater und Mutter</strong><div class="meta">für Tochter und Sohn, ohne Erlass</div></div><div class="r"><strong>CHF ${chf(an.vorschuss)}</strong></div></div>
     <div class="z"><div class="l"><strong>Rückzahlungen von Tochter und Sohn</strong><div class="meta">Darlehensraten bisher</div></div><div class="r"><strong>CHF ${chf(an.rueckgezahlt)}</strong></div></div>
     <div class="z"><div class="l"><strong>Noch vorgeschossen (netto)</strong></div><div class="r"><strong>CHF ${chf(an.nettoVorschuss)}</strong></div></div></div>
-    ${anschaffungen.length ? anschaffungen.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + (e.text ? ' · ' + h(e.text) : ''))).join('') : '<p class="leer-t">Noch keine Zahlungen erfasst.</p>'}
+    ${anschaffungen.length ? anschaffungen.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum) + ' · ' + name(e.personId) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Noch keine Zahlungen erfasst.</p>'}
     ${buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'}`;
 
   const anteile = ids.map((i) => {
@@ -661,7 +702,7 @@ function kosten() {
       ${offen.map((p) => `<div class="hero-stand gelb">${ZWECKE[p.zweck]} im Vertragsjahr: noch CHF ${chf(p.offen)} offen.</div>`).join('')}${fzZeilen}`;
   })() : '';
   const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
-  function zeileK(attr, id, titel, sub) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
+  function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
   app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Erfassen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
     ${mein}
@@ -672,8 +713,8 @@ function kosten() {
   ${sek('Fälligkeiten', D.start ? '' : 'Datum fehlt', fzInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
-  ${sek('Kosten ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), kjahr.length ? kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''))).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
-  ${sek('Einzahlungen ' + J, ejahr.length + (ejahr.length === 1 ? ' Eintrag' : ' Einträge'), (ejahr.length ? ejahr.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum).slice(0, 6) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''))).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
+  ${sek('Kosten ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), kjahr.length ? kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join('') : '<p class="leer-t">Keine Kosten erfasst.</p>', kjahr.length > 0 && kjahr.length <= 3)}
+  ${sek('Einzahlungen ' + J, ejahr.length + (ejahr.length === 1 ? ' Eintrag' : ' Einträge'), (ejahr.length ? ejahr.map((e) => zeileK('data-de', e.id, 'CHF ' + chf(e.betrag), fmt(e.datum).slice(0, 6) + ' · ' + name(e.personId) + ' · ' + h(ZWECKE[e.zweck]) + (e.text ? ' · ' + h(e.text) : ''), e)).join('') : '<p class="leer-t">Keine Einzahlungen erfasst.</p>') + (buch ? '' : '<p class="info">Eintragen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>'), ejahr.length > 0 && ejahr.length <= 3)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
@@ -798,7 +839,7 @@ function termine() {
 
   // Gruppen (der erste Termin steht schon in der Karte oben)
   const rest = offen.slice(1);
-  const zeile = (x) => { const k = klasse(x); return `<button class="t-z ${k}" data-tid="${h(x.id)}"><span class="t-sq ${k}">${icon(x)}</span><span class="t-zt"><strong>${h(x.titel)}</strong><small>${kurz(x.faelligAm)}</small></span><span class="t-pl ${k}">${pilleText(x)}</span></button>`; };
+  const zeile = (x) => { const k = klasse(x); return `<button class="t-z ${k}" data-tid="${h(x.id)}"><span class="t-sq ${k}">${icon(x)}</span><span class="t-zt"><strong>${h(x.titel)}${neuPille(x)}</strong><small>${kurz(x.faelligAm)}</small></span><span class="t-pl ${k}">${pilleText(x)}</span></button>`; };
   const gruppe = (titel, xs) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
   const listen = gruppe('Überfällig', rest.filter((x) => klasse(x) === 'rot')) + gruppe('Bald (30 Tage)', rest.filter((x) => klasse(x) === 'gelb')) + gruppe('Später', rest.filter((x) => klasse(x) === 'blau'));
   const erl = fertig.map((x) => `<button class="t-fertig" data-tid="${h(x.id)}"><span class="t-haken">✓</span><span><strong>${h(x.titel)}</strong><small>erledigt am ${fmt(x.erledigtAm)}</small></span></button>`).join('');
@@ -845,6 +886,131 @@ function terminForm() {
     if (f.length) { fehler(f); return; }
     await sicher(async () => { await S.speichern(D, 'termine', null, { art: art.value, titel: val('t_titel').trim(), faelligAm: val('t_datum'), notiz: val('t_notiz').trim(), erledigtAm: '', erfasstVon: ich }); schliessen(); termine(); hinweis('Termin gespeichert.'); });
   };
+}
+
+
+// =====================================================================
+// Wunschliste (Vertrag Ziffer 5, «Einrichtung»): Einrichtungsgegenstände bis CHF 200 pro Stück
+// =====================================================================
+const WUNSCH_ICON = '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>';
+const wunschListe = () => Object.values(D.wuensche);
+const wunschStandVon = (w) => wunschStand(w, Object.values(D.wunschaktionen), idsGeordnet(), heute(), D.adminId);
+const wunschPreisText = (w) => w.menge > 1 ? `${w.menge} × CHF ${chf(w.preis)} = CHF ${chf(wunschTotal(w))}` : `CHF ${chf(w.preis)}`;
+const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', patt: 'gelb', abgelehnt: 'rot', gekauft: 'ok' })[s];
+
+function wunschliste() {
+  const t = heute();
+  const alle = wunschListe().map((w) => ({ w, s: wunschStandVon(w) })).sort((a, b) => (a.w.datum < b.w.datum ? 1 : a.w.datum > b.w.datum ? -1 : 0));
+  const pille = ({ w, s }) => {
+    if (s.status === 'offen') {
+      return [wunschKlasse('offen'), 'bis ' + fmt(s.frist).slice(0, 6)];
+    }
+    if (s.status === 'gekauft') return s.erstattet ? ['ok', 'erstattet'] : ['gelb', 'Erstattung offen'];
+    return [wunschKlasse(s.status), WUNSCH_STATUS[s.status]];
+  };
+  const zeile = (e) => {
+    const { w, s } = e, [k, txt] = pille(e);
+    const meinAntwortOffen = s.status === 'offen' && w.erfasstVon !== ich && !s.antworten[ich];
+    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum).slice(0, 6)}`;
+    return `<button class="t-z ${k}" data-wid="${h(w.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><span class="t-zt"><strong>${h(w.titel)}${neuPille(w)}${meinAntwortOffen ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
+  };
+  const gruppe = (titel, xs, offen) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
+  const dein = alle.filter((e) => e.s.status === 'offen' && e.w.erfasstVon !== ich && !e.s.antworten[ich]);
+  const laufend = alle.filter((e) => e.s.status === 'offen' && !dein.includes(e));
+  const patt = alle.filter((e) => e.s.status === 'patt');
+  const frei = alle.filter((e) => e.s.status === 'freigegeben');
+  const gekauft = alle.filter((e) => e.s.status === 'gekauft'), abgelehnt = alle.filter((e) => e.s.status === 'abgelehnt');
+  const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
+  app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}
+    <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch entscheidet die Mehrheit (bei 2 zu 2 der Halter). Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
+      <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
+    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Stichentscheid des Halters', patt)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
+    ${gekauft.length ? `<details class="sek" style="margin-top:20px"><summary><span>Gekauft</span><b>${gekauft.length}</b></summary><div class="sek-in">${gekauft.map(zeile).join('')}</div></details>` : ''}
+    ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
+  bindRahmen(); bindNeu();
+  document.getElementById('wneu').onclick = wunschForm;
+  app.querySelectorAll('[data-wid]').forEach((b) => b.onclick = () => wunschDetail(b.dataset.wid));
+}
+
+function wunschForm() {
+  sheet(`<h3>Neuer Wunsch</h3>
+  <label for="w_titel">Was soll gekauft werden?</label><input id="w_titel" maxlength="100" placeholder="Konkretes Produkt, z. B. Leselampe mit Clip, weiss">
+  <div class="zwei"><div><label for="w_preis">Preis pro Stück, CHF</label><input id="w_preis" inputmode="decimal" placeholder="z. B. 24.90"></div>
+  <div><label for="w_menge">Stückzahl</label><input type="number" id="w_menge" min="1" max="99" value="1" inputmode="numeric"></div></div>
+  <label for="w_link">Link zum Produkt</label><input id="w_link" type="url" inputmode="url" maxlength="300" autocapitalize="off" autocorrect="off" placeholder="https://… (empfohlen)">
+  <label for="w_notiz">Notiz</label><input id="w_notiz" maxlength="200" placeholder="optional, z. B. wofür, Farbe">
+  <p class="info">Höchstens CHF 200 pro Stück, gleichartige Stücke zusammen höchstens CHF 200. Darüber: Familienrat. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit zum Antworten.</p>
+  <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const w = { titel: val('w_titel').trim(), preis: rappen(val('w_preis')), menge: parseInt(val('w_menge') || '1', 10), link: val('w_link').trim(), notiz: val('w_notiz').trim(), datum: heute(), erfasstVon: ich };
+    const p = pruefeWunsch(w);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => { const id = await S.speichern(D, 'wuensche', null, w); schliessen(); wunschliste(); hinweis(`Wunsch gespeichert. Die anderen haben bis ${fmt(addTage(w.datum, WUNSCH_FRIST_TAGE))} Zeit.`); wunschDetail(id); });
+  };
+}
+
+function wunschDetail(id) {
+  const w = D.wuensche[id]; if (!w) return;
+  const s = wunschStandVon(w), ids = idsGeordnet(), mein = w.erfasstVon === ich, halter = ich === D.adminId;
+  const k = wunschKlasse(s.status);
+  const stimmeChip = (i) => {
+    if (i === w.erfasstVon) return '<span class="chipk ok">Vorschlag</span>';
+    const a = s.antworten[i];
+    if (a) return a.stimme === 'ja' ? '<span class="chipk ok">Ja</span>' : '<span class="chipk rot">Nein</span>';
+    return s.abgelaufen || s.status !== 'offen' ? '<span class="chipk ok">zählt als Ja</span>' : '<span class="chipk gelb">noch offen</span>';
+  };
+  const zeilen = ids.map((i) => { const a = s.antworten[i]; return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${a && a.stimme === 'nein' ? `<div class="meta">${a.grund ? 'Grund: ' + h(a.grund) : ''}${a.grund && a.alternative ? '<br>' : ''}${a.alternative ? 'Alternative: ' + h(a.alternative) : ''}</div>` : ''}</div><div class="r">${stimmeChip(i)}</div></div>`; }).join('');
+  const stand = s.status === 'offen' ? `Antworten bis ${fmt(s.frist)} (einschliesslich). Wer nicht antwortet, stimmt zu.`
+    : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein${s.stich ? ' (Stichentscheid des Halters)' : ''}. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
+    : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.stich ? ' (Stichentscheid des Halters)' : ''}. Nicht kaufen.`
+    : s.status === 'patt' ? `2 zu 2. Nach Ziffer 13 entscheidet der Halter (${h(D.personen[D.adminId]?.name || '?')}).`
+    : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}`;
+  const waText = `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(s.frist)} antworten (Ja oder Nein).`;
+  const meinAntwort = s.status === 'offen' && !mein;
+  const stich = s.status === 'patt' && halter;
+  const kaufen = s.status === 'freigegeben' && mein;
+  const erstatten = s.status === 'gekauft' && halter && !s.erstattet;
+  sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><div><h3 style="margin:0">${h(w.titel)}</h3><div class="info" style="margin:2px 0 0">${wunschPreisText(w)} · von ${h(D.personen[w.erfasstVon]?.name || '?')}, ${fmt(w.datum)}</div></div></div>
+    <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
+    ${w.link ? `<p class="info" style="margin:0 0 6px"><a class="u-chip" href="${h(w.link)}" target="_blank" rel="noopener">Produkt ansehen<em>Link</em></a></p>` : ''}${w.notiz ? `<p class="info" style="margin:0 0 6px">${h(w.notiz)}</p>` : ''}
+    <div class="zeilen">${zeilen}</div>
+    ${meinAntwort ? `<label for="w_grund">Nur bei Nein: Grund</label><input id="w_grund" maxlength="200" placeholder="Warum nicht?"><label for="w_alt">Nur bei Nein: Alternative (Produkt, Preis)</label><input id="w_alt" maxlength="200" placeholder="Was wäre besser?">` : ''}
+    ${kaufen ? `<div class="zwei"><div><label for="w_betrag">Bezahlt, CHF</label><input id="w_betrag" inputmode="decimal" value="${chf(wunschTotal(w)).replace(/[’' ]/g, '')}"></div><div><label for="w_kdatum">Kaufdatum</label><input type="date" id="w_kdatum" value="${heute()}"></div></div>` : ''}
+    <div id="msg"></div>
+    <div class="t-akt2">${meinAntwort ? `<button class="gross-btn pri" id="w_ja">${s.antworten[ich] ? 'Antwort ändern: Ja' : 'Ja, einverstanden'}</button><button class="gross-btn rot" id="w_nein">${s.antworten[ich] ? 'Antwort ändern: Nein' : 'Nein'}</button>` : ''}
+      ${stich ? '<button class="gross-btn pri" id="w_sja">Stichentscheid: Ja, kaufen</button><button class="gross-btn rot" id="w_snein">Stichentscheid: Nein</button>' : ''}
+      ${kaufen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
+      ${erstatten ? '<button class="gross-btn pri" id="w_erst">Betrag erstattet</button>' : ''}
+      ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
+      ${mein && s.status !== 'gekauft' ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const aktion = (aid, daten, text) => sicher(async () => { await S.speichern(D, 'wunschaktionen', aid, { wunschId: w.id, erfasstVon: ich, ...daten }); schliessen(); wunschliste(); hinweis(text); });
+  if (meinAntwort) {
+    document.getElementById('w_ja').onclick = () => aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'ja' }, 'Danke, du hast Ja gesagt.');
+    document.getElementById('w_nein').onclick = () => {
+      const grund = val('w_grund').trim(), alt = val('w_alt').trim();
+      if (!grund && !alt) { fehler('Bei Nein bitte einen Grund oder eine Alternative angeben. Nur Nein zu sagen genügt nicht.'); return; }
+      aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'nein', grund, alternative: alt }, 'Danke, dein Nein ist gespeichert.');
+    };
+  }
+  if (stich) {
+    document.getElementById('w_sja').onclick = () => aktion(`${w.id}_stich`, { art: 'stich', stimme: 'ja' }, 'Stichentscheid: Ja.');
+    document.getElementById('w_snein').onclick = () => aktion(`${w.id}_stich`, { art: 'stich', stimme: 'nein' }, 'Stichentscheid: Nein.');
+  }
+  if (kaufen) document.getElementById('w_kauf').onclick = async () => {
+    const betrag = rappen(val('w_betrag')), datum = val('w_kdatum'), p = pruefeKauf(w, betrag, datum);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => {
+      // Kosten zuerst (feste Nummer: kein doppelter Eintrag), dann der Wunsch
+      const kid = await S.speichern(D, 'kosten', 'kw_' + w.id, { datum, betrag, art: 'betrieb', text: `Einrichtung (Wunschliste): ${w.titel}`.slice(0, 100), wunschId: w.id, erfasstVon: ich });
+      await S.speichern(D, 'wuensche', w.id, { ...w, gekauftAm: datum, gekauftBetrag: betrag, kostenId: kid });
+      schliessen(); wunschliste(); hinweis('Gekauft eingetragen. Der Betrag zählt zu den laufenden Kosten. Der Vater erstattet vom gemeinsamen Konto.');
+    });
+  };
+  if (erstatten) document.getElementById('w_erst').onclick = () => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); };
+  const del = document.getElementById('w_del');
+  if (del) del.onclick = async () => { if (confirm('Wunsch löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of Object.values(D.wunschaktionen).filter((x) => x.wunschId === w.id)) await S.loeschen(D, 'wunschaktionen', a.id); await S.loeschen(D, 'wuensche', w.id); schliessen(); wunschliste(); }); };
 }
 
 start();
