@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113b';
-import * as S from './speicher.js?v=20261113b';
+} from './regeln.js?v=20261113e';
+import * as S from './speicher.js?v=20261113e';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -46,7 +46,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Buchhaltung: HP fuehrt sie, die Tochter ist Stellvertreterin (Vertrag Ziffer 11).
-const buchhalter = () => ich === D.adminId || ich === 't';
+// Rollen der Buchhaltung: 'hp' (Hauptbuchhalter), 'stv1' (Stellvertretung, Nanouk), 'stv2' (zweite Stellvertretung, Nene, nur wenn er einen Schluessel eingegeben hat).
+const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1' : (ich === 's' && S.schluesselGet('s')) ? 'stv2' : null;
+const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
 const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank');
@@ -639,6 +641,7 @@ function kosten() {
   const el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
+  const artChip = (art) => art === 'aktiv' ? '<span class="chipk gelb">Aktiv</span>' : '<span class="chipk">Info</span>';
 
   const elternIds = ids.filter((i) => D.personen[i].konto === 'eltern'), kinderIds = ids.filter((i) => D.personen[i].konto !== 'eltern');
 
@@ -659,7 +662,7 @@ function kosten() {
   // ---- Offene Zahlungen (immer sichtbar) und Zahlungen der Kinder ueber 8 Jahre ----
   const plaene = Object.fromEntries(ids.map((i) => [i, D.start && D.personen[i] ? achtJahrePlan(D.start, t, el, D.personen[i], i) : null]));
   const offenKarte = !D.start
-    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
+    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip(buch ? 'aktiv' : 'info')}</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
     : (() => {
       const zeilen = ids.map((i) => {
         const fz = faelligkeiten(D.start, t, el, D.personen[i], i), pl = plaene[i];
@@ -668,13 +671,13 @@ function kosten() {
         return `<div class="z"><div class="l"><strong>${name(i)}</strong>${fz.map((f) => `<div class="meta">${ZWECKE[f.zweck]}: ${fzText(f)}</div>`).join('')}<div class="meta">Noch zu zahlen bis Vertragsende: CHF ${chf(pl.total.offen)}</div></div><div class="r">${chip}</div></div>`;
       }).join('');
       const ueberTotal = ids.reduce((s, i) => s + plaene[i].total.offenFaellig, 0), offenTotal = ids.reduce((s, i) => s + plaene[i].total.offen, 0);
-      return `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3>
+      return `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip('info')}</h3>
         <div class="hero-stand ${ueberTotal > 0 ? 'rot' : 'ok'}" style="margin:0 0 6px">${ueberTotal > 0 ? `Überfällig insgesamt: CHF ${chf(ueberTotal)}` : 'Nichts überfällig.'}</div>
         <div class="zeilen">${zeilen}</div>
         <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte. Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».</p></div>`;
     })();
   const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen);
-  const zbKarte = !zb.length ? '' : `<div class="karte" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"><h3 style="margin:0 0 6px;font-size:17px;color:var(--gelb-t)">📒 Zu buchen: Wünsche</h3>
+  const zbKarte = (!zb.length || !buch) ? '' : `<div class="karte" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"><h3 style="margin:0 0 6px;font-size:17px;color:var(--gelb-t)">📒 Zu buchen: Wünsche ${artChip('aktiv')}</h3>
     <div class="zeilen">${zb.map((z, i) => `<div class="z"><div class="l"><strong>${h(z.titel)}</strong><div class="meta">${z.art === 'kauf' ? 'Kauf' : 'Erstattung'} · CHF ${chf(z.betrag)} · ${fmt(z.datum)} · ${name(z.personId)}</div></div><div class="r">${buch ? `<button class="btn pri" data-zb="${i}">Buchen</button>` : '<span class="chipk gelb">HP bucht</span>'}</div></div>`).join('')}</div>
     <p class="info" style="margin-bottom:0">Gekaufte Wünsche kommen erst jetzt in die Buchhaltung. Beim Kauf wählst du das Aufwandskonto, die Gegenbuchung läuft über den Kreditor der Person, die ausgelegt hat.</p></div>`;
   // Anleitung (nur fuer die Buchhaltung: HP und Stellvertreterin). Bewusst ohne Namen, der Code der App ist oeffentlich.
@@ -690,6 +693,16 @@ function kosten() {
   const anleitung = `<p class="info" style="margin-top:0">Ein Wunsch kommt erst in die Buchhaltung, wenn er bewilligt und gekauft ist. <strong>Automatisch gebucht wird nie etwas.</strong> Die App zeigt nur, was zu buchen ist, und füllt die Buchung vor. Beispiel: ein Wunsch über CHF 12.00.</p>
     <div class="zeilen">${schritte.map(([titel, k, wer, text], i) => `<div class="z" style="align-items:flex-start"><div class="l"><strong>${i + 1}. ${titel}</strong><div style="margin:4px 0"><span class="chipk ${k}">${wer}</span></div>${text ? `<div class="meta">${text}</div>` : ''}</div></div>`).join('')}</div>
     <p class="info" style="margin-bottom:0"><strong>Wichtig:</strong> Zuerst den Kauf buchen (Schritt 4), erst danach die Rückzahlung (Schritt 7). Hast du eine Buchung von Hand erfasst, erkennt die App sie, wenn Betrag und Kreditor-Konto stimmen, und bietet sie nicht nochmals an.</p>`;
+  const schritte2 = [
+    ['Vorher klären', '', 'Macht: die Stellvertretung', 'Du buchst als Stellvertretung (der bekannte Hinweis erscheint und wird bestätigt). Für alles hier brauchst du nur die App. Du brauchst keinen Zugang zu den Konten von ' + name(D.adminId) + ' (zum Beispiel Claude, GitHub oder Firebase). Die Buchhaltung läuft ohne diese Zugänge weiter.'],
+    ['Schlüssel für ' + name('s') + ' erzeugen', 'gelb', 'Macht: die Stellvertretung', 'Tab «Kosten» → ganz nach unten → Abschnitt «Zweite Stellvertretung ' + name('s') + '» → «Schlüssel für ' + name('s') + ' erzeugen» → Hinweis bestätigen → «Ok». Es erscheint ein langer Schlüssel. Er wird nur dieses eine Mal angezeigt.'],
+    ['Den Schlüssel weitergeben', '', 'Macht: die Stellvertretung', 'Gib den Schlüssel ' + name('s') + ' selbst weiter, am besten persönlich oder schriftlich. Nicht per Mail oder Chat, wenn es sich vermeiden lässt. Dann «Schliessen» tippen.'],
+    ['Den Schlüssel eingeben', '', 'Macht: ' + name('s'), 'App öffnen und anmelden → Tab «Kosten» → ganz nach unten → Abschnitt «Stellvertretung (nur im Notfall)» → «Buchungsschlüssel eingeben» → Schlüssel einfügen → «Speichern». Danach sieht ' + name('s') + ' die Buchen-Knöpfe und kann buchen, immer mit dem Hinweis vorher.'],
+    ['Schlüssel verloren oder bekannt geworden', 'gelb', 'Macht: die Stellvertretung', 'Schritt 2 wiederholen. Der alte Schlüssel von ' + name('s') + ' gilt sofort nicht mehr.']
+  ];
+  const anleitung2 = `<p class="info" style="margin-top:0">So setzt die Stellvertretung eine zweite Stellvertretung ein, wenn ${name(D.adminId)} die Buchhaltung nicht mehr führen kann. Alles geht in der App.</p>
+    <div class="zeilen">${schritte2.map(([titel, k, wer, text], i) => `<div class="z" style="align-items:flex-start"><div class="l"><strong>${i + 1}. ${titel}</strong><div style="margin:4px 0"><span class="chipk ${k}">${wer}</span></div><div class="meta">${text}</div></div></div>`).join('')}</div>
+    <p class="info" style="margin-bottom:0"><strong>Gut zu wissen:</strong> Den eigenen Schlüssel und den von ${name(D.adminId)} kann niemand ersetzen ausser ${name(D.adminId)}. Bewahre deinen Schlüssel deshalb gut auf, am besten schriftlich an einem sicheren Ort. Die App und ihre Daten laufen ohne Pflege weiter. Die automatische Datensicherung läuft auf dem Computer von ${name(D.adminId)}, ohne ihn gibt es keine neuen Sicherungen. Änderungen am Programm der App sind ohne seine Zugänge nicht möglich.</p>`;
   const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
   const kinderPlan = kinderIds.filter((i) => plaene[i]).map((i) => {
     const pl = plaene[i];
@@ -716,7 +729,7 @@ function kosten() {
   const total = (titel, rp) => `<div class="z" style="border-top:2px solid var(--line)"><div class="l"><strong>${titel}</strong></div><div class="r"><strong>${chf(rp)}</strong></div></div>`;
   const kopf = (titel) => `<div class="z" style="padding-bottom:2px"><div class="l"><span class="meta" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">${titel}</span></div></div>`;
   const leerZ = (txt) => `<div class="z"><div class="l"><span class="meta">${txt}</span></div></div>`;
-  const mein = `<div class="hero-zeile"><div><div class="hero-l">Bank CHF</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">${er.ergebnis >= 0 ? 'Gewinn' : 'Verlust'} ${J}</div><div class="hero-z">${chf(er.ergebnis)}</div></div></div>
+  const mein = `<div class="hero-zeile"><div><div class="hero-l">Bank CHF</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">Aufwand ${J}</div><div class="hero-z">${chf(er.sAufwand)}</div></div></div>
       <div class="hero-stand ${bi.stimmt ? 'ok' : 'rot'}">${!Object.keys(jn).length ? 'Noch keine Buchungen erfasst.' : bi.stimmt ? `Bilanz stimmt: Aktiven und Passiven je CHF ${chf(bi.sAktiven)}.` : 'Achtung: Die Bilanz geht nicht auf. Bitte die Buchungen prüfen.'}</div>`;
   const bilanzInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Konten ohne Buchungen sind ausgeblendet. Antippen zeigt das Kontoblatt.</p>
     <div class="zeilen">${kopf('Aktiven')}${bi.aktiven.length ? bi.aktiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}${total('Total Aktiven', bi.sAktiven)}</div>
@@ -731,7 +744,7 @@ function kosten() {
   const kontenInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Antippen zeigt das Kontoblatt.</p>${Object.entries({ aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }).map(([typ, tt]) => `<div class="zeilen">${kopf(tt)}${alleKonten.filter((k) => k.typ === typ).map(kz).join('')}</div>`).join('')}`;
   const journalInhalt = (jahrBuch.length ? jahrBuch.map((b) => zeileK('data-dj', b.id, 'CHF ' + chf(b.betrag), fmt(b.datum).slice(0, 6) + ' · ' + h(b.text) + (b.stellvertretung ? ' · Stellvertretung' : '') + '<br>' + h(kname[b.soll] || b.soll) + ' an ' + h(kname[b.haben] || b.haben), b)).join('') : '<p class="leer-t">Keine Buchungen erfasst.</p>')
     + (buch ? '' : '<p class="info">Buchen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>');
-  const sek = (titel, zusatz, inhalt, offen) => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span><b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
+  const sek = (titel, zusatz, inhalt, offen, art = 'info') => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span>${artChip(art)}<b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
   app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Buchen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
@@ -745,9 +758,12 @@ function kosten() {
   ${sek('Alle Konten', '', kontenInhalt, false)}
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
-  ${(S.online && ich === D.adminId) ? sek('Stellvertretung ' + name('t'), '', `<p class="info" style="margin-top:0">${name('t')} bucht nur als Stellvertretung, wenn du nicht mehr kannst. Dafür braucht ${name('t')} einen eigenen Schlüssel. Du erzeugst ihn hier, die App zeigt ihn nur einmal an, und du gibst ihn ${name('t')} selbst weiter. Ein bisheriger Schlüssel von ${name('t')} gilt danach nicht mehr.</p><div class="btnzeile"><button class="btn pri" id="stv_neu">Neuen Schlüssel für ${name('t')} erzeugen</button></div>`, false) : ''}
+  ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false, buch ? 'aktiv' : 'info')}
+  ${(S.online && rolle() === 'hp') ? sek('Stellvertretung ' + name('t'), '', `<p class="info" style="margin-top:0">${name('t')} bucht nur als Stellvertretung, wenn du nicht mehr kannst. Dafür braucht ${name('t')} einen eigenen Schlüssel. Du erzeugst ihn hier, die App zeigt ihn nur einmal an, und du gibst ihn ${name('t')} selbst weiter. Ein bisheriger Schlüssel von ${name('t')} gilt danach nicht mehr.</p><div class="btnzeile"><button class="btn pri" id="stv_neu">Neuen Schlüssel für ${name('t')} erzeugen</button></div>`, false, 'aktiv') : ''}
+  ${(S.online && ['hp', 'stv1'].includes(rolle())) ? sek('Zweite Stellvertretung ' + name('s'), '', `<p class="info" style="margin-top:0">Falls auch ${name('t')} ausfällt oder die Arbeit teilen will, kann ${name('s')} als zweite Stellvertretung eingesetzt werden. Dafür erzeugst du hier einen Schlüssel für ${name('s')}. Die App zeigt ihn nur einmal an, du gibst ihn ${name('s')} selbst weiter. Ein bisheriger Schlüssel von ${name('s')} gilt danach nicht mehr. Die genaue Anleitung steht weiter unten.</p><div class="btnzeile"><button class="btn pri" id="stv2_neu">Schlüssel für ${name('s')} erzeugen</button></div>`, false, 'aktiv') : ''}
+  ${(S.online && ich === 's' && !S.schluesselGet('s')) ? sek('Stellvertretung (nur im Notfall)', '', `<p class="info" style="margin-top:0">Das brauchst du nur, wenn du als Stellvertretung der Buchhaltung eingesetzt wirst. Dann bekommst du von ${name('t')} einen Buchungsschlüssel. Den gibst du hier einmal ein. Danach kannst du buchen, immer mit einem Hinweis vorher.</p><div class="btnzeile"><button class="btn pri" id="stv_eingeben">Buchungsschlüssel eingeben</button></div>`, false, 'aktiv') : ''}
   ${buch ? sek('Anleitung: Wunsch buchen', '7 Schritte', anleitung, false) : ''}
-  ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}`);
+  ${['hp', 'stv1'].includes(rolle()) ? sek('Anleitung: zweite Stellvertretung einsetzen', schritte2.length + ' Schritte', anleitung2, false) : ''}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
@@ -768,18 +784,16 @@ function kosten() {
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
   });
-  const sn = document.getElementById('stv_neu'); if (sn) sn.onclick = () => {
-    const los = () => { if (!confirm('Neuen Schlüssel erzeugen? Ein bisheriger Schlüssel gilt danach nicht mehr.')) return;
-      sicher(async () => {
-        const neu = await S.stvSchluesselErzeugen(ich);
-        sheet(`<h3>Schlüssel für ${name('t')}</h3><div class="hinweiskarte gelb" style="margin:0 0 10px">Dieser Schlüssel wird nur jetzt angezeigt. Gib ihn ${name('t')} selbst weiter (nicht per Mail oder Chat, wenn es sich vermeiden lässt) und schliesse dann das Fenster.</div>
-          <div style="font:700 17px/1.5 ui-monospace,Menlo,monospace;word-break:break-all;background:var(--soft);border-radius:12px;padding:14px;user-select:all" id="stv_wert">${h(neu)}</div>
-          <div class="t-akt2" style="margin-top:12px"><button class="gross-btn pri" id="stv_kop">Kopieren</button><button class="gross-btn" id="abb">Schliessen, ich habe ihn weitergegeben</button></div>`);
-        document.getElementById('abb').onclick = schliessen;
-        document.getElementById('stv_kop').onclick = async () => { try { await navigator.clipboard.writeText(neu); hinweis('Schlüssel kopiert.'); } catch { hinweis('Kopieren nicht möglich, bitte den Text markieren und kopieren.'); } };
-      }); };
-    if (!S.schluesselGet(ich)) buchenStarten(() => sn.onclick()); else los();
+  const stvErzeugen = (ziel, wem) => {
+    const los = () => alsStv(() => {
+      if (!confirm('Neuen Schlüssel erzeugen? Ein bisheriger Schlüssel dieser Person gilt danach nicht mehr.')) return;
+      sicher(async () => { const neu = await S.stvSchluesselErzeugen(ich, ziel); schluesselZeigen(neu, wem); });
+    });
+    if (!S.schluesselGet(ich)) schluesselAbfragen(los); else los();
   };
+  const sn = document.getElementById('stv_neu'); if (sn) sn.onclick = () => stvErzeugen('stellvertretung', D.personen.t?.name || 'Nanouk');
+  const sn2 = document.getElementById('stv2_neu'); if (sn2) sn2.onclick = () => stvErzeugen('stellvertretung2', D.personen.s?.name || 'Nene');
+  const se = document.getElementById('stv_eingeben'); if (se) se.onclick = () => schluesselAbfragen(() => { kosten(); hinweis('Schlüssel gespeichert.'); });
   const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchenStarten(() => buchungForm());
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = () => alsStv(async () => {
     const [pid, neu] = b.dataset.st.split('|');
@@ -793,27 +807,36 @@ function startFeld(wert) {
 }
 
 // Nanouk bucht nur als Stellvertreterin (Vertrag Ziffer 11 und 15): vor jeder Buchung kommt ein Hinweis.
-const stellvertretung = () => !!ich && ich !== D.adminId && ich === 't';
+const stellvertretung = () => ['stv1', 'stv2'].includes(rolle());
 // Hinweis fuer die Stellvertreterin vor jeder Handlung, die eigentlich dem Hauptbuchhalter gehoert (Buchen, Erstattung bestaetigen,
 // Uebernahmedatum, Zahlungsstatus, Buchung loeschen). Fuer alle anderen geht es direkt weiter.
 function alsStv(weiter) {
   if (!stellvertretung()) { weiter(); return; }
-  const hp = h(D.personen[D.adminId]?.name || 'HP');
-  sheet(`<h3>Stellvertretung</h3><div class="hinweiskarte rot" style="margin:0 0 10px">${hp} führt die Buchhaltung. Du buchst nur, wenn ${hp} dazu aus eigener Kraft nicht mehr fähig ist (Vertrag Ziffer 11 und 15). Jede Buchung von dir wird als Stellvertretung gekennzeichnet.</div>
-    <div class="t-akt2"><button class="gross-btn" id="abb">Abbrechen</button><button class="gross-btn rot" id="stv_ja">${hp} kann nicht mehr, ich mache das</button></div>`);
+  const hp = h(D.personen[D.adminId]?.name || 'HP'), nk = h(D.personen.t?.name || 'Nanouk'), zweite = rolle() === 'stv2';
+  const wer = zweite ? nk : hp, text = zweite ? `${nk} führt die Buchhaltung, wenn ${hp} ausfällt. Du buchst nur, wenn ${hp} und ${nk} dazu aus eigener Kraft nicht mehr fähig sind` : `${hp} führt die Buchhaltung. Du buchst nur, wenn ${hp} dazu aus eigener Kraft nicht mehr fähig ist`;
+  sheet(`<h3>Stellvertretung</h3><div class="hinweiskarte rot" style="margin:0 0 10px">${text} (Vertrag Ziffer 11 und 15). Jede Buchung von dir wird als Stellvertretung gekennzeichnet.</div>
+    <div class="t-akt2"><button class="gross-btn" id="abb">Abbrechen</button><button class="gross-btn rot" id="stv_ja">${zweite ? nk + ' und ' + hp : wer} ${zweite ? 'können' : 'kann'} nicht mehr, ich mache das</button></div>`);
   document.getElementById('abb').onclick = schliessen; document.getElementById('stv_ja').onclick = () => { schliessen(); weiter(); };
 }
+// Buchungsschluessel einmal eingeben (wird nur auf diesem Geraet gemerkt)
+function schluesselAbfragen(weiter) {
+  sheet(`<h3>Buchungsschlüssel</h3><p class="info" style="margin:0 0 8px">Buchen darf nur, wer den Buchungsschlüssel kennt. Bitte den Schlüssel einmal eingeben, er wird nur auf diesem Gerät gemerkt.</p>
+    <label for="schl">Buchungsschlüssel</label><input id="schl" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="100"><div id="msg"></div>
+    <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="schl_ok">Speichern</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('schl_ok').onclick = () => { const s = val('schl').trim(); if (s.length < 20) { fehler('Der Schlüssel ist zu kurz. Bitte genau so eingeben, wie er mitgeteilt wurde.'); return; } S.schluesselSet(ich, s); schliessen(); weiter(); };
+}
+// Neuer Schluessel wird nur einmal angezeigt (HP fuer Nanouk, HP oder Nanouk fuer die zweite Stellvertretung)
+function schluesselZeigen(neu, wem) {
+  sheet(`<h3>Schlüssel für ${h(wem)}</h3><div class="hinweiskarte gelb" style="margin:0 0 10px">Dieser Schlüssel wird nur jetzt angezeigt. Gib ihn ${h(wem)} selbst weiter (nicht per Mail oder Chat, wenn es sich vermeiden lässt) und schliesse dann das Fenster.</div>
+    <div style="font:700 17px/1.5 ui-monospace,Menlo,monospace;word-break:break-all;background:var(--soft);border-radius:12px;padding:14px;user-select:all" id="stv_wert">${h(neu)}</div>
+    <div class="t-akt2" style="margin-top:12px"><button class="gross-btn pri" id="stv_kop">Kopieren</button><button class="gross-btn" id="abb">Schliessen, ich habe ihn weitergegeben</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('stv_kop').onclick = async () => { try { await navigator.clipboard.writeText(neu); hinweis('Schlüssel kopiert.'); } catch { hinweis('Kopieren nicht möglich, bitte den Text markieren und kopieren.'); } };
+}
 function buchenStarten(weiter) {
-  const los = () => alsStv(weiter);
-  if (S.online && !S.schluesselGet(ich)) {
-    sheet(`<h3>Buchungsschlüssel</h3><p class="info" style="margin:0 0 8px">Buchen darf nur, wer den Buchungsschlüssel kennt. Bitte den Schlüssel einmal eingeben, er wird nur auf diesem Gerät gemerkt.</p>
-      <label for="schl">Buchungsschlüssel</label><input id="schl" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="100"><div id="msg"></div>
-      <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="schl_ok">Speichern</button></div>`);
-    document.getElementById('abb').onclick = schliessen;
-    document.getElementById('schl_ok').onclick = () => { const s = val('schl').trim(); if (s.length < 20) { fehler('Der Schlüssel ist zu kurz. Bitte genau so eingeben, wie er mitgeteilt wurde.'); return; } S.schluesselSet(ich, s); schliessen(); los(); };
-    return;
-  }
-  los();
+  if (S.online && !S.schluesselGet(ich)) { schluesselAbfragen(() => alsStv(weiter)); return; }
+  alsStv(weiter);
 }
 function buchungForm(vor) {
   const gruppen = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }, kl = kontenListe(D.personen);
@@ -836,7 +859,7 @@ function buchungForm(vor) {
   document.getElementById('spei').onclick = async () => {
     const b = { datum: val('b_datum'), soll: val('b_soll'), haben: val('b_haben'), betrag: rappen(val('b_betrag')), text: val('b_text').trim(), erfasstVon: ich };
     if (vor) { b.wunschId = vor.wunschId; b.wunschArt = vor.art; }
-    if (stellvertretung()) { b.stellvertretung = true; b.stellvertretungAm = new Date().toISOString(); }
+    if (stellvertretung()) { b.stellvertretung = true; b.stellvertretungAm = new Date().toISOString(); if (rolle() === 'stv2') b.stellvertretungStufe = 2; }
     const p = pruefeBuchsatz(b, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => { await S.journalSpeichern(D, b, ich); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
@@ -1060,7 +1083,7 @@ function wunschDetail(id) {
   const stand = s.status === 'offen' ? `Antworten bis ${fmt(s.frist)} (einschliesslich). Wer nicht antwortet, stimmt zu.`
     : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
     : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.nein.length === s.ja ? ' (Gleichstand gilt als abgelehnt, Ziffer 13)' : ''}. Nicht kaufen.`
-    : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'} Buchhaltung: ${gb.kauf ? 'Kauf gebucht' : 'Kauf noch nicht gebucht'}${s.erstattet ? (gb.erstattung ? ', Erstattung gebucht' : ', Erstattung noch nicht gebucht') : ''}.`;
+    : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}${buchhalter() ? ` Buchhaltung: ${gb.kauf ? 'Kauf gebucht' : 'Kauf noch nicht gebucht'}${s.erstattet ? (gb.erstattung ? ', Erstattung gebucht' : ', Erstattung noch nicht gebucht') : ''}.` : ''}`;
   const waText = `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(s.frist)} antworten (Ja oder Nein).`;
   const meinAntwort = s.status === 'offen' && !mein;
   const kaufen = s.status === 'freigegeben' && mein;

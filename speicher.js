@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261113b';
+import { tageListe } from './regeln.js?v=20261113e';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -134,7 +134,7 @@ export async function journalSpeichern(d, daten, personId) {
 }
 // HP erzeugt den Schluessel der Stellvertretung in der App (nur mit seinem Buchungsschluessel). Der neue Schluessel wird nur
 // einmal zurueckgegeben (zum Anzeigen), nirgends sonst gespeichert. Ein bisheriger Schluessel gilt danach nicht mehr.
-export async function stvSchluesselErzeugen(personId) {
+export async function stvSchluesselErzeugen(personId, ziel = 'stellvertretung') {
   if (!online) throw new Error('Das geht nur mit dem echten Link.');
   await fsInit();
   const s = schluesselGet(personId);
@@ -142,7 +142,7 @@ export async function stvSchluesselErzeugen(personId) {
   const a = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789', z = crypto.getRandomValues(new Uint32Array(40));
   const neu = Array.from(z, (n) => a[n % a.length]).join(''), ticket = 't' + zufall(), batch = fs.writeBatch(db);
   batch.set(fs.doc(db, 'familien', code, 'tickets', ticket), { s });
-  batch.set(fs.doc(db, 'familien', code, 'geheim', 'stellvertretung'), { s: neu, ticket });
+  batch.set(fs.doc(db, 'familien', code, 'geheim', ziel), { s: neu, ticket });
   try { await batch.commit(); } catch (e) { throw abgelehnt(e, personId); }
   return neu;
 }
