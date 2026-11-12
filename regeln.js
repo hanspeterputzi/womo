@@ -482,7 +482,7 @@ export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertr
 const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
 export const KONTEN_BASIS = [
   K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'),
-  K('1100', 'Guthaben bei Eigentümer', 'aktiv'), K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
+  K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
   K('2000', 'Kreditoren', 'passiv'), K('2300', 'TP (Transitorische Passiven)', 'passiv'),
@@ -497,6 +497,8 @@ export const KONTEN_BASIS = [
 ];
 // Eigenkapital: ein Konto je Eigentuemer (2800 bis 2803), in der Reihenfolge Vater, Mutter, Tochter, Sohn.
 export const EK_BASIS = 2800;
+export const DEBITOR_BASIS = 1100;     // Debitoren: ein Konto je Eigentuemer (1100 bis 1103), dazu 1104 Melzer GmbH
+export const DEBITOR_FIRMA = { nr: '1104', name: 'Debitor Melzer GmbH' };
 export const RUECKLAGE_BASIS = 2600;   // Ruecklage: ein Konto je Eigentuemer (2600 bis 2603), gleiche Reihenfolge wie das Eigenkapital
 const EK_REIHENFOLGE = ['hp', 'fr', 't', 's'];
 export function eigentuemerGeordnet(personen) {
@@ -514,8 +516,9 @@ export function kontenListe(personen) {
     return { nr: k.nr, name: person ? k.vorsilbe + person.name : k.name, typ: k.typ };
   });
   const rl = [0, 1, 2, 3].map((i) => ({ nr: String(RUECKLAGE_BASIS + i), name: 'Rücklage ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'passiv' }));
-  const i = liste.findIndex((k) => k.nr === '2400') + 1;
-  return [...liste.slice(0, i), ...rl, ...ek, ...liste.slice(i)];
+  const deb = [...[0, 1, 2, 3].map((i) => ({ nr: String(DEBITOR_BASIS + i), name: 'Debitor ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'aktiv' })), { ...DEBITOR_FIRMA, typ: 'aktiv' }];
+  const i = liste.findIndex((k) => k.nr === '2400') + 1, d = liste.findIndex((k) => k.nr === '1000') + 2;
+  return [...liste.slice(0, d), ...deb, ...liste.slice(d, i), ...rl, ...ek, ...liste.slice(i)];
 }
 export function buchVorlagen(personen) {
   const ids = eigentuemerGeordnet(personen);
