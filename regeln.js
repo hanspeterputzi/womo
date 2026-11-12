@@ -553,6 +553,29 @@ export function zahlungenAusJournal(journal, personen) {
   }
   return out;
 }
+export const kreditorNr = (personen, personId) => { const i = eigentuemerGeordnet(personen).indexOf(personId); return i < 0 ? null : String(KREDITOR_BASIS + i); };
+
+// Wunschliste -> Buchhaltung. Ein Wunsch kommt erst in die Buchhaltung, wenn er gekauft ist (Freigabe durch die Mehrheit
+// und «Gekauft eintragen»). Die App bereitet die Buchungen vor, HP bestaetigt und waehlt das Aufwandskonto selbst:
+//   Kauf:        Aufwandskonto (HP waehlt) an «Kreditor <Kaeufer>»   (der Kaeufer hat ausgelegt)
+//   Erstattung:  «Kreditor <Kaeufer>» an Bank CHF                   (erst, wenn der Kauf gebucht ist)
+// Gebuchte Eintraege tragen wunschId und wunschArt ('kauf' | 'erstattung') im Journal.
+export function zuBuchen(wuensche, wunschaktionen, journal, personen) {
+  const j = Object.values(journal || {}), a = Object.values(wunschaktionen || {}), out = [];
+  for (const w of Object.values(wuensche || {})) {
+    if (!w.gekauftAm) continue;
+    const kreditor = kreditorNr(personen, w.erfasstVon) || '';
+    const kauf = j.find((x) => x.wunschId === w.id && x.wunschArt === 'kauf'), erstBuchung = j.find((x) => x.wunschId === w.id && x.wunschArt === 'erstattung');
+    const erst = a.find((x) => x.wunschId === w.id && x.art === 'erstattet');
+    if (!kauf) out.push({ wunschId: w.id, titel: w.titel, art: 'kauf', datum: w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: '', haben: kreditor });
+    else if (erst && !erstBuchung) out.push({ wunschId: w.id, titel: w.titel, art: 'erstattung', datum: erst.datum || (erst.erfasstAm || '').slice(0, 10) || w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: kreditor, haben: '1020' });
+  }
+  return out.sort((x, y) => (x.datum < y.datum ? -1 : x.datum > y.datum ? 1 : 0));
+}
+export function wunschGebucht(w, journal) {
+  const j = Object.values(journal || {});
+  return { kauf: j.some((x) => x.wunschId === w.id && x.wunschArt === 'kauf'), erstattung: j.some((x) => x.wunschId === w.id && x.wunschArt === 'erstattung') };
+}
 export const BUCH_TEXT_MAX = 100;
 export const BUCH_BETRAG_MAX = 100000000;   // CHF 1 Million, gleiche Grenze wie die Datenbankregel
 

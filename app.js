@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112k';
-import * as S from './speicher.js?v=20261112k';
+  achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261112l';
+import * as S from './speicher.js?v=20261112l';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -337,6 +337,7 @@ function hinweiseHtml() {
     else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
     else if (st.status === 'gekauft' && ich === D.adminId && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
   });
+  if (buchhalter()) { const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen); if (zb.length) out += `<div class="hinweiskarte gelb" data-neu="kosten" style="cursor:pointer">📒 Buchhaltung: ${zb.length} ${zb.length === 1 ? 'Wunschbuchung ist' : 'Wunschbuchungen sind'} noch zu buchen.</div>`; }
   return out;
 }
 
@@ -672,6 +673,10 @@ function kosten() {
         <div class="zeilen">${zeilen}</div>
         <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte. Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».</p></div>`;
     })();
+  const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen);
+  const zbKarte = !zb.length ? '' : `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Zu buchen: Wünsche</h3>
+    <div class="zeilen">${zb.map((z, i) => `<div class="z"><div class="l"><strong>${h(z.titel)}</strong><div class="meta">${z.art === 'kauf' ? 'Kauf' : 'Erstattung'} · CHF ${chf(z.betrag)} · ${fmt(z.datum)} · ${name(z.personId)}</div></div><div class="r">${buch ? `<button class="btn pri" data-zb="${i}">Buchen</button>` : '<span class="chipk gelb">HP bucht</span>'}</div></div>`).join('')}</div>
+    <p class="info" style="margin-bottom:0">Gekaufte Wünsche kommen erst jetzt in die Buchhaltung. Beim Kauf wählst du das Aufwandskonto, die Gegenbuchung läuft über den Kreditor der Person, die ausgelegt hat.</p></div>`;
   const chipJ = (s) => s === 'ueberfaellig' ? '<span class="chipk rot">überfällig</span>' : s === 'bezahlt' ? '<span class="chipk ok">bezahlt</span>' : '<span class="chipk">offen</span>';
   const kinderPlan = kinderIds.filter((i) => plaene[i]).map((i) => {
     const pl = plaene[i];
@@ -721,6 +726,7 @@ function kosten() {
     ${mein}
   </div>
   ${offenKarte}
+  ${zbKarte}
   ${sek('Bilanz', 'CHF ' + chf(bi.sAktiven), bilanzInhalt, true)}
   ${sek('Erfolgsrechnung', J + ': ' + chf(er.ergebnis), erfInhalt, false)}
   ${sek('Buchungen ' + J, jahrBuch.length + (jahrBuch.length === 1 ? ' Eintrag' : ' Einträge'), journalInhalt, jahrBuch.length > 0 && jahrBuch.length <= 3)}
@@ -740,6 +746,7 @@ function kosten() {
     if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
   };
   app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
+  app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchungForm(z); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.`, j, () => S.loeschen(D, 'journal', j.id)); });
   app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
     const kb = kontoblatt(jn, D.personen, b.dataset.kb, stichtag); if (!kb.konto) return;
@@ -749,7 +756,7 @@ function kosten() {
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
   });
-  const kp = document.getElementById('kplus'); if (kp) kp.onclick = buchungForm;
+  const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchungForm();
   app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
@@ -761,26 +768,27 @@ function startFeld(wert) {
   return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übernahmedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
 }
 
-function buchungForm() {
+function buchungForm(vor) {
   const gruppen = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }, kl = kontenListe(D.personen);
-  const optionen = (sel) => Object.entries(gruppen).map(([typ, tt]) => `<optgroup label="${tt}">${kl.filter((k) => k.typ === typ).map((k) => `<option value="${k.nr}"${k.nr === sel ? ' selected' : ''}>${k.nr} ${h(k.name)}</option>`).join('')}</optgroup>`).join('');
+  const optionen = (sel, platzhalter) => (platzhalter ? '<option value="" selected>Bitte Konto wählen</option>' : '') + Object.entries(gruppen).map(([typ, tt]) => `<optgroup label="${tt}">${kl.filter((k) => k.typ === typ).map((k) => `<option value="${k.nr}"${k.nr === sel && !platzhalter ? ' selected' : ''}>${k.nr} ${h(k.name)}</option>`).join('')}</optgroup>`).join('');
   const vorl = buchVorlagen(D.personen), v0 = vorl[0];
-  sheet(`<h3>Buchung erfassen</h3>
-  <label for="b_vorlage">Vorlage</label><select id="b_vorlage">${vorl.map((v) => `<option value="${v.id}">${h(v.name)}</option>`).join('')}</select>
-  <div class="zwei"><div><label for="b_datum">Datum</label><input type="date" id="b_datum" value="${heute()}"></div>
-  <div><label for="b_betrag">Betrag in CHF</label><input id="b_betrag" inputmode="decimal" placeholder="z. B. 45.50"></div></div>
-  <label for="b_soll">Soll (wohin geht es?)</label><select id="b_soll">${optionen(v0.soll)}</select>
-  <label for="b_haben">Haben (woher kommt es?)</label><select id="b_haben">${optionen(v0.haben)}</select>
-  <label for="b_text">Buchungstext</label><input id="b_text" maxlength="${BUCH_TEXT_MAX}" placeholder="z. B. Gasflasche">
+  sheet(`<h3>${vor ? (vor.art === 'kauf' ? 'Wunschkauf buchen' : 'Erstattung buchen') : 'Buchung erfassen'}</h3>
+  ${vor ? `<p class="info" style="margin:0 0 6px">Wunsch «${h(vor.titel)}», ${vor.art === 'kauf' ? 'gekauft von ' + h(D.personen[vor.personId]?.name || '?') + '. Bitte das Aufwandskonto wählen.' : 'der Betrag wurde vom gemeinsamen Konto erstattet.'}</p>` : `<label for="b_vorlage">Vorlage</label><select id="b_vorlage">${vorl.map((v) => `<option value="${v.id}">${h(v.name)}</option>`).join('')}</select>`}
+  <div class="zwei"><div><label for="b_datum">Datum</label><input type="date" id="b_datum" value="${vor ? h(vor.datum) : heute()}"></div>
+  <div><label for="b_betrag">Betrag in CHF</label><input id="b_betrag" inputmode="decimal" placeholder="z. B. 45.50" value="${vor ? chf(vor.betrag).replace(/[’' ]/g, '') : ''}"></div></div>
+  <label for="b_soll">Soll (wohin geht es?)</label><select id="b_soll">${vor ? optionen(vor.soll, !vor.soll) : optionen(v0.soll)}</select>
+  <label for="b_haben">Haben (woher kommt es?)</label><select id="b_haben">${vor ? optionen(vor.haben, !vor.haben) : optionen(v0.haben)}</select>
+  <label for="b_text">Buchungstext</label><input id="b_text" maxlength="${BUCH_TEXT_MAX}" placeholder="z. B. Gasflasche" value="${vor ? h((vor.art === 'kauf' ? vor.titel : 'Erstattung: ' + vor.titel).slice(0, BUCH_TEXT_MAX)) : ''}">
   <p class="info" id="b_hilfe" style="margin-bottom:0"></p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
   const kn = Object.fromEntries(kl.map((k) => [k.nr, k.name])), hilfe = document.getElementById('b_hilfe');
   const zeigeHilfe = () => { hilfe.textContent = `Gebucht wird: ${kn[val('b_soll')] || '?'} an ${kn[val('b_haben')] || '?'}. Betrag immer positiv eingeben.`; };
-  document.getElementById('b_vorlage').onchange = () => { const v = vorl.find((x) => x.id === val('b_vorlage')); if (v && v.soll) { document.getElementById('b_soll').value = v.soll; document.getElementById('b_haben').value = v.haben; } zeigeHilfe(); };
+  if (!vor) document.getElementById('b_vorlage').onchange = () => { const v = vorl.find((x) => x.id === val('b_vorlage')); if (v && v.soll) { document.getElementById('b_soll').value = v.soll; document.getElementById('b_haben').value = v.haben; } zeigeHilfe(); };
   document.getElementById('b_soll').onchange = zeigeHilfe; document.getElementById('b_haben').onchange = zeigeHilfe; zeigeHilfe();
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
     const b = { datum: val('b_datum'), soll: val('b_soll'), haben: val('b_haben'), betrag: rappen(val('b_betrag')), text: val('b_text').trim(), erfasstVon: ich };
+    if (vor) { b.wunschId = vor.wunschId; b.wunschArt = vor.art; }
     const p = pruefeBuchsatz(b, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => { await S.speichern(D, 'journal', null, b); jahrK = parseInt(b.datum.slice(0, 4), 10); schliessen(); kosten(); hinweis('Buchung gespeichert.'); });
@@ -993,10 +1001,11 @@ function wunschDetail(id) {
     return s.abgelaufen || s.status !== 'offen' ? '<span class="chipk ok">zählt als Ja</span>' : '<span class="chipk gelb">noch offen</span>';
   };
   const zeilen = ids.map((i) => { const a = s.antworten[i]; return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${a && a.stimme === 'nein' ? `<div class="meta">${a.grund ? 'Grund: ' + h(a.grund) : ''}${a.grund && a.alternative ? '<br>' : ''}${a.alternative ? 'Alternative: ' + h(a.alternative) : ''}</div>` : ''}</div><div class="r">${stimmeChip(i)}</div></div>`; }).join('');
+  const gb = wunschGebucht(w, D.journal);
   const stand = s.status === 'offen' ? `Antworten bis ${fmt(s.frist)} (einschliesslich). Wer nicht antwortet, stimmt zu.`
     : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
     : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.nein.length === s.ja ? ' (Gleichstand gilt als abgelehnt, Ziffer 13)' : ''}. Nicht kaufen.`
-    : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}`;
+    : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'} Buchhaltung: ${gb.kauf ? 'Kauf gebucht' : 'Kauf noch nicht gebucht'}${s.erstattet ? (gb.erstattung ? ', Erstattung gebucht' : ', Erstattung noch nicht gebucht') : ''}.`;
   const waText = `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(s.frist)} antworten (Ja oder Nein).`;
   const meinAntwort = s.status === 'offen' && !mein;
   const kaufen = s.status === 'freigegeben' && mein;
@@ -1030,10 +1039,8 @@ function wunschDetail(id) {
     const betrag = rappen(val('w_betrag')), datum = val('w_kdatum'), p = pruefeKauf(w, betrag, datum);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => {
-      // Kosten zuerst (feste Nummer: kein doppelter Eintrag), dann der Wunsch
-      const kid = await S.speichern(D, 'kosten', 'kw_' + w.id, { datum, betrag, art: 'betrieb', text: `Einrichtung (Wunschliste): ${w.titel}`.slice(0, 100), wunschId: w.id, erfasstVon: ich });
-      await S.speichern(D, 'wuensche', w.id, { ...w, gekauftAm: datum, gekauftBetrag: betrag, kostenId: kid });
-      schliessen(); wunschliste(); hinweis('Gekauft eingetragen. Der Betrag zählt zu den laufenden Kosten. Der Vater erstattet vom gemeinsamen Konto.');
+      await S.speichern(D, 'wuensche', w.id, { ...w, gekauftAm: datum, gekauftBetrag: betrag });
+      schliessen(); wunschliste(); hinweis('Gekauft eingetragen. HP bucht den Kauf in der Buchhaltung, der Vater erstattet vom gemeinsamen Konto.');
     });
   };
   if (erstatten) document.getElementById('w_erst').onclick = () => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); };
