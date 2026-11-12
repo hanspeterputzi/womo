@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113a';
-import * as S from './speicher.js?v=20261113a';
+} from './regeln.js?v=20261113b';
+import * as S from './speicher.js?v=20261113b';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -335,7 +335,7 @@ function hinweiseHtml() {
     const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
     if (st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]) karte('gelb', `${titel} wartet auf deine Antwort bis ${fmt(st.frist)}.`);
     else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
-    else if (st.status === 'gekauft' && ich === D.adminId && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
+    else if (st.status === 'gekauft' && buchhalter() && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
   });
   if (buchhalter()) { const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen); if (zb.length) out += `<div class="hinweiskarte gelb" data-neu="kosten" style="cursor:pointer">📒 Buchhaltung: ${zb.length} ${zb.length === 1 ? 'Wunschbuchung ist' : 'Wunschbuchungen sind'} noch zu buchen.</div>`; }
   return out;
@@ -644,22 +644,22 @@ function kosten() {
 
   let plan;
   if (!D.start) {
-    plan = `<p class="info" style="margin-top:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App das Vertragsjahr und die Beträge für Rücklage und Darlehen nicht berechnen.</p>${ich === D.adminId ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}`;
+    plan = `<p class="info" style="margin-top:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App das Vertragsjahr und die Beträge für Rücklage und Darlehen nicht berechnen.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}`;
   } else {
     const n = vertragsJahr(D.start, t);
-    if (n === null) plan = `<p class="info" style="margin-top:0">Der Vertrag beginnt am ${fmt(D.start)}.</p>${ich === D.adminId ? startFeld(D.start) : ''}`;
+    if (n === null) plan = `<p class="info" style="margin-top:0">Der Vertrag beginnt am ${fmt(D.start)}.</p>${buchhalter() ? startFeld(D.start) : ''}`;
     else if (n > 8) plan = `<p class="info" style="margin-top:0">Die 8 Vertragsjahre sind abgelaufen (Beginn ${fmt(D.start)}). Weiteres regelt Ziffer 14 des Vertrags.</p>`;
     else plan = `<p class="info" style="margin-top:0">Vertragsjahr <strong>${n} von 8</strong> · ${fmt(addJahre(D.start, n - 1))} bis ${fmt(addJahre(D.start, n))} (Beginn ${fmt(D.start)}).</p><div class="zeilen">` +
       ids.map((i) => {
         const zp = zahlplan(D.start, t, el, D.personen[i], i);
         return `<div class="z"><div class="l"><strong>${name(i)}</strong>${zp.posten.map((p) => `<div class="meta">${ZWECKE[p.zweck]}: Soll ${chf(p.soll)} · bezahlt ${chf(p.ist)}</div>`).join('')}</div><div class="r">${zp.posten.map((p) => `<div><span class="chipk ${p.offen > 0 ? 'gelb' : 'ok'}">${p.offen > 0 ? 'offen ' + chf(p.offen) : 'bezahlt'}</span></div>`).join('')}</div></div>`;
-      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, Rückzahlung je CHF 9 600).</p>${ich === D.adminId ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
+      }).join('') + `</div><p class="info">Soll laut Vertrag Ziffer 5 (Rücklage) und Anhang A (Darlehen, Rückzahlung je CHF 9 600).</p>${buchhalter() ? `<details class="det"><summary>Übernahmedatum ändern</summary>${startFeld(D.start)}</details>` : ''}`;
   }
 
   // ---- Offene Zahlungen (immer sichtbar) und Zahlungen der Kinder ueber 8 Jahre ----
   const plaene = Object.fromEntries(ids.map((i) => [i, D.start && D.personen[i] ? achtJahrePlan(D.start, t, el, D.personen[i], i) : null]));
   const offenKarte = !D.start
-    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${ich === D.adminId ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
+    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
     : (() => {
       const zeilen = ids.map((i) => {
         const fz = faelligkeiten(D.start, t, el, D.personen[i], i), pl = plaene[i];
@@ -684,7 +684,7 @@ function kosten() {
     ['Der Kauf wird eingetragen', '', 'Macht: die kaufende Person', 'Tab «Wünsche» → auf den Wunsch tippen → Betrag und Kaufdatum prüfen → «Gekauft eintragen». Das kann nur die Person, die den Wunsch vorgeschlagen hat. Danach erscheinen bei der Buchhaltung die orange Karte «Zu buchen: Wünsche» im Tab «Kosten» und ein Hinweis im Kalender.'],
     ['Den Kauf buchen', 'gelb', 'Macht: die Buchhaltung', 'Tab «Kosten» → orange Karte «Zu buchen» → «Buchen» → bei «Soll» das Aufwandskonto wählen (das entscheidet die Buchhaltung, alles andere ist schon ausgefüllt) → «Speichern».<br>Gebucht wird: Aufwand an das Kreditor-Konto der kaufenden Person. Das Womo schuldet ihr jetzt den Betrag.'],
     ['Das Geld zurückzahlen', '', 'Ausserhalb der App', 'Vom gemeinsamen Konto an die kaufende Person.'],
-    ['Die Rückzahlung bestätigen', '', 'Macht: der Halter', 'Tab «Wünsche» → auf den Wunsch tippen → «Betrag erstattet». Diesen Knopf sieht nur der Halter.'],
+    ['Die Rückzahlung bestätigen', '', 'Macht: der Halter, im Notfall die Stellvertretung', 'Tab «Wünsche» → auf den Wunsch tippen → «Betrag erstattet». Diesen Knopf sehen nur der Halter und die Stellvertretung.'],
     ['Die Rückzahlung buchen', 'gelb', 'Macht: die Buchhaltung', 'Tab «Kosten» → die orange Karte zeigt jetzt «Erstattung» → «Buchen» → «Speichern». Hier muss kein Konto gewählt werden.<br>Gebucht wird: Kreditor-Konto der kaufenden Person an Bank CHF. Das Kreditor-Konto steht danach wieder auf 0.'],
   ];
   const anleitung = `<p class="info" style="margin-top:0">Ein Wunsch kommt erst in die Buchhaltung, wenn er bewilligt und gekauft ist. <strong>Automatisch gebucht wird nie etwas.</strong> Die App zeigt nur, was zu buchen ist, und füllt die Buchung vor. Beispiel: ein Wunsch über CHF 12.00.</p>
@@ -756,7 +756,7 @@ function kosten() {
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button>${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}</div>`);
     document.getElementById('abb').onclick = schliessen;
-    if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
+    if (darf) document.getElementById('e_del').onclick = () => alsStv(async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); });
   };
   app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchenStarten(() => buchungForm(z)); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.${j.stellvertretung ? `<br><strong>Gebucht als Stellvertretung</strong> am ${fmt((j.stellvertretungAm || j.erfasstAm || '').slice(0, 10))}.` : ''}`, j, () => S.journalLoeschen(D, j.id, ich)); });
@@ -781,12 +781,12 @@ function kosten() {
     if (!S.schluesselGet(ich)) buchenStarten(() => sn.onclick()); else los();
   };
   const kp = document.getElementById('kplus'); if (kp) kp.onclick = () => buchenStarten(() => buchungForm());
-  app.querySelectorAll('[data-st]').forEach((b) => b.onclick = async () => {
+  app.querySelectorAll('[data-st]').forEach((b) => b.onclick = () => alsStv(async () => {
     const [pid, neu] = b.dataset.st.split('|');
     await sicher(async () => { await S.speichern(D, 'zahlstatus', pid, neu === 'ok' ? { status: 'ok', erfasstVon: ich } : { status: 'erinnert', erinnertAm: heute(), erfasstVon: ich }); kosten(); hinweis(neu === 'ok' ? 'Status auf «in Ordnung» gesetzt.' : 'Erinnerung gesetzt. Die Frist beträgt 10 Tage.'); });
-  });
+  }));
   const sb = document.getElementById('startspei');
-  if (sb) sb.onclick = async () => { const v = val('startdatum'); if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { hinweis('Bitte ein Datum wählen.'); return; } await sicher(async () => { await S.startSetzen(D, v); kosten(); hinweis('Übernahmedatum gespeichert.'); }); };
+  if (sb) sb.onclick = () => { const v = val('startdatum'); if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { hinweis('Bitte ein Datum wählen.'); return; } alsStv(() => sicher(async () => { await S.startSetzen(D, v); kosten(); hinweis('Übernahmedatum gespeichert.'); })); };
 }
 function startFeld(wert) {
   return `<label for="startdatum" style="display:block;margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted)">Übernahmedatum des Fahrzeugs</label><div class="btnzeile" style="margin:0"><input type="date" id="startdatum" value="${h(wert)}" style="flex:1;min-width:150px;font:inherit;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--fg)"><button class="btn pri" id="startspei">Speichern</button></div>`;
@@ -794,11 +794,17 @@ function startFeld(wert) {
 
 // Nanouk bucht nur als Stellvertreterin (Vertrag Ziffer 11 und 15): vor jeder Buchung kommt ein Hinweis.
 const stellvertretung = () => !!ich && ich !== D.adminId && ich === 't';
+// Hinweis fuer die Stellvertreterin vor jeder Handlung, die eigentlich dem Hauptbuchhalter gehoert (Buchen, Erstattung bestaetigen,
+// Uebernahmedatum, Zahlungsstatus, Buchung loeschen). Fuer alle anderen geht es direkt weiter.
+function alsStv(weiter) {
+  if (!stellvertretung()) { weiter(); return; }
+  const hp = h(D.personen[D.adminId]?.name || 'HP');
+  sheet(`<h3>Stellvertretung</h3><div class="hinweiskarte rot" style="margin:0 0 10px">${hp} führt die Buchhaltung. Du buchst nur, wenn ${hp} dazu aus eigener Kraft nicht mehr fähig ist (Vertrag Ziffer 11 und 15). Jede Buchung von dir wird als Stellvertretung gekennzeichnet.</div>
+    <div class="t-akt2"><button class="gross-btn" id="abb">Abbrechen</button><button class="gross-btn rot" id="stv_ja">${hp} kann nicht mehr, ich mache das</button></div>`);
+  document.getElementById('abb').onclick = schliessen; document.getElementById('stv_ja').onclick = () => { schliessen(); weiter(); };
+}
 function buchenStarten(weiter) {
-  const los = () => { if (!stellvertretung()) { weiter(); return; }
-    sheet(`<h3>Stellvertretung</h3><div class="hinweiskarte rot" style="margin:0 0 10px">${h(D.personen[D.adminId]?.name || 'HP')} führt die Buchhaltung. Du buchst nur, wenn ${h(D.personen[D.adminId]?.name || 'HP')} dazu aus eigener Kraft nicht mehr fähig ist (Vertrag Ziffer 11 und 15). Jede Buchung von dir wird als Stellvertretung gekennzeichnet.</div>
-      <div class="t-akt2"><button class="gross-btn rot" id="stv_ja">${h(D.personen[D.adminId]?.name || 'HP')} kann nicht mehr, ich buche</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
-    document.getElementById('abb').onclick = schliessen; document.getElementById('stv_ja').onclick = () => { schliessen(); weiter(); }; };
+  const los = () => alsStv(weiter);
   if (S.online && !S.schluesselGet(ich)) {
     sheet(`<h3>Buchungsschlüssel</h3><p class="info" style="margin:0 0 8px">Buchen darf nur, wer den Buchungsschlüssel kennt. Bitte den Schlüssel einmal eingeben, er wird nur auf diesem Gerät gemerkt.</p>
       <label for="schl">Buchungsschlüssel</label><input id="schl" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="100"><div id="msg"></div>
@@ -1041,7 +1047,7 @@ function wunschForm() {
 
 function wunschDetail(id) {
   const w = D.wuensche[id]; if (!w) return;
-  const s = wunschStandVon(w), ids = idsGeordnet(), mein = w.erfasstVon === ich, halter = ich === D.adminId;
+  const s = wunschStandVon(w), ids = idsGeordnet(), mein = w.erfasstVon === ich, halter = buchhalter();
   const k = wunschKlasse(s.status);
   const stimmeChip = (i) => {
     if (i === w.erfasstVon) return '<span class="chipk ok">Vorschlag</span>';
@@ -1092,7 +1098,7 @@ function wunschDetail(id) {
       schliessen(); wunschliste(); hinweis('Gekauft eingetragen. HP bucht den Kauf in der Buchhaltung, der Vater erstattet vom gemeinsamen Konto.');
     });
   };
-  if (erstatten) document.getElementById('w_erst').onclick = () => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); };
+  if (erstatten) document.getElementById('w_erst').onclick = () => alsStv(() => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); });
   const del = document.getElementById('w_del');
   if (del) del.onclick = async () => { if (confirm('Wunsch löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of Object.values(D.wunschaktionen).filter((x) => x.wunschId === w.id)) await S.loeschen(D, 'wunschaktionen', a.id); await S.loeschen(D, 'wuensche', w.id); schliessen(); wunschliste(); }); };
 }
