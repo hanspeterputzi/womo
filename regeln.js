@@ -560,21 +560,35 @@ export const kreditorNr = (personen, personId) => { const i = eigentuemerGeordne
 //   Kauf:        Aufwandskonto (HP waehlt) an «Kreditor <Kaeufer>»   (der Kaeufer hat ausgelegt)
 //   Erstattung:  «Kreditor <Kaeufer>» an Bank CHF                   (erst, wenn der Kauf gebucht ist)
 // Gebuchte Eintraege tragen wunschId und wunschArt ('kauf' | 'erstattung') im Journal.
+// Welche Buchungen zu einem Wunsch schon vorhanden sind. Zaehlt auch, was HP von Hand gebucht hat (ohne Bezug zum Wunsch):
+//   Kauf:       Buchung an «Kreditor <Kaeufer>» mit dem Kaufbetrag,
+//   Erstattung: Buchung von «Kreditor <Kaeufer>» mit dem Kaufbetrag.
+// Eine Handbuchung gilt hoechstens fuer einen Wunsch (zwei gleiche Wuensche brauchen zwei Buchungen).
+function buchungsStand(wuensche, journal, personen) {
+  const j = Object.values(journal || {}), frei = j.filter((x) => !x.wunschId).sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0)), benutzt = new Set(), res = {};
+  const ws = Object.values(wuensche || {}).filter((w) => w.gekauftAm).sort((a, b) => (a.gekauftAm < b.gekauftAm ? -1 : a.gekauftAm > b.gekauftAm ? 1 : 0));
+  const nimm = (pruefe) => { const e = frei.find((x) => !benutzt.has(x) && pruefe(x)); if (e) benutzt.add(e); return !!e; };
+  for (const w of ws) {
+    const kreditor = kreditorNr(personen, w.erfasstVon) || '';
+    const kauf = j.some((x) => x.wunschId === w.id && x.wunschArt === 'kauf') || (!!kreditor && nimm((x) => x.haben === kreditor && x.betrag === w.gekauftBetrag));
+    const erstattung = j.some((x) => x.wunschId === w.id && x.wunschArt === 'erstattung') || (!!kreditor && nimm((x) => x.soll === kreditor && x.betrag === w.gekauftBetrag));
+    res[w.id] = { kauf, erstattung, kreditor };
+  }
+  return res;
+}
 export function zuBuchen(wuensche, wunschaktionen, journal, personen) {
-  const j = Object.values(journal || {}), a = Object.values(wunschaktionen || {}), out = [];
+  const a = Object.values(wunschaktionen || {}), st = buchungsStand(wuensche, journal, personen), out = [];
   for (const w of Object.values(wuensche || {})) {
     if (!w.gekauftAm) continue;
-    const kreditor = kreditorNr(personen, w.erfasstVon) || '';
-    const kauf = j.find((x) => x.wunschId === w.id && x.wunschArt === 'kauf'), erstBuchung = j.find((x) => x.wunschId === w.id && x.wunschArt === 'erstattung');
-    const erst = a.find((x) => x.wunschId === w.id && x.art === 'erstattet');
-    if (!kauf) out.push({ wunschId: w.id, titel: w.titel, art: 'kauf', datum: w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: '', haben: kreditor });
-    else if (erst && !erstBuchung) out.push({ wunschId: w.id, titel: w.titel, art: 'erstattung', datum: erst.datum || (erst.erfasstAm || '').slice(0, 10) || w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: kreditor, haben: '1020' });
+    const s = st[w.id], erst = a.find((x) => x.wunschId === w.id && x.art === 'erstattet');
+    if (!s.kauf) out.push({ wunschId: w.id, titel: w.titel, art: 'kauf', datum: w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: '', haben: s.kreditor });
+    else if (erst && !s.erstattung) out.push({ wunschId: w.id, titel: w.titel, art: 'erstattung', datum: erst.datum || (erst.erfasstAm || '').slice(0, 10) || w.gekauftAm, betrag: w.gekauftBetrag, personId: w.erfasstVon, soll: s.kreditor, haben: '1020' });
   }
   return out.sort((x, y) => (x.datum < y.datum ? -1 : x.datum > y.datum ? 1 : 0));
 }
-export function wunschGebucht(w, journal) {
-  const j = Object.values(journal || {});
-  return { kauf: j.some((x) => x.wunschId === w.id && x.wunschArt === 'kauf'), erstattung: j.some((x) => x.wunschId === w.id && x.wunschArt === 'erstattung') };
+export function wunschGebucht(w, journal, personen = {}, wuensche = { [w.id]: w }) {
+  const s = buchungsStand(wuensche, journal, personen)[w.id] || { kauf: false, erstattung: false };
+  return { kauf: s.kauf, erstattung: s.erstattung };
 }
 export const BUCH_TEXT_MAX = 100;
 export const BUCH_BETRAG_MAX = 100000000;   // CHF 1 Million, gleiche Grenze wie die Datenbankregel
