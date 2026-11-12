@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261112o';
-import * as S from './speicher.js?v=20261112o';
+} from './regeln.js?v=20261112p';
+import * as S from './speicher.js?v=20261112p';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -636,7 +636,7 @@ function uebergabeForm(bid, phase) {
 // =====================================================================
 function kosten() {
   const J = jahrK, ids = idsGeordnet(), t = heute(), buch = buchhalter();
-  const kl = Object.values(D.kosten), el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
+  const el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
 
@@ -693,7 +693,6 @@ function kosten() {
     return `<div class="z"><div class="l"><strong>${name(i)}</strong><div>${chip}</div></div><div class="r">${knopf}</div></div>`;
   }).join('');
 
-  const kjahr = kl.filter((k) => k.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : -1));
   // ---- Einfache doppelte Buchhaltung ----
   const jn = D.journal, kname = Object.fromEntries(kontenListe(D.personen).map((k) => [k.nr, k.name]));
   const stichtag = t.slice(0, 4) === String(J) ? t : `${J}-12-31`;
@@ -734,8 +733,7 @@ function kosten() {
   ${sek('Zahlungen der Kinder, 8 Jahre', D.start ? 'CHF ' + chf(kinderIds.reduce((s, i) => s + (plaene[i] ? plaene[i].total.offen : 0), 0)) + ' offen' : 'Datum fehlt', kinderInhalt, false)}
   ${sek('Zahlplan aller', D.start ? 'Jahr ' + (vertragsJahr(D.start, t) ?? '–') : 'Datum fehlt', plan, false)}
   ${(S.online && ich === D.adminId) ? sek('Stellvertretung ' + name('t'), '', `<p class="info" style="margin-top:0">${name('t')} bucht nur als Stellvertretung, wenn du nicht mehr kannst. Dafür braucht ${name('t')} einen eigenen Schlüssel. Du erzeugst ihn hier, die App zeigt ihn nur einmal an, und du gibst ihn ${name('t')} selbst weiter. Ein bisheriger Schlüssel von ${name('t')} gilt danach nicht mehr.</p><div class="btnzeile"><button class="btn pri" id="stv_neu">Neuen Schlüssel für ${name('t')} erzeugen</button></div>`, false) : ''}
-  ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}
-  ${kjahr.length ? sek('Frühere Kostenerfassung ' + J, kjahr.length + (kjahr.length === 1 ? ' Eintrag' : ' Einträge'), '<p class="info" style="margin-top:0">Diese Kosten wurden vor der Buchhaltung erfasst. Neue Kosten bitte als Buchung erfassen.</p>' + kjahr.map((k) => zeileK('data-dk', k.id, 'CHF ' + chf(k.betrag), fmt(k.datum).slice(0, 6) + ' · ' + h(k.text || KOSTENARTEN[k.art]) + (k.verursacherId ? ' · ' + name(k.verursacherId) : ''), k)).join(''), false) : ''}`);
+  ${sek('Zahlungsstatus', '', `<div class="zeilen">${status}</div><p class="info">Bei Zahlungsverzug: Erinnerung, 10 Tage Frist, danach Nutzungsverbot bis zur Zahlung (Ziffer 4). Die App sperrt dann Reservierungen für diese Person.</p>`, false)}`);
   bindRahmen();
   document.getElementById('jz').onclick = () => { jahrK = J - 1; kosten(); };
   document.getElementById('jv').onclick = () => { jahrK = J + 1; kosten(); };
@@ -746,7 +744,6 @@ function kosten() {
     document.getElementById('abb').onclick = schliessen;
     if (darf) document.getElementById('e_del').onclick = async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); };
   };
-  app.querySelectorAll('[data-dk]').forEach((b) => b.onclick = () => { const k = D.kosten[b.dataset.dk]; if (k) eintragSheet('CHF ' + chf(k.betrag), `${fmt(k.datum)} · ${h(KOSTENARTEN[k.art])}${k.verursacherId ? ' · Verursacher ' + name(k.verursacherId) : ''}${k.text ? ' · ' + h(k.text) : ''}<br>Erfasst von ${name(k.erfasstVon)}.`, k, () => S.loeschen(D, 'kosten', k.id)); });
   app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchenStarten(() => buchungForm(z)); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.${j.stellvertretung ? `<br><strong>Gebucht als Stellvertretung</strong> am ${fmt((j.stellvertretungAm || j.erfasstAm || '').slice(0, 10))}.` : ''}`, j, () => S.journalLoeschen(D, j.id, ich)); });
   app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
@@ -956,13 +953,20 @@ function wunschliste() {
   const dein = alle.filter((e) => e.s.status === 'offen' && e.w.erfasstVon !== ich && !e.s.antworten[ich]);
   const laufend = alle.filter((e) => e.s.status === 'offen' && !dein.includes(e));
   const frei = alle.filter((e) => e.s.status === 'freigegeben');
-  const gekauft = alle.filter((e) => e.s.status === 'gekauft'), abgelehnt = alle.filter((e) => e.s.status === 'abgelehnt');
+  const abgelehnt = alle.filter((e) => e.s.status === 'abgelehnt');
+  const archiv = alle.filter((e) => e.s.status === 'freigegeben' || e.s.status === 'gekauft');
+  const zeileArchiv = (e) => {
+    const { w, s } = e, k = wunschKlasse(s.status);
+    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum)}<br>Abstimmung: ${s.ja} Ja, ${s.nein.length} Nein${w.gekauftAm ? `<br>Gekauft ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)}${s.erstattet ? ', erstattet' : ', noch nicht erstattet'}` : '<br>Noch nicht gekauft'}`;
+    const bild = w.foto ? `<span class="t-sq ${k} mit-foto"><img src="${h(w.foto)}" alt=""></span>` : `<span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span>`;
+    return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
+  };
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}
     <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
       <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
-    ${gekauft.length ? `<details class="sek" style="margin-top:20px"><summary><span>Gekauft</span><b>${gekauft.length}</b></summary><div class="sek-in">${gekauft.map(zeile).join('')}</div></details>` : ''}
+    ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu();
   document.getElementById('wneu').onclick = wunschForm;
@@ -1053,7 +1057,7 @@ function wunschDetail(id) {
       ${kaufen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
       ${erstatten ? '<button class="gross-btn pri" id="w_erst">Betrag erstattet</button>' : ''}
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
-      <button class="gross-btn" id="abb">Schliessen</button>${mein && s.status !== 'gekauft' ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}</div>`);
+      <button class="gross-btn" id="abb">Schliessen</button>${mein && ['offen', 'abgelehnt'].includes(s.status) ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
   const fb = document.getElementById('w_fbig');
   if (fb) fb.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(w.foto)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); };
