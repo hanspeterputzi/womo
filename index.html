@@ -267,6 +267,15 @@ details.sek[open] summary::after{transform:rotate(-90deg)}
 .neu-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .neu-chip{border:0;background:rgba(198,40,40,.10);color:var(--rot-t);font:inherit;font-size:14px;font-weight:700;border-radius:999px;padding:8px 14px;min-height:40px}
 .neu-chip b{margin-left:4px}
+/* Wunschliste: Foto */
+.sheet label.foto-wahl{margin:6px 0 0;display:block;text-align:center;background:var(--soft);color:var(--acc);border:1px dashed var(--line);border-radius:12px;padding:14px;font-weight:700;font-size:15px;cursor:pointer;min-height:48px;box-sizing:border-box}
+.foto-vor{display:flex;align-items:flex-start;gap:12px;margin-top:10px}
+.foto-vor img{width:96px;height:96px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+.t-sq.mit-foto{padding:0;overflow:hidden}
+.t-sq.mit-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.w-foto{display:block;width:100%;max-height:260px;object-fit:cover;border-radius:14px;margin:10px 0 8px;cursor:zoom-in}
+.foto-gross{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:12px;cursor:zoom-out}
+.foto-gross img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
 .sheet textarea{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--soft);color:var(--fg);min-height:76px;resize:vertical}
 .chk.ja input:checked+label{background:var(--ok)!important;border-color:var(--ok)!important}
 .chk.nein input:checked+label{background:var(--rot)!important;border-color:var(--rot)!important}

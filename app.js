@@ -2,9 +2,9 @@ import {
   SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-  WUNSCH_MAX_RAPPEN, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-} from './regeln.js?v=20261112a';
-import * as S from './speicher.js?v=20261112a';
+  WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
+} from './regeln.js?v=20261112b';
+import * as S from './speicher.js?v=20261112b';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -912,7 +912,8 @@ function wunschliste() {
     const { w, s } = e, [k, txt] = pille(e);
     const meinAntwortOffen = s.status === 'offen' && w.erfasstVon !== ich && !s.antworten[ich];
     const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum).slice(0, 6)}`;
-    return `<button class="t-z ${k}" data-wid="${h(w.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><span class="t-zt"><strong>${h(w.titel)}${neuPille(w)}${meinAntwortOffen ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
+    const bild = w.foto ? `<span class="t-sq ${k} mit-foto"><img src="${h(w.foto)}" alt=""></span>` : `<span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span>`;
+    return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}${neuPille(w)}${meinAntwortOffen ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
   };
   const gruppe = (titel, xs, offen) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
   const dein = alle.filter((e) => e.s.status === 'offen' && e.w.erfasstVon !== ich && !e.s.antworten[ich]);
@@ -932,6 +933,30 @@ function wunschliste() {
   app.querySelectorAll('[data-wid]').forEach((b) => b.onclick = () => wunschDetail(b.dataset.wid));
 }
 
+// Foto im Handy verkleinern (längste Seite höchstens 1000 px, JPEG), damit es in den Wunsch passt (Firestore: 1 MiB pro Eintrag).
+function fotoVerkleinern(file) {
+  return new Promise((ok, nein) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      try {
+        let max = 1000, q = 0.72, out = '';
+        for (let i = 0; i < 10; i++) {
+          const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+          const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
+          const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/jpeg', q);
+          if (out.length <= 150000) break;
+          q = Math.max(0.4, q - 0.08); max = Math.round(max * 0.85);
+        }
+        URL.revokeObjectURL(url);
+        if (out.length > WUNSCH_FOTO_MAX) nein(new Error('Das Foto ist auch verkleinert zu gross.')); else ok(out);
+      } catch (e) { URL.revokeObjectURL(url); nein(e); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); nein(new Error('Das Bild kann nicht gelesen werden.')); };
+    img.src = url;
+  });
+}
+
 function wunschForm() {
   sheet(`<h3>Neuer Wunsch</h3>
   <label for="w_titel">Was soll gekauft werden?</label><input id="w_titel" maxlength="100" placeholder="Konkretes Produkt, z. B. Leselampe mit Clip, weiss">
@@ -939,11 +964,21 @@ function wunschForm() {
   <div><label for="w_menge">Stückzahl</label><input type="number" id="w_menge" min="1" max="99" value="1" inputmode="numeric"></div></div>
   <label for="w_link">Link zum Produkt</label><input id="w_link" type="url" inputmode="url" maxlength="300" autocapitalize="off" autocorrect="off" placeholder="https://… (empfohlen)">
   <label for="w_notiz">Notiz</label><input id="w_notiz" maxlength="200" placeholder="optional, z. B. wofür, Farbe">
+  <label>Foto (optional)</label><label class="foto-wahl" for="w_foto" id="w_fwahl">📷 Foto aufnehmen oder auswählen</label><input type="file" id="w_foto" accept="image/*" style="display:none">
+  <div id="w_fprev"></div>
   <p class="info">Höchstens CHF 200 pro Stück, gleichartige Stücke zusammen höchstens CHF 200. Darüber: Familienrat. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit zum Antworten.</p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
+  let foto = '';
+  const vorschau = () => { document.getElementById('w_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><button type="button" class="kl" id="w_fweg">Foto entfernen</button></div><p class="info" style="margin:4px 0 0">Das Foto wird verkleinert gespeichert (${Math.round(foto.length / 1024)} KB).</p>` : ''; const wg = document.getElementById('w_fweg'); if (wg) wg.onclick = () => { foto = ''; document.getElementById('w_foto').value = ''; vorschau(); }; document.getElementById('w_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
+  document.getElementById('w_foto').onchange = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    document.getElementById('w_fprev').innerHTML = '<p class="info">Foto wird verkleinert …</p>';
+    try { foto = await fotoVerkleinern(f); vorschau(); }
+    catch (x) { foto = ''; vorschau(); fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
+  };
   document.getElementById('spei').onclick = async () => {
-    const w = { titel: val('w_titel').trim(), preis: rappen(val('w_preis')), menge: parseInt(val('w_menge') || '1', 10), link: val('w_link').trim(), notiz: val('w_notiz').trim(), datum: heute(), erfasstVon: ich };
+    const w = { titel: val('w_titel').trim(), preis: rappen(val('w_preis')), menge: parseInt(val('w_menge') || '1', 10), link: val('w_link').trim(), notiz: val('w_notiz').trim(), foto: foto || undefined, datum: heute(), erfasstVon: ich };
     const p = pruefeWunsch(w);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => { const id = await S.speichern(D, 'wuensche', null, w); schliessen(); wunschliste(); hinweis(`Wunsch gespeichert. Die anderen haben bis ${fmt(addTage(w.datum, WUNSCH_FRIST_TAGE))} Zeit.`); wunschDetail(id); });
@@ -973,6 +1008,7 @@ function wunschDetail(id) {
   const erstatten = s.status === 'gekauft' && halter && !s.erstattet;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><div><h3 style="margin:0">${h(w.titel)}</h3><div class="info" style="margin:2px 0 0">${wunschPreisText(w)} · von ${h(D.personen[w.erfasstVon]?.name || '?')}, ${fmt(w.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
+    ${w.foto ? `<img class="w-foto" id="w_fbig" src="${h(w.foto)}" alt="Foto: ${h(w.titel)}">` : ''}
     ${w.link ? `<p class="info" style="margin:0 0 6px"><a class="u-chip" href="${h(w.link)}" target="_blank" rel="noopener">Produkt ansehen<em>Link</em></a></p>` : ''}${w.notiz ? `<p class="info" style="margin:0 0 6px">${h(w.notiz)}</p>` : ''}
     <div class="zeilen">${zeilen}</div>
     ${meinAntwort ? `<label for="w_grund">Nur bei Nein: Grund</label><input id="w_grund" maxlength="200" placeholder="Warum nicht?"><label for="w_alt">Nur bei Nein: Alternative (Produkt, Preis)</label><input id="w_alt" maxlength="200" placeholder="Was wäre besser?">` : ''}
@@ -985,6 +1021,8 @@ function wunschDetail(id) {
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
       ${mein && s.status !== 'gekauft' ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}<button class="gross-btn" id="abb">Schliessen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
+  const fb = document.getElementById('w_fbig');
+  if (fb) fb.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(w.foto)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); };
   const aktion = (aid, daten, text) => sicher(async () => { await S.speichern(D, 'wunschaktionen', aid, { wunschId: w.id, erfasstVon: ich, ...daten }); schliessen(); wunschliste(); hinweis(text); });
   if (meinAntwort) {
     document.getElementById('w_ja').onclick = () => aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'ja' }, 'Danke, du hast Ja gesagt.');

@@ -393,6 +393,7 @@ export function vorschauBuchung(b, buchungen, personen, alltag) {
 // =====================================================================
 export const WUNSCH_MAX_RAPPEN = 20000;     // CHF 200 pro Stueck bzw. fuer gleichartige Stuecke zusammen
 export const WUNSCH_FRIST_TAGE = 5;
+export const WUNSCH_FOTO_MAX = 250000;      // Zeichen des Fotos (JPEG als Text), ein Foto im Handy wird auf etwa 150 KB verkleinert; Firestore erlaubt 1 MiB pro Eintrag
 export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', patt: 'Stichentscheid offen', abgelehnt: 'Abgelehnt', gekauft: 'Gekauft' };
 
 export const wunschTotal = (w) => (Number.isInteger(w.preis) ? w.preis : 0) * (Number.isInteger(w.menge) ? w.menge : 1);
@@ -405,6 +406,7 @@ export function pruefeWunsch(w) {
   if (Number.isInteger(w.preis) && w.preis > WUNSCH_MAX_RAPPEN) f.push('Ein Stück kostet mehr als CHF 200. Das ist keine Kleinanschaffung: bitte im Familienrat besprechen (Vertrag Ziffer 5 und 3).');
   else if (Number.isInteger(w.preis) && Number.isInteger(w.menge) && w.menge >= 1 && wunschTotal(w) > WUNSCH_MAX_RAPPEN) f.push('Gleichartige Stücke kosten zusammen mehr als CHF 200. Bitte im Familienrat besprechen (Vertrag Ziffer 5).');
   if ((w.link || '').trim() && !/^https?:\/\/\S+$/i.test(w.link.trim())) f.push('Der Link muss mit http:// oder https:// beginnen.');
+  if (w.foto) { if (typeof w.foto !== 'string' || !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(w.foto)) f.push('Das Foto ist ungültig. Bitte ein Foto neu auswählen.'); else if (w.foto.length > WUNSCH_FOTO_MAX) f.push('Das Foto ist zu gross. Bitte ein anderes wählen.'); }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(w.datum || '')) f.push('Datum fehlt.');
   return { ok: f.length === 0, fehler: f };
 }
