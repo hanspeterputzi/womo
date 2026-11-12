@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113e';
-import * as S from './speicher.js?v=20261113e';
+} from './regeln.js?v=20261113g';
+import * as S from './speicher.js?v=20261113g';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -641,7 +641,10 @@ function kosten() {
   const el = zahlungenAusJournal(D.journal, D.personen);   // Zahlplan: nur aus den Buchungen
   const von = `${J}-01-01`, bis = `${J + 1}-01-01`;
   const name = (i) => h(D.personen[i]?.name || '?');
-  const artChip = (art) => art === 'aktiv' ? '<span class="chipk gelb">Aktiv</span>' : '<span class="chipk">Info</span>';
+  // Info (blau) und Aktiv (orange): Info nur fuer die Buchhaltung (HP, Stellvertretung), Aktiv fuer alle, die etwas tun koennen.
+  const ORANGE = 'background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)', BLAU = 'background:rgba(59,111,216,.10);border:2px solid rgba(59,111,216,.45)';
+  const artStil = (art) => (art === 'aktiv' ? ORANGE : buch ? BLAU : '');
+  const artChip = (art) => art === 'aktiv' ? '<span class="chipk gelb">Aktiv</span>' : buch ? '<span class="chipk" style="background:rgba(59,111,216,.22);color:var(--acc)">Info</span>' : '';
 
   const elternIds = ids.filter((i) => D.personen[i].konto === 'eltern'), kinderIds = ids.filter((i) => D.personen[i].konto !== 'eltern');
 
@@ -662,7 +665,7 @@ function kosten() {
   // ---- Offene Zahlungen (immer sichtbar) und Zahlungen der Kinder ueber 8 Jahre ----
   const plaene = Object.fromEntries(ids.map((i) => [i, D.start && D.personen[i] ? achtJahrePlan(D.start, t, el, D.personen[i], i) : null]));
   const offenKarte = !D.start
-    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip(buch ? 'aktiv' : 'info')}</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
+    ? `<div class="karte" style="${artStil(buch ? 'aktiv' : 'info')}"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip(buch ? 'aktiv' : 'info')}</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
     : (() => {
       const zeilen = ids.map((i) => {
         const fz = faelligkeiten(D.start, t, el, D.personen[i], i), pl = plaene[i];
@@ -671,10 +674,10 @@ function kosten() {
         return `<div class="z"><div class="l"><strong>${name(i)}</strong>${fz.map((f) => `<div class="meta">${ZWECKE[f.zweck]}: ${fzText(f)}</div>`).join('')}<div class="meta">Noch zu zahlen bis Vertragsende: CHF ${chf(pl.total.offen)}</div></div><div class="r">${chip}</div></div>`;
       }).join('');
       const ueberTotal = ids.reduce((s, i) => s + plaene[i].total.offenFaellig, 0), offenTotal = ids.reduce((s, i) => s + plaene[i].total.offen, 0);
-      return `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip('info')}</h3>
+      return `<div class="karte" style="${artStil('info')}"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip('info')}</h3>
         <div class="hero-stand ${ueberTotal > 0 ? 'rot' : 'ok'}" style="margin:0 0 6px">${ueberTotal > 0 ? `Überfällig insgesamt: CHF ${chf(ueberTotal)}` : 'Nichts überfällig.'}</div>
         <div class="zeilen">${zeilen}</div>
-        <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte. Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».</p></div>`;
+        <p class="info" style="margin-bottom:0">Noch zu zahlen bis Vertragsende (alle vier): CHF ${chf(offenTotal)}. Darlehensraten (Tochter und Sohn) monatlich am letzten Tag des Monats, Rücklage (alle vier) jährlich bis 31. Dezember. Es zählen alle gebuchten Zahlungen, auch im Voraus bezahlte.${buch ? ' Die Zahlungen kommen aus deinen Buchungen: Darlehensrate = Bank an «Darlehen an …», Rücklage = Bank an «Rücklage …».' : ''}</p></div>`;
     })();
   const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen);
   const zbKarte = (!zb.length || !buch) ? '' : `<div class="karte" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"><h3 style="margin:0 0 6px;font-size:17px;color:var(--gelb-t)">📒 Zu buchen: Wünsche ${artChip('aktiv')}</h3>
@@ -744,7 +747,7 @@ function kosten() {
   const kontenInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Antippen zeigt das Kontoblatt.</p>${Object.entries({ aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' }).map(([typ, tt]) => `<div class="zeilen">${kopf(tt)}${alleKonten.filter((k) => k.typ === typ).map(kz).join('')}</div>`).join('')}`;
   const journalInhalt = (jahrBuch.length ? jahrBuch.map((b) => zeileK('data-dj', b.id, 'CHF ' + chf(b.betrag), fmt(b.datum).slice(0, 6) + ' · ' + h(b.text) + (b.stellvertretung ? ' · Stellvertretung' : '') + '<br>' + h(kname[b.soll] || b.soll) + ' an ' + h(kname[b.haben] || b.haben), b)).join('') : '<p class="leer-t">Keine Buchungen erfasst.</p>')
     + (buch ? '' : '<p class="info">Buchen können HP (Buchhaltung) und Nanouk (Stellvertreterin), Vertrag Ziffer 11. Alle sehen die Zahlen.</p>');
-  const sek = (titel, zusatz, inhalt, offen, art = 'info') => `<details class="sek"${offen ? ' open' : ''}><summary><span>${titel}</span>${artChip(art)}<b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
+  const sek = (titel, zusatz, inhalt, offen, art = 'info') => `<details class="sek"${artStil(art) ? ` style="${artStil(art)}"` : ''}${offen ? ' open' : ''}><summary><span>${titel}</span>${artChip(art)}<b>${zusatz}</b></summary><div class="sek-in">${inhalt}</div></details>`;
   function zeileK(attr, id, titel, sub, x) { return `<button class="t-z blau" ${attr}="${h(id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${KOSTEN_ICON}</svg></span><span class="t-zt"><strong>${titel}${neuPille(x)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`; }
   app.innerHTML = rahmen(`${seitenkopf('Kosten', buch ? 'kplus' : null, '＋ Buchen')}
   <div class="karte hero"><div class="monatskopf" style="margin:0 0 10px"><h2 style="font-size:18px">Jahr ${J}</h2><div class="nav"><button id="jz" aria-label="Voriges Jahr">‹</button><button id="jv" aria-label="Nächstes Jahr">›</button></div></div>
