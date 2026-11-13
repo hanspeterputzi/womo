@@ -574,12 +574,12 @@ function fahrten() {
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Fahren unter Alkohol ist verboten</strong></div></div>
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
+  <div style="margin-top:8px">${freigabeSek()}</div>
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
     <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
   ${alltagSek(J)}
-  ${freigabeSek()}
   ${vorbei.length ? `<details class="sek"><summary><span>Vergangene Reisen</span><b>${vorbei.length}</b></summary><div class="sek-in">${vorbei.map(zeile).join('')}</div></details>` : ''}
   <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste.</p>`);
   bindRahmen();
