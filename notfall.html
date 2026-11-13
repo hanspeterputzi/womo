@@ -94,10 +94,10 @@ a.tcs b{font-size:14px;color:var(--muted);font-weight:700}a.tcs span{font-size:2
   var wert = function (k) { return fz[k] && fz[k].wert ? fz[k].wert : ''; };
   var tel = function (t) { return String(t || '').replace(/[^0-9+]/g, ''); };
 
-  // Notrufnummern (Stand 13.11.2026, Wikipedia «List of emergency telephone numbers», Rega-Seite). Die 112 gilt in der EU ueberall.
+  // Notrufnummern (Stand 13.11.2026, Wikipedia «List of emergency telephone numbers»). Die 112 gilt in der EU ueberall.
   // [Land, Polizei, Feuerwehr, Rettung, Hinweis]. Fehlt eine Nummer, gilt 112.
   var L = [
-    ['Schweiz', '117', '118', '144', 'Rega 1414 (aus dem Ausland +41 333 333 333)'],
+    ['Schweiz', '117', '118', '144', ''],
     ['Liechtenstein', '117', '118', '144', ''],
     ['Frankreich', '17', '18', '15', ''],
     ['Italien', '113', '115', '118', ''],
