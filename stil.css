@@ -81,3 +81,33 @@
 .seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:15px;font-weight:700;min-height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:8px}
 .seg button.aktiv{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
 .seg button i{font-style:normal;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--rot);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;box-sizing:border-box}
+
+/* SOS-Knopf (Notfallkarte) und Notfall-Karte in Unterwegs */
+.sos{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border-radius:999px;background:#c62828;color:#fff;font:inherit;font-size:13px;font-weight:800;letter-spacing:.8px;text-decoration:none;border:2px solid rgba(255,255,255,.85)}
+.sos:active{background:#991b1b}
+.sos.klein{min-height:0;padding:1px 8px;font-size:11px;border-width:1px;vertical-align:1px}
+.start-r{display:flex;align-items:center;gap:8px}
+.sos-gross{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;margin:18px 0 8px;min-height:64px;border-radius:16px;background:#c62828;color:#fff;font-size:19px;font-weight:800;text-decoration:none;text-align:center;padding:10px 14px}
+.sos-gross small{font-size:13px;font-weight:600;opacity:.92}
+.not-karte{border:2px solid rgba(198,40,40,.55);background:linear-gradient(rgba(198,40,40,.07),rgba(198,40,40,.07)),var(--card)}
+.not-stand{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:14px;font-weight:700}
+.not-stand.gelb{background:rgba(245,158,11,.16);color:var(--gelb-t)}.not-stand.ok{background:rgba(21,128,61,.14);color:var(--ok-t)}
+
+/* Unsere Orte */
+.ort-kopf{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ort-liste{display:flex;flex-direction:column;gap:12px}
+.ort{display:block;width:100%;text-align:left;border:0;padding:0;background:var(--soft);color:inherit;font:inherit;border-radius:16px;overflow:hidden}
+.ort:active{opacity:.85}
+.ort-bild{position:relative;display:block;aspect-ratio:16/10;background:var(--line)}
+.ort-bild img{width:100%;height:100%;object-fit:cover;display:block}
+.ort-fav{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:5px;background:#f59e0b;color:#1f1300;font-size:12px;font-weight:800;padding:5px 10px 5px 8px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.ort-fav svg,.ort-favband svg{width:14px;height:14px;fill:currentColor;stroke:none}
+.ort-tx{display:flex;flex-direction:column;gap:3px;padding:12px 14px 14px}
+.ort-tx strong{font-size:17px;line-height:1.25}
+.ort-tx small{font-size:13px;color:var(--muted)}
+.ort-bes{font-size:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ort-gross{max-height:300px!important;object-fit:cover}
+.ort-favband{display:inline-flex;align-items:center;gap:5px;background:#f59e0b;color:#1f1300;font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;margin:0 0 6px}
+.ort-tor{background:rgba(245,158,11,.16);color:var(--gelb-t);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;margin:6px 0 0}
+.ort-chk{display:flex!important;align-items:flex-start;gap:10px;margin-top:16px!important;font-size:15px!important;font-weight:600!important;color:var(--fg)!important}
+.ort-chk input{width:24px!important;height:24px;flex:none;margin:0;padding:0}

@@ -822,3 +822,103 @@ export function frageStand(f, aktionen, ids, heute) {
   const ueberfaellig = status === 'offen' && !!frist && !!heute && heute > frist;
   return { antworten, ohneAntwort, nein, jaVon, ja, status, entschiedenAm, gesamt: ids.length, frist, ueberfaellig };
 }
+
+// =====================================================================
+// Notfallkarte (13.11.2026): Angaben zum Fahrzeug und Telefonnummern. Liegen in der Sammlung 'notfall'.
+// Jede Angabe ist ein eigener Eintrag (id fz_<Schluessel>), jede Telefonnummer gehoert der Person (id p_<Person>).
+// Wie ueberall gilt: Wer einen Eintrag erfasst hat, den aendert nur diese Person.
+// Die Notfallkarte (notfall.html) laeuft ohne Netz. Dafuer speichert die App bei jedem Laden einen Auszug im Handy (notfallAuszug).
+// =====================================================================
+export const NOTFALL_FELDER = [
+  ['kennzeichen', 'Kennzeichen', 'z. B. GR 12345'],
+  ['fahrzeug', 'Fahrzeug', 'Marke, Modell, Farbe'],
+  ['hoehe', 'Höhe in Metern', 'z. B. 2.65 (Tunnel, Brücken)'],
+  ['breite', 'Breite in Metern', 'z. B. 2.05'],
+  ['laenge', 'Länge in Metern', 'z. B. 5.99'],
+  ['gewicht', 'Gesamtgewicht in kg', 'zulässiges Gesamtgewicht laut Fahrzeugausweis'],
+  ['reifen', 'Reifendruck in bar', 'vorne und hinten'],
+  ['treibstoff', 'Treibstoff und AdBlue', 'z. B. Diesel, AdBlue ja'],
+  ['gas', 'Gas', 'Flaschentyp und Ort der Flasche'],
+  ['versicherung', 'Versicherung', 'Gesellschaft und Telefon (Haftpflicht, Kasko)'],
+  ['police', 'Policennummer', ''],
+  ['schutzbrief', 'Schutzbrief / Pannenhilfe', 'Name und Telefon, auch fürs Ausland'],
+  ['hinweis', 'Wichtig für Helfer', 'z. B. Aufstelldach, Gasflasche im Bodenfach'],
+];
+export const NOTFALL_DOKUMENTE = [['ausweis', 'Fahrzeugausweis'], ['vnachweis', 'Versicherungsnachweis']];   // Foto, lesbar, ohne Netz
+export const NOTFALL_WERT_MAX = 200, NOTFALL_TEL_MAX = 30, NOTFALL_MED_MAX = 200, NOTFALL_DOK_MAX = 400000;
+export const notfallFeldIds = () => [...NOTFALL_FELDER.map((f) => f[0]), ...NOTFALL_DOKUMENTE.map((f) => f[0])];
+export function pruefeNotfallTel(tel) {
+  const t = String(tel || '').trim();
+  if (!t) return [];
+  return /^\+?[0-9][0-9 ]{5,28}$/.test(t) ? [] : ['Die Telefonnummer darf nur Ziffern und Leerzeichen enthalten, im Ausland mit + und Landesvorwahl (z. B. +41 79 123 45 67).'];
+}
+export function notfallFehlt(d) {
+  const e = Object.values(d.notfall || {});
+  const fz = new Set(e.filter((x) => x.art === 'fz' && (x.wert || x.foto)).map((x) => x.schluessel));
+  const fehlt = notfallFeldIds().filter((k) => !fz.has(k));
+  const ohneTel = Object.keys(d.personen || {}).filter((p) => !e.some((x) => x.art === 'person' && x.personId === p && (x.tel || '').trim()));
+  return { fehlt, ohneTel, gesamt: notfallFeldIds().length + Object.keys(d.personen || {}).length };
+}
+// Auszug fuer die Notfallkarte: alles, was ohne Netz angezeigt wird. Reine Daten, keine PINs.
+export function notfallAuszug(d, heute, jetzt) {
+  const e = Object.values(d.notfall || {});
+  const fz = {};
+  for (const x of e) if (x.art === 'fz') fz[x.schluessel] = { wert: x.wert || '', foto: x.foto || '' };
+  const personen = Object.entries(d.personen || {}).map(([id, p]) => {
+    const x = e.find((y) => y.art === 'person' && y.personId === id) || {};
+    return { id, name: p.name, tel: x.tel || '', medizin: x.medizin || '' };
+  });
+  const nm = (id) => d.personen?.[id]?.name || '?';
+  const b = Object.values(d.buchungen || {}).filter((x) => x.von <= heute && heute <= x.bis).sort((a, c) => (a.von < c.von ? 1 : -1))[0];
+  const reise = b ? { fahrer: b.fahrerId ? nm(b.fahrerId) : (b.ausnahmeFahrer?.name || '?'), mit: (b.mitreisende || []).map(nm), gaeste: b.gaeste || 0, ziel: b.ziel || '', von: b.von, bis: b.bis } : null;
+  const u = Object.values(d.uebergaben || {}).filter((x) => x.datumZeit).sort((a, c) => (a.datumZeit < c.datumZeit ? 1 : -1))[0];
+  const letzte = u ? {
+    wann: u.datumZeit, phase: u.phase, km: Number.isFinite(u.km) ? u.km : null, tank: u.tank || '', schaeden: (u.schaeden || '').trim(), bemerkung: (u.bemerkung || '').trim(),
+    maengel: CHECKPUNKTE.filter(([k]) => u.punkte?.[k] === 'nein').map(([, t]) => t),
+  } : null;
+  return { v: 1, stand: jetzt, fz, personen, reise, letzte };
+}
+
+// =====================================================================
+// Unsere Orte (13.11.2026): nur ausserordentlich gute Stellplaetze und Campingplaetze, mit Bild und kurzer Beschreibung.
+// Huerden gegen Mittelmass: (1) nur von einer eigenen, beendeten Reise, (2) ein Ort pro Reise und Person, (3) hoechstens
+// 3 Orte pro Person und Jahr, (4) Foto und Begruendung sind Pflicht, (5) andere bestaetigen («war auch dort»).
+// Orte liegen in 'orte', Bestaetigungen in 'ortstimmen' (id <ortId>_<Person>).
+// =====================================================================
+export const ORT_PRO_JAHR = 3, ORT_FOTO_MAX = 250000, ORT_TEXT_MIN = 30, ORT_TEXT_MAX = 300, ORT_PRAKTISCH_MAX = 150, ORT_FAVORIT_AB = 2;
+export const ORT_ARTEN = ['Campingplatz', 'Stellplatz', 'Bauernhof', 'Gasthof', 'Anderer Platz mit Erlaubnis'];
+export const ORT_LAENDER = ['Schweiz', 'Liechtenstein', 'Frankreich', 'Italien', 'Spanien', 'Portugal', 'Deutschland', 'Österreich', 'Belgien', 'Niederlande', 'Luxemburg', 'Dänemark', 'Schweden', 'Norwegen', 'Finnland', 'Island', 'Irland', 'Vereinigtes Königreich', 'Tschechien', 'Slowakei', 'Polen', 'Ungarn', 'Slowenien', 'Kroatien', 'Bosnien-Herzegowina', 'Montenegro', 'Albanien', 'Nordmazedonien', 'Griechenland', 'Bulgarien', 'Estland', 'Lettland', 'Litauen', 'Zypern', 'Malta'];
+export function pruefeOrt(o, ctx) {
+  const f = [], heute = ctx.heute, jahr = String(heute).slice(0, 4);
+  const titel = (o.titel || '').trim(), ort = (o.ort || '').trim(), text = (o.text || '').trim();
+  if (titel.length < 3 || titel.length > 60) f.push('Bitte den Namen des Ortes angeben (3 bis 60 Zeichen).');
+  if (!ORT_LAENDER.includes(o.land)) f.push('Bitte das Land wählen.');
+  if (ort.length < 2 || ort.length > 60) f.push('Bitte die Ortschaft oder Gegend angeben.');
+  if (!ORT_ARTEN.includes(o.art)) f.push('Bitte die Art des Ortes wählen.');
+  if (text.length < ORT_TEXT_MIN) f.push(`Bitte kurz beschreiben, was diesen Ort aussergewöhnlich macht (mindestens ${ORT_TEXT_MIN} Zeichen, du hast ${text.length}).`);
+  if (text.length > ORT_TEXT_MAX) f.push(`Die Beschreibung ist zu lang (höchstens ${ORT_TEXT_MAX} Zeichen). Kurz fassen: nur das Besondere.`);
+  if ((o.praktisch || '').length > ORT_PRAKTISCH_MAX) f.push(`«Praktisches» ist zu lang (höchstens ${ORT_PRAKTISCH_MAX} Zeichen).`);
+  if (o.wiederHin !== true) f.push('Bitte bestätigen: Du würdest für diesen Ort extra wieder hinfahren. Sonst gehört er nicht in die Liste.');
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(o.foto || '')) f.push('Ein Foto ist Pflicht. Ein Ort ohne Bild kommt nicht in die Liste.');
+  else if (o.foto.length > ORT_FOTO_MAX) f.push('Das Foto ist zu gross.');
+  const hat = (o.lat !== undefined && o.lat !== null) || (o.lon !== undefined && o.lon !== null);
+  if (hat && !(Number.isFinite(o.lat) && o.lat >= -90 && o.lat <= 90 && Number.isFinite(o.lon) && o.lon >= -180 && o.lon <= 180)) f.push('Der Standort ist ungültig.');
+  const b = (ctx.buchungen || {})[o.buchungId];
+  if (!b) f.push('Bitte die Reise wählen, auf der du dort warst. Nur Orte von eigenen Reisen sind erlaubt.');
+  else {
+    if (!(b.fahrerId === o.erfasstVon || (b.mitreisende || []).includes(o.erfasstVon))) f.push('Du warst auf dieser Reise nicht dabei. Nur wer dort war, kann einen Ort eintragen.');
+    if (!(b.bis <= heute)) f.push('Diese Reise ist noch nicht vorbei. Den Ort bitte nach der Rückkehr eintragen.');
+    if ((ctx.orte || []).some((x) => x.id !== o.id && x.buchungId === o.buchungId && x.erfasstVon === o.erfasstVon)) f.push('Von dieser Reise hast du schon einen Ort eingetragen. Pro Reise zählt nur dein bester Ort.');
+  }
+  const dieses = (o.erfasstAm || heute).slice(0, 4) || jahr;
+  const n = (ctx.orte || []).filter((x) => x.id !== o.id && x.erfasstVon === o.erfasstVon && (x.erfasstAm || '').slice(0, 4) === dieses).length;
+  if (n >= ORT_PRO_JAHR) f.push(`Du hast dieses Jahr schon ${ORT_PRO_JAHR} Orte eingetragen. Mehr geht nicht: Die Liste soll nur das Allerbeste enthalten. Einen eigenen Ort löschen macht einen Platz frei.`);
+  return { ok: f.length === 0, fehler: f, platzFrei: Math.max(0, ORT_PRO_JAHR - n) };
+}
+export function ortStand(o, stimmen) {
+  const von = [...new Set(Object.values(stimmen || {}).filter((s) => s.ortId === o.id && s.personId !== o.erfasstVon).map((s) => s.personId))];
+  return { bestaetigt: von, anzahl: von.length, favorit: von.length >= ORT_FAVORIT_AB };
+}
+export function ortReihenfolge(orte, stimmen) {
+  return orte.map((o) => ({ o, s: ortStand(o, stimmen) })).sort((a, b) => (b.s.favorit - a.s.favorit) || (b.s.anzahl - a.s.anzahl) || ((b.o.erfasstAm || '') < (a.o.erfasstAm || '') ? -1 : 1));
+}

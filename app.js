@@ -4,16 +4,22 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
+  NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
+  ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113za';
-import * as S from './speicher.js?v=20261113za';
+} from './regeln.js?v=20261113zb';
+import * as S from './speicher.js?v=20261113zb';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
+// Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
+try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
 // Stile kommen aus stil.css mit der aktuellen Version. So passt das Aussehen immer zu diesem Programm, auch wenn index.html noch im Zwischenspeicher liegt.
 await new Promise((ok) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'stil.css?v=' + VER; l.onload = l.onerror = () => ok(); document.head.appendChild(l); setTimeout(ok, 2500); });
 
 const app = document.getElementById('app');
+// Roter Notfall-Link fuer Ladeseite und Fehlerseiten: Die Notfallkarte muss auch dann erreichbar sein, wenn die App selbst nicht startet (kein Netz).
+const SOS_GROSS = `<a class="sos-gross" href="notfall.html?v=${VER}">🆘 Notfallkarte öffnen<small>funktioniert auch ohne Netz</small></a>`;
 const toast = document.getElementById('toast');
 const formEl = document.getElementById('form');
 const MONATE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -111,19 +117,20 @@ function codeFeld(meldung) {
 }
 
 async function start() {
-  app.innerHTML = '<div class="login"><p class="gross">Womo</p><p class="sub">Daten werden geladen …</p></div>';
+  app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Daten werden geladen …</p>${SOS_GROSS}</div>`;
   try { D = await S.laden(); }
   catch (e) {
     if (!S.online || /ungültig/.test(e.message || '')) { codeFeld(!S.online ? '' : 'Dieser Code ist ungültig.'); return; }
-    app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div></div>`; return;
+    app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h(e.message || 'Verbindung fehlgeschlagen.')}</div>${SOS_GROSS}<button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return;
   }
   try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
-  catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div><button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
+  catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div>${SOS_GROSS}<button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
   try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id] && !abgelaufen()) { ich = id; besuchStart(); aktivMerken(); } } catch {}
   zeige();
 }
 
 function zeige() {
+  notfallMerken();
   if (!ich) return anmeldung();
   ({ kalender, fahrten, kosten, wunschliste, termine, vertrag, unterwegs })[tab]();
 }
@@ -132,7 +139,7 @@ function anmeldung() {
   if (!Object.keys(D.personen).length) { app.innerHTML = '<div class="login"><p class="gross">Womo</p><div class="fehler">Es sind noch keine Personen eingerichtet. Bitte zuerst die Einrichtung durchführen.</div></div>'; return; }
   let zuletzt = ''; try { zuletzt = localStorage.getItem('womo-person') || ''; } catch {}
   app.innerHTML = `<div class="start">
-    <div class="start-top"><span class="start-marke"><span class="keil"></span>PÖSSL</span><button class="start-thm" id="sthm" type="button" aria-label="Darstellung wechseln: Auto, Hell, Dunkel">${THEMA_NAME[themaLesen()]}</button></div>
+    <div class="start-top"><span class="start-marke"><span class="keil"></span>PÖSSL</span><span class="start-r"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="start-thm" id="sthm" type="button" aria-label="Darstellung wechseln: Auto, Hell, Dunkel">${THEMA_NAME[themaLesen()]}</button></span></div>
     <div class="start-szene" aria-hidden="true">
       <div class="sterne"></div><div class="sonne"></div>
       <div class="wolke w1"></div><div class="wolke w2"></div><div class="wolke w3"></div>
@@ -278,6 +285,7 @@ function unterwegs() {
   };
   app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
+  ${notfallKarte()}${orteKarte()}
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       const kopfLink = `<a class="u-ortlink u-kopf" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
@@ -293,7 +301,7 @@ function unterwegs() {
       <div class="u-gt">Regeln und Maut</div><div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
     <p class="info">Stand 08.11.2026 (Slowakei, Bulgarien, Zypern, Malta: 11.11.2026). Quellen: Reiseportale, Automobilclubs und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Rot = Wildcampen oder Freistehen verboten. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
   <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
-  bindRahmen();
+  bindRahmen(); bindNotfallOrte();
 }
 const VERTRAG_REGELN = [
   ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres abgetreten werden, in der App nur von den Eltern an beide Kinder zugleich: Nanouk und Nene bekommen je gleich viele Tage dazu, die Konten von HP und Nora sinken je um dieselbe Zahl. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App erfasst das im Kalender unter «Nutzungstage abtreten».', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
@@ -319,7 +327,7 @@ function vertrag() {
 function rahmen(inhalt) {
   const nz = neuZ().nach;
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
-    <div class="kopfr"><button class="thm" id="thm" title="Darstellung wechseln: Auto, Hell, Dunkel" aria-label="Darstellung wechseln">${THEMA_NAME[themaLesen()]}</button><button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
+    <div class="kopfr"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="thm" id="thm" title="Darstellung wechseln: Auto, Hell, Dunkel" aria-label="Darstellung wechseln">${THEMA_NAME[themaLesen()]}</button><button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
   <main>${inhalt}</main>
   <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}${nz[k] ? `<i class="tb" aria-label="${nz[k]} neu">${nz[k]}</i>` : ''}</button>`).join('')}</nav>`;
 }
@@ -1476,6 +1484,188 @@ function frageDetail(id) {
   });
   const del = document.getElementById('f_del');
   if (del) del.onclick = async () => { if (confirm('Frage zurückziehen und löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
+}
+
+// =====================================================================
+// Notfallkarte: Angaben erfassen (Tab «Unterwegs») und Auszug fuer die Offline-Seite notfall.html im Handy ablegen
+// =====================================================================
+let auszugLetzter = '', auszugTimer = 0;
+function notfallMerken() {
+  clearTimeout(auszugTimer);
+  auszugTimer = setTimeout(() => {
+    try {
+      const a = notfallAuszug(D, heute(), new Date().toISOString());
+      const s = JSON.stringify({ ...a, stand: '' });
+      if (s === auszugLetzter) return;
+      try { localStorage.setItem('womo-notfall', JSON.stringify(a)); }
+      catch { const k = { ...a, fz: Object.fromEntries(Object.entries(a.fz).map(([n, x]) => [n, { wert: x.wert, foto: '' }])) }; localStorage.setItem('womo-notfall', JSON.stringify(k)); }   // zu wenig Platz: ohne Fotos
+      auszugLetzter = s;
+    } catch {}
+  }, 1500);
+}
+function notfallKarte() {
+  const f = notfallFehlt(D);
+  const meineTel = Object.values(D.notfall).some((x) => x.art === 'person' && x.personId === ich && (x.tel || '').trim());
+  const fehlt = f.fehlt.length + f.ohneTel.length;
+  const offen = !meineTel ? '<p class="info" style="margin:8px 0 0;color:var(--rot-t);font-weight:700">Deine Telefonnummer fehlt noch. Ohne sie kann dich niemand aus der Karte anrufen.</p>' : '';
+  return `<div class="karte not-karte"><p class="titel">Notfallkarte</p>
+    <p style="margin:0 0 4px;font-weight:700">Panne, Unfall, Gasgeruch? Ein Tipp auf <span class="sos klein">SOS</span> oben rechts.</p>
+    <p class="info" style="margin:0">Die Karte funktioniert <strong>auch ohne Handynetz</strong>: 112 und Notrufnummern des Landes, dein Standort mit fertigem Text für den Notruf, Schritte bei Unfall, Panne, Gas und Feuer, Fahrzeugdaten, Fahrzeugausweis als Foto und die Familie zum Anrufen.</p>
+    <div class="not-stand ${fehlt ? 'gelb' : 'ok'}">${fehlt ? `Es fehlen noch ${f.fehlt.length} von ${NOTFALL_FELDER.length + NOTFALL_DOKUMENTE.length} Fahrzeugangaben und ${f.ohneTel.length} von ${Object.keys(D.personen).length} Telefonnummern.` : 'Alles erfasst.'}</div>${offen}
+    <div class="t-akt2"><button class="gross-btn pri" id="nf_edit">Angaben erfassen und ändern</button><a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="notfall.html?v=${VER}">Notfallkarte ansehen</a></div>
+    <p class="info" style="margin:8px 0 0">Die Karte holt ihre Daten bei jedem Öffnen der App auf dein Handy. Wer ein neues Handy hat, öffnet die App einmal mit Netz.</p></div>`;
+}
+function notfallForm() {
+  const nf = D.notfall, fzE = (k) => nf['fz_' + k], pE = nf['p_' + ich] || {};
+  const feld = ([k, name, hint]) => {
+    const e = fzE(k), fremd = e && e.erfasstVon !== ich;
+    return `<label for="nf_${k}">${h(name)}${fremd ? ` <span style="font-weight:500">(von ${h(D.personen[e.erfasstVon]?.name || '?')}, nur diese Person ändert)</span>` : ''}</label><input id="nf_${k}" maxlength="${NOTFALL_WERT_MAX}" placeholder="${h(hint)}" value="${h(e?.wert || '')}" ${fremd ? 'disabled' : ''}>`;
+  };
+  const dok = ([k, name]) => {
+    const e = fzE(k), fremd = e && e.erfasstVon !== ich;
+    return `<label>${h(name)} (Foto)${fremd ? ` <span style="font-weight:500">(von ${h(D.personen[e.erfasstVon]?.name || '?')})</span>` : ''}</label><div id="nd_${k}">${e?.foto ? `<div class="foto-vor"><img src="${h(e.foto)}" alt="${h(name)}"><span class="info" style="margin:0">Gespeichert (${Math.round(e.foto.length / 1024)} KB)</span></div>` : '<p class="info" style="margin:0">Noch kein Foto.</p>'}</div>
+      ${fremd ? '' : `<label class="foto-wahl" for="nfd_${k}" id="nfw_${k}">📷 ${e?.foto ? 'Anderes Foto wählen' : 'Foto aufnehmen oder wählen'}</label><input type="file" id="nfd_${k}" accept="image/*" style="display:none">`}`;
+  };
+  const andere = Object.entries(D.personen).filter(([id]) => id !== ich).map(([id, p]) => { const x = nf['p_' + id]; return `<li>${h(p.name)}: ${x?.tel ? h(x.tel) : '<em>fehlt</em>'}</li>`; }).join('');
+  sheet(`<h3>Notfallkarte: Angaben</h3><p class="info" style="margin:0 0 6px">Alles, was Helfer, Polizei oder Versicherung im Notfall brauchen. Leere Felder sind in Ordnung, aber jede Angabe hilft. Wer eine Angabe erfasst hat, ändert sie später allein.</p>
+  <p class="titel" style="margin:16px 0 0">Meine Angaben</p>
+  <label for="nf_tel">Meine Telefonnummer</label><input id="nf_tel" type="tel" inputmode="tel" maxlength="${NOTFALL_TEL_MAX}" placeholder="+41 79 123 45 67" value="${h(pE.tel || '')}">
+  <label for="nf_med">Medizinischer Hinweis (freiwillig)</label><input id="nf_med" maxlength="${NOTFALL_MED_MAX}" placeholder="z. B. Allergie gegen Penicillin, Blutgruppe" value="${h(pE.medizin || '')}">
+  <p class="info" style="margin:6px 0 0">Der Hinweis erscheint nur in der Notfallkarte neben deinem Namen. Wer nichts angeben will, lässt das Feld leer.</p>
+  ${andere ? `<p class="info" style="margin:10px 0 0">Nummern der anderen (jeder trägt seine eigene ein):</p><ul class="info" style="margin:2px 0 0;padding-left:18px">${andere}</ul>` : ''}
+  <p class="titel" style="margin:20px 0 0">Fahrzeug</p>${NOTFALL_FELDER.map(feld).join('')}
+  <p class="titel" style="margin:20px 0 0">Dokumente als Foto</p><p class="info" style="margin:0">Gut lesbar, bei Licht, flach auf den Tisch. Die Polizei verlangt sie oft.</p>${NOTFALL_DOKUMENTE.map(dok).join('')}
+  <div id="msg"></div><div class="t-akt2"><button class="gross-btn pri" id="nf_ok">Speichern</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const fotos = {};
+  NOTFALL_DOKUMENTE.forEach(([k, name]) => {
+    const inp = document.getElementById('nfd_' + k); if (!inp) return;
+    inp.onchange = async (ev) => {
+      const f = ev.target.files && ev.target.files[0]; if (!f) return;
+      document.getElementById('nd_' + k).innerHTML = '<p class="info" style="margin:0">Foto wird verkleinert …</p>';
+      try { fotos[k] = await fotoVerkleinern(f, NOTFALL_DOK_MAX - 20000); document.getElementById('nd_' + k).innerHTML = `<div class="foto-vor"><img src="${h(fotos[k])}" alt="${h(name)}"><span class="info" style="margin:0">Neu (${Math.round(fotos[k].length / 1024)} KB), noch nicht gespeichert</span></div>`; }
+      catch (x) { delete fotos[k]; document.getElementById('nd_' + k).innerHTML = ''; fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
+    };
+  });
+  document.getElementById('nf_ok').onclick = () => sicher(async () => {
+    const tel = val('nf_tel').trim(), med = val('nf_med').trim(), fe = pruefeNotfallTel(tel);
+    if (fe.length) { fehler(fe); return; }
+    if (tel || med || nf['p_' + ich]) await S.speichern(D, 'notfall', 'p_' + ich, { art: 'person', personId: ich, tel, medizin: med, erfasstVon: ich, erfasstAm: pE.erfasstAm });
+    for (const [k] of NOTFALL_FELDER) {
+      const e = fzE(k); if (e && e.erfasstVon !== ich) continue;
+      const w = val('nf_' + k).trim();
+      if (w) { if (!e || e.wert !== w) await S.speichern(D, 'notfall', 'fz_' + k, { art: 'fz', schluessel: k, wert: w, foto: e?.foto, erfasstVon: ich, erfasstAm: e?.erfasstAm }); }
+      else if (e && !e.foto) await S.loeschen(D, 'notfall', 'fz_' + k);
+    }
+    for (const [k] of NOTFALL_DOKUMENTE) {
+      const e = fzE(k); if (e && e.erfasstVon !== ich) continue;
+      if (fotos[k]) await S.speichern(D, 'notfall', 'fz_' + k, { art: 'fz', schluessel: k, wert: '', foto: fotos[k], erfasstVon: ich, erfasstAm: e?.erfasstAm });
+    }
+    schliessen(); unterwegs(); notfallMerken(); hinweis('Notfallkarte gespeichert. Sie liegt jetzt auch ohne Netz auf deinem Handy.');
+  });
+}
+
+// =====================================================================
+// Unsere Orte: nur das Allerbeste, mit Foto und kurzer Begruendung
+// =====================================================================
+const ortListe = () => Object.values(D.orte);
+const ortStimmenListe = () => D.ortstimmen;
+const ortKartenLink = (o) => o.lat != null && o.lon != null ? `https://maps.apple.com/?ll=${o.lat},${o.lon}&q=${encodeURIComponent(o.titel)}` : o.kartenlink ? o.kartenlink : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${o.titel} ${o.ort} ${o.land}`);
+const ORT_STERN = '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>';
+function orteKarte() {
+  const reihe = ortReihenfolge(ortListe(), ortStimmenListe());
+  const frei = pruefeOrt({ erfasstVon: ich, erfasstAm: new Date().toISOString() }, { heute: heute(), buchungen: {}, orte: ortListe() }).platzFrei;
+  const kachel = ({ o, s }) => `<button class="ort" data-ort="${h(o.id)}"><span class="ort-bild"><img src="${h(o.foto)}" alt="" loading="lazy">${s.favorit ? `<span class="ort-fav"><svg viewBox="0 0 24 24" aria-hidden="true">${ORT_STERN}</svg> Familien-Favorit</span>` : ''}</span>
+    <span class="ort-tx"><strong>${h(o.titel)}${neuPille(o)}</strong><small>${h(o.land)} · ${h(o.ort)} · ${h(o.art)}</small><span class="ort-bes">${h(o.text)}</span><small>${s.anzahl ? `✓ bestätigt von ${s.bestaetigt.map((i) => h(D.personen[i]?.name || '?')).join(', ')}` : `von ${h(D.personen[o.erfasstVon]?.name || '?')}`}</small></span></button>`;
+  return `<div class="karte ort-karte"><div class="ort-kopf"><p class="titel" style="margin:0">Unsere besten Orte</p><button class="t-plus lang" id="ort_neu">＋ Ort</button></div>
+    <p class="info" style="margin:6px 0 10px">Nur Orte, für die wir <strong>extra wieder hinfahren</strong> würden. Foto und Begründung sind Pflicht, höchstens ${ORT_PRO_JAHR} Orte pro Person und Jahr. Andere bestätigen mit «war auch dort». Ab ${ORT_FAVORIT_AB} Bestätigungen wird ein Ort Familien-Favorit.</p>
+    ${reihe.length ? `<div class="ort-liste">${reihe.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Ort. Nach einer Reise, wenn ein Platz wirklich begeistert hat: hier eintragen.</p>'}
+    <p class="info" style="margin:10px 0 0">Du hast dieses Jahr noch <strong>${frei} von ${ORT_PRO_JAHR}</strong> Plätzen frei.</p></div>`;
+}
+function bindNotfallOrte() {
+  const e = document.getElementById('nf_edit'); if (e) e.onclick = notfallForm;
+  const n = document.getElementById('ort_neu'); if (n) n.onclick = () => ortForm();
+  app.querySelectorAll('[data-ort]').forEach((b) => b.onclick = () => ortDetail(b.dataset.ort));
+  bindNeu();
+}
+function ortForm(id) {
+  const ex = id ? D.orte[id] : null;
+  if (ex && !eigener(ex)) return nurEigene();
+  const t = heute();
+  const meine = liste().filter((b) => b.bis <= t && (b.fahrerId === ich || (b.mitreisende || []).includes(ich)) && (!ortListe().some((o) => o.buchungId === b.id && o.erfasstVon === ich) || (ex && ex.buchungId === b.id))).sort((a, b) => (a.von < b.von ? 1 : -1));
+  const chk = pruefeOrt({ erfasstVon: ich, erfasstAm: ex?.erfasstAm || new Date().toISOString() , id }, { heute: t, buchungen: {}, orte: ortListe() });
+  if (!ex && chk.platzFrei === 0) { hinweis(`Du hast dieses Jahr schon ${ORT_PRO_JAHR} Orte eingetragen. Mehr geht nicht. Einen eigenen Ort löschen macht einen Platz frei.`); return; }
+  if (!ex && !meine.length) { hinweis('Ein Ort geht nur von einer eigenen, beendeten Reise, von der du noch keinen Ort eingetragen hast.'); return; }
+  const zielLand = (b) => ORT_LAENDER.find((l) => (b?.ziel || '').toLowerCase().includes(l.toLowerCase())) || '';
+  const b0 = ex ? D.buchungen[ex.buchungId] : meine[0];
+  let foto = ex?.foto || '', pos = ex && ex.lat != null ? { lat: ex.lat, lon: ex.lon } : null;
+  sheet(`<h3>${ex ? 'Ort ändern' : 'Neuer Ort'}</h3>
+  <div class="ort-tor">Nur Orte, für die wir <strong>extra wieder hinfahren</strong> würden. Mittelmässig? Dann nicht eintragen.${ex ? '' : ` Du hast noch ${chk.platzFrei} von ${ORT_PRO_JAHR} Plätzen dieses Jahr.`}</div>
+  <label for="o_reise">Auf welcher Reise warst du dort?</label><select id="o_reise" ${ex ? 'disabled' : ''}>${(ex ? [b0] : meine).filter(Boolean).map((b) => `<option value="${h(b.id)}" ${b.id === b0?.id ? 'selected' : ''}>${h(reiseText(b))}${b.ziel ? ' · ' + h(b.ziel) : ''}</option>`).join('')}</select>
+  <label for="o_titel">Name des Ortes</label><input id="o_titel" maxlength="60" placeholder="z. B. Camping Seeblick" value="${h(ex?.titel || '')}">
+  <div class="zwei"><div><label for="o_land">Land</label><select id="o_land"><option value="">Wählen</option>${ORT_LAENDER.map((l) => `<option ${l === (ex?.land || zielLand(b0)) ? 'selected' : ''}>${h(l)}</option>`).join('')}</select></div>
+  <div><label for="o_ort">Ortschaft oder Gegend</label><input id="o_ort" maxlength="60" placeholder="z. B. Gardasee" value="${h(ex?.ort || '')}"></div></div>
+  <label for="o_art">Art</label><select id="o_art">${ORT_ARTEN.map((a) => `<option ${a === (ex?.art || 'Stellplatz') ? 'selected' : ''}>${h(a)}</option>`).join('')}</select>
+  <p class="info" style="margin:4px 0 0">Nur Orte, wo Übernachten erlaubt ist (Vertrag Ziffer 9).</p>
+  <label for="o_text">Was macht diesen Ort aussergewöhnlich? <span id="o_zaehl" style="font-weight:500"></span></label><textarea id="o_text" maxlength="${ORT_TEXT_MAX}" placeholder="Kurz und konkret: Was haben wir gesehen, gehört, erlebt?">${h(ex?.text || '')}</textarea>
+  <label for="o_prakt">Praktisches (freiwillig)</label><input id="o_prakt" maxlength="${ORT_PRAKTISCH_MAX}" placeholder="z. B. Preis, Strom, beste Plätze, Zufahrt" value="${h(ex?.praktisch || '')}">
+  <label>Foto (Pflicht)</label><div id="o_fprev"></div><label class="foto-wahl" for="o_foto" id="o_fwahl">📷 Foto aufnehmen oder auswählen</label><input type="file" id="o_foto" accept="image/*" style="display:none">
+  <label>Standort (freiwillig)</label><div id="o_pos" class="info" style="margin:0"></div><button type="button" class="gross-btn" id="o_gps" style="width:100%;margin-top:6px">📍 Meinen jetzigen Standort einfügen</button>
+  <input id="o_link" maxlength="300" inputmode="url" placeholder="oder: Link aus Karten oder Google Maps einfügen" value="${h(ex?.kartenlink || '')}" style="margin-top:8px">
+  <label class="ort-chk"><input type="checkbox" id="o_wieder" ${ex?.wiederHin ? 'checked' : ''}> Ich würde für diesen Ort <strong>extra wieder hinfahren</strong>.</label>
+  <div id="msg"></div><div class="t-akt2"><button class="gross-btn pri" id="o_ok">Speichern</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const zaehl = () => { const n = val('o_text').trim().length; document.getElementById('o_zaehl').textContent = `(${n} von ${ORT_TEXT_MIN} bis ${ORT_TEXT_MAX})`; document.getElementById('o_zaehl').style.color = n >= ORT_TEXT_MIN ? 'var(--ok-t)' : 'var(--muted)'; };
+  document.getElementById('o_text').oninput = zaehl; zaehl();
+  const vor = () => { document.getElementById('o_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><span class="info" style="margin:0">${Math.round(foto.length / 1024)} KB</span></div>` : '<p class="info" style="margin:0">Noch kein Foto.</p>'; document.getElementById('o_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
+  vor();
+  const posAnz = () => { document.getElementById('o_pos').textContent = pos ? `Gespeichert: ${pos.lat.toFixed(5)}, ${pos.lon.toFixed(5)}` : 'Kein Standort. Der Ort wird sonst über Name und Ortschaft in der Karte gesucht.'; };
+  posAnz();
+  document.getElementById('o_foto').onchange = async (ev) => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    document.getElementById('o_fprev').innerHTML = '<p class="info" style="margin:0">Foto wird verkleinert …</p>';
+    try { foto = await fotoVerkleinern(f); } catch (x) { fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
+    vor();
+  };
+  document.getElementById('o_gps').onclick = () => {
+    if (!navigator.geolocation) { fehler('Dieses Gerät kann den Standort nicht bestimmen.'); return; }
+    document.getElementById('o_pos').textContent = 'Standort wird gesucht …';
+    navigator.geolocation.getCurrentPosition((p) => { pos = { lat: Math.round(p.coords.latitude * 1e5) / 1e5, lon: Math.round(p.coords.longitude * 1e5) / 1e5 }; posAnz(); }, () => { posAnz(); fehler('Standort nicht möglich. Du kannst stattdessen einen Kartenlink einfügen oder es leer lassen.'); }, { enableHighAccuracy: true, timeout: 20000 });
+  };
+  document.getElementById('o_ok').onclick = () => sicher(async () => {
+    const link = val('o_link').trim();
+    if (link && !/^https:\/\/\S+$/.test(link)) { fehler('Der Kartenlink muss mit https:// beginnen.'); return; }
+    const o = { titel: val('o_titel').trim(), land: val('o_land'), ort: val('o_ort').trim(), art: val('o_art'), text: val('o_text').trim(), praktisch: val('o_prakt').trim() || undefined, foto, buchungId: ex ? ex.buchungId : val('o_reise'),
+      lat: pos ? pos.lat : undefined, lon: pos ? pos.lon : undefined, kartenlink: link || undefined, wiederHin: document.getElementById('o_wieder').checked, besuchtAm: D.buchungen[ex ? ex.buchungId : val('o_reise')]?.von, erfasstVon: ex ? ex.erfasstVon : ich, erfasstAm: ex?.erfasstAm || new Date().toISOString(), id };
+    const p = pruefeOrt(o, { heute: heute(), buchungen: D.buchungen, orte: ortListe() });
+    if (!p.ok) { fehler(p.fehler); return; }
+    const nid = await S.speichern(D, 'orte', id, o); schliessen(); unterwegs(); hinweis('Ort gespeichert. Die anderen können ihn jetzt bestätigen.'); ortDetail(nid);
+  });
+}
+function ortDetail(id) {
+  const o = D.orte[id]; if (!o) return;
+  const s = ortStand(o, ortStimmenListe()), mein = eigener(o), stimmeId = id + '_' + ich, habe = !!D.ortstimmen[stimmeId];
+  const b = D.buchungen[o.buchungId];
+  sheet(`<img class="w-foto ort-gross" id="ort_fbig" src="${h(o.foto)}" alt="Foto: ${h(o.titel)}">
+  <h3 style="margin-top:4px">${h(o.titel)}</h3>
+  ${s.favorit ? `<div class="ort-favband"><svg viewBox="0 0 24 24" aria-hidden="true">${ORT_STERN}</svg> Familien-Favorit</div>` : ''}
+  <p class="info" style="margin:2px 0 8px">${h(o.land)} · ${h(o.ort)} · ${h(o.art)}</p>
+  <p style="margin:0 0 10px;font-size:17px">${h(o.text)}</p>
+  ${o.praktisch ? `<p class="info" style="margin:0 0 10px"><strong>Praktisches:</strong> ${h(o.praktisch)}</p>` : ''}
+  <p class="info" style="margin:0 0 4px">Eingetragen von ${h(D.personen[o.erfasstVon]?.name || '?')}${b ? ', Reise ' + h(reiseText(b)) : ''}.</p>
+  <p class="info" style="margin:0">${s.anzahl ? `✓ War auch dort und bestätigt: ${s.bestaetigt.map((i) => h(D.personen[i]?.name || '?')).join(', ')}.` : 'Noch von niemandem bestätigt.'}</p>
+  <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(ortKartenLink(o))}" target="_blank" rel="noopener">In der Karte öffnen</a>
+  ${!mein && !habe ? '<button class="gross-btn" id="ort_ja">✓ Ich war auch dort: bestätigen</button>' : ''}
+  ${!mein && habe ? '<button class="gross-btn" id="ort_weg">Meine Bestätigung zurückziehen</button>' : ''}
+  ${mein ? '<button class="gross-btn" id="ort_edit">Ändern</button><button class="gross-btn rot" id="ort_del">Löschen</button>' : ''}
+  <button class="gross-btn" id="abb">Schliessen</button></div><div id="msg"></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('ort_fbig').onclick = () => fotoGross(o.foto);
+  const ja = document.getElementById('ort_ja'), weg = document.getElementById('ort_weg'), ed = document.getElementById('ort_edit'), del = document.getElementById('ort_del');
+  if (ja) ja.onclick = () => sicher(async () => { await S.speichern(D, 'ortstimmen', stimmeId, { ortId: id, personId: ich, erfasstVon: ich }); ortDetail(id); unterwegs(); hinweis('Danke, bestätigt.'); });
+  if (weg) weg.onclick = () => sicher(async () => { await S.loeschen(D, 'ortstimmen', stimmeId); ortDetail(id); unterwegs(); });
+  if (ed) ed.onclick = () => ortForm(id);
+  if (del) del.onclick = () => { if (confirm('Ort löschen? Das Foto und alle Bestätigungen gehen verloren.')) sicher(async () => { for (const v of Object.values(D.ortstimmen).filter((x) => x.ortId === id)) await S.loeschen(D, 'ortstimmen', v.id); await S.loeschen(D, 'orte', id); schliessen(); unterwegs(); }); };
 }
 
 start();
