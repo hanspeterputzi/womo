@@ -5,8 +5,8 @@ import {
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113x';
-import * as S from './speicher.js?v=20261113x';
+} from './regeln.js?v=20261113y';
+import * as S from './speicher.js?v=20261113y';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -1329,6 +1329,8 @@ const FRAGE_ICON = '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a
 const frageListe = () => Object.values(D.termine).filter((x) => x.art === 'Frage');
 const frageAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FrageAntwort');
 const frageStandVon = (f) => frageStand(f, frageAntworten(), idsGeordnet());
+// Standardhinweis: gilt für jede Frage, die etwas ändert, das der Vertrag regelt.
+const ZUSATZ_REGEL = '<strong>Vertragszusatz nötig:</strong> Wird ein Punkt geändert, der im Vertrag geregelt ist, braucht es zusätzlich einen schriftlichen Vertragszusatz, den alle Eigentümer unterschreiben (Ziffer 13 c). Ein Ja in der App ersetzt ihn nicht.';
 const frageKlasse = (st) => ({ offen: 'blau', angenommen: 'ok', abgelehnt: 'rot' })[st];
 const zeitText = (iso) => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; const z = ZH.format(d); return `${fmt(z.slice(0, 10))}, ${z.slice(11, 16)} Uhr`; };
 const frageWartet = (f, st) => st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich];
@@ -1356,7 +1358,8 @@ function fragenSeite() {
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Fragen. Mit «＋ Frage» legst du der Familie etwas zum Entscheid vor.</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Fragen', 'fneu', '＋ Frage')}${famSeg()}
     <div class="karte"><p class="info" style="margin:0">Hier stellst du der Familie eine Frage, wenn etwas entschieden werden soll, das der Vertrag heute nicht erlaubt oder nicht regelt (zum Beispiel ein Reiseland ausserhalb Europas).</p>
-      <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p></div>
+      <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p>
+      <p class="info zusatz" style="margin:8px 0 0">${ZUSATZ_REGEL}</p></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Antworten laufen', laufend)}
     ${fertig.length ? `<details class="sek" style="margin-top:20px"${dein.length || laufend.length ? '' : ' open'}><summary><span>Entschieden (Dokumentation)</span><b>${fertig.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle entschiedenen Fragen bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wann wie geantwortet hat.</p>${fertig.map((e) => zeile(e, true)).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu(); bindSeg();
@@ -1367,6 +1370,7 @@ function fragenSeite() {
 function frageForm() {
   sheet(`<h3>Neue Frage an die Familie</h3>
   <label for="f_titel">Die Frage</label><input id="f_titel" maxlength="${FRAGE_TITEL_MAX}" placeholder="z. B. Darf Marokko bereist werden?">
+  <p class="info zusatz" style="margin:0 0 6px">${ZUSATZ_REGEL}</p>
   <label for="f_heute">Was gilt bisher? (optional)</label><input id="f_heute" maxlength="200" placeholder="z. B. Vertrag Ziffer 9: nur Länder in Europa">
   <label for="f_text">Begründung: Warum fragst du? Was soll sich ändern?</label><textarea id="f_text" maxlength="${FRAGE_TEXT_MAX}" placeholder="z. B. Nene möchte im Frühling nach Marokko fahren (Fähre ab Spanien)."></textarea>
   <label>Bilder oder PDF (optional, bis ${FRAGE_ANHANG_MAX})</label><label class="foto-wahl" for="f_dat" id="f_dwahl">📎 Bild oder Datei auswählen</label><input type="file" id="f_dat" accept="image/*,application/pdf" multiple style="display:none">
@@ -1425,13 +1429,14 @@ function frageDetail(id) {
     return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${zt ? `<div class="meta">${zt}</div>` : ''}${a && a.stimme === 'nein' && a.grund ? `<div class="meta">Grund: ${h(a.grund)}</div>` : ''}</div><div class="r">${chip(i)}</div></div>`;
   }).join('');
   const stand = s.status === 'offen' ? `Offen: ${s.ja} von ${s.gesamt} haben Ja gesagt. Es braucht alle. Noch keine Antwort: ${s.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}.`
-    : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt. Betrifft der Entscheid den Vertrag, bitte ihn schriftlich festhalten (Ziffer 13 c, Schriftform).`
+    : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt.`
     : `Abgelehnt${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: ${s.nein.map((i) => h(D.personen[i].name)).join(', ')} ${s.nein.length > 1 ? 'haben' : 'hat'} Nein gesagt. Es gilt weiter die bisherige Regel.`;
   const waText = `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel} Bitte in der Womo-App mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
   const antwort = s.status === 'offen' && !mein && !s.antworten[ich];
   const loeschbar = mein && Object.keys(s.antworten).length === 0 && s.status === 'offen';
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><div><h3 style="margin:0">${h(f.titel)}</h3><div class="info" style="margin:2px 0 0">von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${zeitText(f.erfasstAm) || fmt(f.datum || f.faelligAm)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
+    ${s.status !== 'abgelehnt' ? `<p class="info zusatz" style="margin:0 0 10px">${ZUSATZ_REGEL}</p>` : ''}
     ${f.bisher ? `<p class="info" style="margin:0 0 6px"><strong>Bisher:</strong> ${h(f.bisher)}</p>` : ''}
     <p class="info" style="margin:0 0 6px"><strong>Begründung:</strong> ${h(f.text || '')}</p>
     ${anhangHtml(f)}
