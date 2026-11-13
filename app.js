@@ -3,10 +3,10 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
+  FRAGE_ANHANG_MAX, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113v';
-import * as S from './speicher.js?v=20261113v';
+} from './regeln.js?v=20261113w';
+import * as S from './speicher.js?v=20261113w';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -1357,15 +1357,46 @@ function frageForm() {
   <label for="f_titel">Die Frage</label><input id="f_titel" maxlength="${FRAGE_TITEL_MAX}" placeholder="z. B. Darf Marokko bereist werden?">
   <label for="f_heute">Was gilt bisher? (optional)</label><input id="f_heute" maxlength="200" placeholder="z. B. Vertrag Ziffer 9: nur Länder in Europa">
   <label for="f_text">Begründung: Warum fragst du? Was soll sich ändern?</label><textarea id="f_text" maxlength="${FRAGE_TEXT_MAX}" placeholder="z. B. Nene möchte im Frühling nach Marokko fahren (Fähre ab Spanien)."></textarea>
+  <label>Bilder oder PDF (optional, bis ${FRAGE_ANHANG_MAX})</label><label class="foto-wahl" for="f_dat" id="f_dwahl">📎 Bild oder Datei auswählen</label><input type="file" id="f_dat" accept="image/*,application/pdf" multiple style="display:none">
+  <div id="f_dprev"></div>
   <p class="info">Alle vier müssen Ja sagen. Ein Nein genügt zur Ablehnung. Du zählst mit deinem Vorschlag als Ja.</p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Frage stellen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
+  let anhaenge = [];
+  const aVorschau = () => {
+    document.getElementById('f_dprev').innerHTML = anhaenge.map((x, i) => `<div class="foto-vor" style="align-items:center">${x.typ === 'bild' ? `<img src="${h(x.daten)}" alt="" style="width:64px;height:64px">` : '<span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg></span>'}<span class="info" style="flex:1;margin:0;overflow-wrap:anywhere">${h(x.name)}<br>${Math.round(x.daten.length / 1024)} KB</span><button type="button" class="kl" data-aw="${i}">Entfernen</button></div>`).join('');
+    document.getElementById('f_dprev').querySelectorAll('[data-aw]').forEach((bt) => bt.onclick = () => { anhaenge.splice(+bt.dataset.aw, 1); aVorschau(); });
+  };
+  document.getElementById('f_dat').onchange = async (e) => {
+    const dateien = [...(e.target.files || [])]; e.target.value = '';
+    for (const d of dateien) {
+      if (anhaenge.length >= FRAGE_ANHANG_MAX) { fehler(`Höchstens ${FRAGE_ANHANG_MAX} Anhänge pro Frage.`); break; }
+      try {
+        if (d.type.startsWith('image/')) anhaenge.push({ name: d.name.slice(0, 80) || 'Bild', typ: 'bild', daten: await fotoVerkleinern(d) });
+        else if (d.type === 'application/pdf') {
+          const daten = await new Promise((ok, nein) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => nein(new Error('Die Datei kann nicht gelesen werden.')); r.readAsDataURL(d); });
+          if (daten.length > FRAGE_PDF_MAX) throw new Error('Die PDF-Datei ist zu gross (höchstens etwa 300 KB): ' + d.name);
+          anhaenge.push({ name: d.name.slice(0, 80) || 'Datei.pdf', typ: 'pdf', daten });
+        } else throw new Error('Nur Bilder und PDF-Dateien sind möglich: ' + d.name);
+      } catch (x) { fehler(x.message || String(x)); }
+    }
+    aVorschau();
+  };
   document.getElementById('spei').onclick = async () => {
     const f = { art: 'Frage', titel: val('f_titel').trim(), text: val('f_text').trim(), bisher: val('f_heute').trim(), datum: heute(), faelligAm: heute(), erfasstVon: ich };
+    if (anhaenge.length) f.anhaenge = anhaenge;
     const p = pruefeFrage(f);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fragenSeite(); hinweis('Frage gestellt. Alle müssen antworten.'); frageDetail(id); });
   };
+}
+
+function anhangHtml(f) {
+  const an = Array.isArray(f.anhaenge) ? f.anhaenge : [];
+  if (!an.length) return '';
+  return `<div style="margin:6px 0 10px">${an.map((x, i) => x.typ === 'bild'
+    ? `<img class="w-foto" data-bild="1" src="${h(x.daten)}" alt="Anhang: ${h(x.name)}">`
+    : `<button type="button" class="btn" data-pdf="${i}" style="margin:0 8px 8px 0">📄 ${h(x.name)}</button>`).join('')}</div>`;
 }
 
 function frageDetail(id) {
@@ -1391,6 +1422,7 @@ function frageDetail(id) {
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     ${f.bisher ? `<p class="info" style="margin:0 0 6px"><strong>Bisher:</strong> ${h(f.bisher)}</p>` : ''}
     <p class="info" style="margin:0 0 6px"><strong>Begründung:</strong> ${h(f.text || '')}</p>
+    ${anhangHtml(f)}
     <div class="zeilen">${zeilen}</div>
     ${antwort ? '<label for="f_grund">Nur bei Nein: Grund</label><input id="f_grund" maxlength="' + FRAGE_GRUND_MAX + '" placeholder="Warum nicht?"><p class="info">Deine Antwort kann danach nicht mehr geändert werden.</p>' : ''}
     <div id="msg"></div>
@@ -1410,6 +1442,12 @@ function frageDetail(id) {
       antw('nein', grund);
     };
   }
+  formEl.querySelectorAll('[data-bild]').forEach((im) => im.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(im.src)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); });
+  formEl.querySelectorAll('[data-pdf]').forEach((bt) => bt.onclick = () => {
+    const x = (f.anhaenge || [])[+bt.dataset.pdf]; if (!x) return;
+    try { const bin = atob(x.daten.split(',')[1]), u8 = Uint8Array.from(bin, (c) => c.charCodeAt(0)); window.open(URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })), '_blank'); }
+    catch { hinweis('Die Datei kann nicht geöffnet werden.'); }
+  });
   const del = document.getElementById('f_del');
   if (del) del.onclick = async () => { if (confirm('Frage zurückziehen und löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
 }

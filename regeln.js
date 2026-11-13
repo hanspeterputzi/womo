@@ -773,6 +773,7 @@ export function fahrfreigabeStand(f, aktionen, ids, heute) {
 // Liegt in der Sammlung 'termine' (art 'Frage' und 'FrageAntwort'), damit keine neue Datenbankregel noetig ist.
 // =====================================================================
 export const FRAGE_STATUS = { offen: 'Antworten offen', angenommen: 'Angenommen', abgelehnt: 'Abgelehnt' };
+export const FRAGE_ANHANG_MAX = 3, FRAGE_PDF_MAX = 400000, FRAGE_ANHANG_SUMME = 750000;   // Zeichen (Text-Form der Datei); Firestore erlaubt 1 MiB pro Eintrag
 export const FRAGE_TITEL_MAX = 80, FRAGE_TEXT_MAX = 600, FRAGE_GRUND_MAX = 300;
 export function pruefeFrage(f) {
   const e = [];
@@ -781,6 +782,21 @@ export function pruefeFrage(f) {
   else if (t.length > FRAGE_TITEL_MAX) e.push(`Die Frage ist zu lang (höchstens ${FRAGE_TITEL_MAX} Zeichen). Details bitte in die Begründung schreiben.`);
   if (!x) e.push('Bitte die Begründung angeben: Warum wird gefragt, was ändert sich?');
   else if (x.length > FRAGE_TEXT_MAX) e.push(`Die Begründung ist zu lang (höchstens ${FRAGE_TEXT_MAX} Zeichen).`);
+  if (f.anhaenge !== undefined) {
+    const an = f.anhaenge;
+    if (!Array.isArray(an) || an.length > FRAGE_ANHANG_MAX) e.push(`Höchstens ${FRAGE_ANHANG_MAX} Anhänge pro Frage.`);
+    else {
+      let summe = 0;
+      for (const x of an) {
+        const ok = x && typeof x.name === 'string' && x.name.length > 0 && x.name.length <= 80 && typeof x.daten === 'string'
+          && ((x.typ === 'bild' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x.daten) && x.daten.length <= WUNSCH_FOTO_MAX)
+           || (x.typ === 'pdf' && /^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/.test(x.daten) && x.daten.length <= FRAGE_PDF_MAX));
+        if (!ok) { e.push('Ein Anhang ist ungültig oder zu gross (Bilder werden verkleinert, PDF höchstens etwa 300 KB). Bitte neu auswählen.'); break; }
+        summe += x.daten.length;
+      }
+      if (summe > FRAGE_ANHANG_SUMME) e.push('Die Anhänge sind zusammen zu gross. Bitte weniger oder kleinere Dateien wählen.');
+    }
+  }
   return { ok: e.length === 0, fehler: e };
 }
 // aktionen: Eintraege mit art 'FrageAntwort' (frageId, personId, stimme, grund). Gezaehlt wird je Person die erste Antwort.
