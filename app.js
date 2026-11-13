@@ -5,8 +5,8 @@ import {
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113w';
-import * as S from './speicher.js?v=20261113w';
+} from './regeln.js?v=20261113x';
+import * as S from './speicher.js?v=20261113x';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -1197,20 +1197,32 @@ function wunschliste() {
   app.querySelectorAll('[data-wid]').forEach((b) => b.onclick = () => wunschDetail(b.dataset.wid));
 }
 
+// Bild im Vollbild: Tipp auf das Bild wechselt zwischen «passt auf den Bildschirm» und «Originalgrösse zum Verschieben».
+function fotoGross(src) {
+  const o = document.createElement('div'); o.className = 'foto-gross';
+  o.innerHTML = `<img src="${h(src)}" alt=""><button type="button" class="foto-zu">✕ Schliessen</button><span class="foto-tipp">Bild antippen: vergrössern</span>`;
+  const im = o.querySelector('img'), tipp = o.querySelector('.foto-tipp');
+  im.onclick = (e) => { e.stopPropagation(); const v = o.classList.toggle('voll'); tipp.textContent = v ? 'Mit dem Finger verschieben, antippen: verkleinern' : 'Bild antippen: vergrössern'; };
+  o.querySelector('.foto-zu').onclick = (e) => { e.stopPropagation(); o.remove(); };
+  o.onclick = () => o.remove();
+  document.body.appendChild(o);
+}
+
 // Foto im Handy verkleinern (längste Seite höchstens 1000 px, JPEG), damit es in den Wunsch passt (Firestore: 1 MiB pro Eintrag).
-function fotoVerkleinern(file) {
+function fotoVerkleinern(file, gross) {
   return new Promise((ok, nein) => {
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => {
       try {
-        let max = 1000, q = 0.72, out = '';
+        const ziel = gross ? 235000 : 150000, qmin = gross ? 0.55 : 0.4;
+        let max = gross ? 2000 : 1000, q = gross ? 0.85 : 0.72, out = '';
         for (let i = 0; i < 10; i++) {
           const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
           const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
           const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
           out = c.toDataURL('image/jpeg', q);
-          if (out.length <= 150000) break;
-          q = Math.max(0.4, q - 0.08); max = Math.round(max * 0.85);
+          if (out.length <= ziel) break;
+          q = Math.max(qmin, q - 0.06); max = Math.round(max * 0.88);
         }
         URL.revokeObjectURL(url);
         if (out.length > WUNSCH_FOTO_MAX) nein(new Error('Das Foto ist auch verkleinert zu gross.')); else ok(out);
@@ -1284,7 +1296,7 @@ function wunschDetail(id) {
       <button class="gross-btn" id="abb">Schliessen</button>${mein && ['offen', 'abgelehnt'].includes(s.status) ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
   const fb = document.getElementById('w_fbig');
-  if (fb) fb.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(w.foto)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); };
+  if (fb) fb.onclick = () => fotoGross(w.foto);
   const aktion = (aid, daten, text) => sicher(async () => { await S.speichern(D, 'wunschaktionen', aid, { wunschId: w.id, erfasstVon: ich, ...daten }); schliessen(); wunschliste(); hinweis(text); });
   if (meinAntwort) {
     document.getElementById('w_ja').onclick = () => aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'ja' }, 'Danke, du hast Ja gesagt.');
@@ -1372,7 +1384,7 @@ function frageForm() {
     for (const d of dateien) {
       if (anhaenge.length >= FRAGE_ANHANG_MAX) { fehler(`Höchstens ${FRAGE_ANHANG_MAX} Anhänge pro Frage.`); break; }
       try {
-        if (d.type.startsWith('image/')) anhaenge.push({ name: d.name.slice(0, 80) || 'Bild', typ: 'bild', daten: await fotoVerkleinern(d) });
+        if (d.type.startsWith('image/')) anhaenge.push({ name: d.name.slice(0, 80) || 'Bild', typ: 'bild', daten: await fotoVerkleinern(d, true) });
         else if (d.type === 'application/pdf') {
           const daten = await new Promise((ok, nein) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => nein(new Error('Die Datei kann nicht gelesen werden.')); r.readAsDataURL(d); });
           if (daten.length > FRAGE_PDF_MAX) throw new Error('Die PDF-Datei ist zu gross (höchstens etwa 300 KB): ' + d.name);
@@ -1442,7 +1454,7 @@ function frageDetail(id) {
       antw('nein', grund);
     };
   }
-  formEl.querySelectorAll('[data-bild]').forEach((im) => im.onclick = () => { const o = document.createElement('div'); o.className = 'foto-gross'; o.innerHTML = `<img src="${h(im.src)}" alt="">`; o.onclick = () => o.remove(); document.body.appendChild(o); });
+  formEl.querySelectorAll('[data-bild]').forEach((im) => im.onclick = () => fotoGross(im.src));
   formEl.querySelectorAll('[data-pdf]').forEach((bt) => bt.onclick = () => {
     const x = (f.anhaenge || [])[+bt.dataset.pdf]; if (!x) return;
     try { const bin = atob(x.daten.split(',')[1]), u8 = Uint8Array.from(bin, (c) => c.charCodeAt(0)); window.open(URL.createObjectURL(new Blob([u8], { type: 'application/pdf' })), '_blank'); }
