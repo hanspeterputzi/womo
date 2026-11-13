@@ -3,9 +3,10 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
+  FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113r';
-import * as S from './speicher.js?v=20261113r';
+} from './regeln.js?v=20261113v';
+import * as S from './speicher.js?v=20261113v';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -56,7 +57,7 @@ const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1
 const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort' && x.art !== 'Frage' && x.art !== 'FrageAntwort');
 // Tausch von Nutzungstagen (Vertrag Ziffer 7 a): Eintraege mit art 'Tausch' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
 const tauschListe = () => Object.values(D.termine).filter((x) => x.art === 'Tausch');
 const tauschMap = () => Object.fromEntries(tauschListe().map((x) => [x.id, x]));
@@ -333,7 +334,7 @@ function neuKarte() {
 function bindNeu() {
   const g = document.getElementById('neugesehen');
   if (g) g.onclick = () => { besuchMerken(); seitLesen(); zeige(); };
-  app.querySelectorAll('[data-neu]').forEach((b) => b.onclick = () => { tab = b.dataset.neu; schliessen(); zeige(); window.scrollTo(0, 0); });
+  app.querySelectorAll('[data-neu]').forEach((b) => b.onclick = () => { tab = b.dataset.neu; if (b.dataset.fa) famAnsicht = b.dataset.fa; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
 // ---------- Hell, Dunkel oder Auto (folgt dem Handy) ----------
 const THEMA_NAME = { auto: 'Auto', hell: 'Hell', dunkel: 'Dunkel' };
@@ -382,10 +383,12 @@ function hinweiseHtml() {
   });
   // Fahrerfreigabe: was auf dich wartet
   fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="fahrten" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
+  // Fragen: was auf deine Antwort wartet (ein Tipp öffnet die Rubrik)
+  frageListe().forEach((f) => { const st = frageStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="wunschliste" data-fa="fragen" style="cursor:pointer">❓ Frage von ${h(D.personen[f.erfasstVon]?.name || '?')}: «${h(f.titel)}» wartet auf deine Antwort.</div>`; });
   // Wunschliste: was auf dich wartet (ein Tipp öffnet den Tab)
   wunschListe().forEach((w) => {
     const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
-    const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
+    const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" data-fa="wunsch" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
     if (st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]) karte('gelb', `${titel} wartet auf deine Antwort bis ${fmt(st.frist)}.`);
     else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
     else if (st.status === 'gekauft' && buchhalter() && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
@@ -1153,6 +1156,7 @@ const wunschPreisText = (w) => w.menge > 1 ? `${w.menge} × CHF ${chf(w.preis)} 
 const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', gekauft: 'ok' })[s];
 
 function wunschliste() {
+  if (famAnsicht === 'fragen') return fragenSeite();
   const t = heute();
   const alle = wunschListe().map((w) => ({ w, s: wunschStandVon(w) })).sort((a, b) => (a.w.datum < b.w.datum ? 1 : a.w.datum > b.w.datum ? -1 : 0));
   const pille = ({ w, s }) => {
@@ -1182,14 +1186,14 @@ function wunschliste() {
     return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
   };
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
-  app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}
+  app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}${famSeg()}
     <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
       <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
     ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu();
-  document.getElementById('wneu').onclick = wunschForm;
+  document.getElementById('wneu').onclick = wunschForm; bindSeg();
   app.querySelectorAll('[data-wid]').forEach((b) => b.onclick = () => wunschDetail(b.dataset.wid));
 }
 
@@ -1301,6 +1305,113 @@ function wunschDetail(id) {
   if (erstatten) document.getElementById('w_erst').onclick = () => alsStv(() => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); });
   const del = document.getElementById('w_del');
   if (del) del.onclick = async () => { if (confirm('Wunsch löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of Object.values(D.wunschaktionen).filter((x) => x.wunschId === w.id)) await S.loeschen(D, 'wunschaktionen', a.id); await S.loeschen(D, 'wuensche', w.id); schliessen(); wunschliste(); }); };
+}
+
+// =====================================================================
+// Fragen an die Familie: Entscheide, die alle vier mittragen müssen (z. B. «Darf Marokko bereist werden?»)
+// Einstimmig: alle müssen Ja sagen, ein Nein genügt zur Ablehnung, Schweigen zählt nicht als Ja, keine Frist.
+// Gespeichert in der Sammlung «termine» (art «Frage» und «FrageAntwort»), damit keine neue Datenbankregel nötig ist.
+// =====================================================================
+let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'fragen' oder 'wunsch'
+const FRAGE_ICON = '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M10 9.500a2 2 0 1 1 3 1.700c-.7.400-1 .800-1 1.500M12 14.500v.01"/>';
+const frageListe = () => Object.values(D.termine).filter((x) => x.art === 'Frage');
+const frageAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FrageAntwort');
+const frageStandVon = (f) => frageStand(f, frageAntworten(), idsGeordnet());
+const frageKlasse = (st) => ({ offen: 'blau', angenommen: 'ok', abgelehnt: 'rot' })[st];
+const zeitText = (iso) => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return ''; const z = ZH.format(d); return `${fmt(z.slice(0, 10))}, ${z.slice(11, 16)} Uhr`; };
+const frageWartet = (f, st) => st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich];
+function famSeg() {
+  const nF = frageListe().filter((f) => frageWartet(f, frageStandVon(f))).length;
+  const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
+  const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
+  return `<div class="seg" role="tablist">${b('fragen', 'Fragen', nF)}${b('wunsch', 'Wünsche', nW)}</div>`;
+}
+function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
+
+function fragenSeite() {
+  const alle = frageListe().map((f) => ({ f, s: frageStandVon(f) })).sort((a, b) => (a.f.erfasstAm < b.f.erfasstAm ? 1 : a.f.erfasstAm > b.f.erfasstAm ? -1 : 0));
+  const zeile = (e, archiv) => {
+    const { f, s } = e, k = frageKlasse(s.status);
+    const txt = s.status === 'offen' ? `${s.ja} von ${s.gesamt}` : FRAGE_STATUS[s.status];
+    const sub = `${h(D.personen[f.erfasstVon]?.name || '?')} · ${fmt(f.datum || f.faelligAm)}${archiv ? `<br>Ja ${s.ja}, Nein ${s.nein.length}` : ''}`;
+    const neuP = neuPille(f), fehlt = frageWartet(f, s) ? '<span class="neu gelb">Antwort fehlt</span>' : '';
+    return `<button class="t-z ${k}" data-fid="${h(f.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><span class="t-zt"><strong>${h(f.titel)}${neuP}${fehlt}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
+  };
+  const gruppe = (titel, xs) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map((e) => zeile(e, false)).join('')}` : '';
+  const dein = alle.filter((e) => frageWartet(e.f, e.s));
+  const laufend = alle.filter((e) => e.s.status === 'offen' && !dein.includes(e));
+  const fertig = alle.filter((e) => e.s.status !== 'offen');
+  const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Fragen. Mit «＋ Frage» legst du der Familie etwas zum Entscheid vor.</p></div>' : '';
+  app.innerHTML = rahmen(`${seitenkopf('Fragen', 'fneu', '＋ Frage')}${famSeg()}
+    <div class="karte"><p class="info" style="margin:0">Hier stellst du der Familie eine Frage, wenn etwas entschieden werden soll, das der Vertrag heute nicht erlaubt oder nicht regelt (zum Beispiel ein Reiseland ausserhalb Europas).</p>
+      <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p></div>
+    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Antworten laufen', laufend)}
+    ${fertig.length ? `<details class="sek" style="margin-top:20px"${dein.length || laufend.length ? '' : ' open'}><summary><span>Entschieden (Dokumentation)</span><b>${fertig.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle entschiedenen Fragen bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wann wie geantwortet hat.</p>${fertig.map((e) => zeile(e, true)).join('')}</div></details>` : ''}`);
+  bindRahmen(); bindNeu(); bindSeg();
+  document.getElementById('fneu').onclick = frageForm;
+  app.querySelectorAll('[data-fid]').forEach((b) => b.onclick = () => frageDetail(b.dataset.fid));
+}
+
+function frageForm() {
+  sheet(`<h3>Neue Frage an die Familie</h3>
+  <label for="f_titel">Die Frage</label><input id="f_titel" maxlength="${FRAGE_TITEL_MAX}" placeholder="z. B. Darf Marokko bereist werden?">
+  <label for="f_heute">Was gilt bisher? (optional)</label><input id="f_heute" maxlength="200" placeholder="z. B. Vertrag Ziffer 9: nur Länder in Europa">
+  <label for="f_text">Begründung: Warum fragst du? Was soll sich ändern?</label><textarea id="f_text" maxlength="${FRAGE_TEXT_MAX}" placeholder="z. B. Nene möchte im Frühling nach Marokko fahren (Fähre ab Spanien)."></textarea>
+  <p class="info">Alle vier müssen Ja sagen. Ein Nein genügt zur Ablehnung. Du zählst mit deinem Vorschlag als Ja.</p>
+  <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Frage stellen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const f = { art: 'Frage', titel: val('f_titel').trim(), text: val('f_text').trim(), bisher: val('f_heute').trim(), datum: heute(), faelligAm: heute(), erfasstVon: ich };
+    const p = pruefeFrage(f);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fragenSeite(); hinweis('Frage gestellt. Alle müssen antworten.'); frageDetail(id); });
+  };
+}
+
+function frageDetail(id) {
+  const f = D.termine[id]; if (!f || f.art !== 'Frage') return;
+  const s = frageStandVon(f), ids = idsGeordnet(), mein = f.erfasstVon === ich, k = frageKlasse(s.status);
+  const chip = (i) => {
+    if (i === f.erfasstVon) return '<span class="chipk ok">Frage (Ja)</span>';
+    const a = s.antworten[i];
+    if (a) return a.stimme === 'ja' ? '<span class="chipk ok">Ja</span>' : '<span class="chipk rot">Nein</span>';
+    return s.status === 'offen' ? '<span class="chipk gelb">noch offen</span>' : '<span class="chipk">nicht mehr nötig</span>';
+  };
+  const zeilen = ids.map((i) => {
+    const a = s.antworten[i], zt = i === f.erfasstVon ? zeitText(f.erfasstAm) : a ? zeitText(a.erfasstAm) : '';
+    return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${zt ? `<div class="meta">${zt}</div>` : ''}${a && a.stimme === 'nein' && a.grund ? `<div class="meta">Grund: ${h(a.grund)}</div>` : ''}</div><div class="r">${chip(i)}</div></div>`;
+  }).join('');
+  const stand = s.status === 'offen' ? `Offen: ${s.ja} von ${s.gesamt} haben Ja gesagt. Es braucht alle. Noch keine Antwort: ${s.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}.`
+    : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt. Betrifft der Entscheid den Vertrag, bitte ihn schriftlich festhalten (Ziffer 13 c, Schriftform).`
+    : `Abgelehnt${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: ${s.nein.map((i) => h(D.personen[i].name)).join(', ')} ${s.nein.length > 1 ? 'haben' : 'hat'} Nein gesagt. Es gilt weiter die bisherige Regel.`;
+  const waText = `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel} Bitte in der Womo-App mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+  const antwort = s.status === 'offen' && !mein && !s.antworten[ich];
+  const loeschbar = mein && Object.keys(s.antworten).length === 0 && s.status === 'offen';
+  sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><div><h3 style="margin:0">${h(f.titel)}</h3><div class="info" style="margin:2px 0 0">von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${zeitText(f.erfasstAm) || fmt(f.datum || f.faelligAm)}</div></div></div>
+    <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
+    ${f.bisher ? `<p class="info" style="margin:0 0 6px"><strong>Bisher:</strong> ${h(f.bisher)}</p>` : ''}
+    <p class="info" style="margin:0 0 6px"><strong>Begründung:</strong> ${h(f.text || '')}</p>
+    <div class="zeilen">${zeilen}</div>
+    ${antwort ? '<label for="f_grund">Nur bei Nein: Grund</label><input id="f_grund" maxlength="' + FRAGE_GRUND_MAX + '" placeholder="Warum nicht?"><p class="info">Deine Antwort kann danach nicht mehr geändert werden.</p>' : ''}
+    <div id="msg"></div>
+    <div class="t-akt2">${antwort ? '<button class="gross-btn pri" id="f_ja">Ja, einverstanden</button><button class="gross-btn rot" id="f_nein">Nein</button>' : ''}
+      ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
+      <button class="gross-btn" id="abb">Schliessen</button>${loeschbar ? '<button class="gross-btn rot" id="f_del">Frage zurückziehen</button>' : ''}</div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const antw = (stimme, grund) => sicher(async () => {
+    await S.speichern(D, 'termine', `fq_${f.id}_${ich}`, { art: 'FrageAntwort', titel: 'Antwort Frage', faelligAm: heute(), frageId: f.id, personId: ich, stimme, grund: grund || '', erfasstVon: ich });
+    schliessen(); fragenSeite(); hinweis(stimme === 'ja' ? 'Danke, du hast Ja gesagt.' : 'Danke, dein Nein ist gespeichert.');
+  });
+  if (antwort) {
+    document.getElementById('f_ja').onclick = () => antw('ja');
+    document.getElementById('f_nein').onclick = () => {
+      const grund = val('f_grund').trim();
+      if (!grund) { fehler('Bei Nein bitte einen Grund angeben. Nur Nein zu sagen genügt nicht.'); return; }
+      antw('nein', grund);
+    };
+  }
+  const del = document.getElementById('f_del');
+  if (del) del.onclick = async () => { if (confirm('Frage zurückziehen und löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
 }
 
 start();

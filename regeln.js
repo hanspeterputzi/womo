@@ -698,14 +698,15 @@ export function neuZaehlen(d, seit, ich) {
   const n = (x) => istNeu(x, seit, ich);
   Object.values(d.buchungen || {}).forEach((x) => { if (n(x)) z.kalender++; });
   Object.values(d.uebergaben || {}).forEach((x) => { if (n(x)) z.fahrten++; });
-  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
+  const frageIds = new Set();
+  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Frage') { frageIds.add(x.id); return; } if (x.art === 'FrageAntwort') { if (d.termine && d.termine[x.frageId]) frageIds.add(x.frageId); return; } if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
   Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.journal || {}).forEach((x) => { if (n(x)) z.kosten++; });
   const wunschIds = new Set();
   Object.values(d.wuensche || {}).forEach((x) => { if (n(x)) wunschIds.add(x.id); });
   Object.values(d.wunschaktionen || {}).forEach((a) => { if (n(a) && d.wuensche && d.wuensche[a.wunschId]) wunschIds.add(a.wunschId); });
-  z.wunschliste = wunschIds.size;
+  z.wunschliste = wunschIds.size + frageIds.size;
   return { gesamt: z.kalender + z.termine + z.fahrten + z.kosten + z.wunschliste, nach: z, wunschIds };
 }
 
@@ -762,4 +763,43 @@ export function fahrfreigabeStand(f, aktionen, ids, heute) {
   else status = 'offen';
   if (f.bis < heute) status = status === 'freigegeben' ? 'vorbei' : status;
   return { antworten, ohneAntwort, nein, jaVon, ja, status };
+}
+
+// =====================================================================
+// Fragen an die Familie (Rubrik «Fragen»): Entscheide, die alle vier mittragen muessen (zum Beispiel: darf Marokko bereist werden?).
+// Einstimmig: Angenommen ist eine Frage nur, wenn ALLE Ja sagen. Ein einziges Nein genuegt zur Ablehnung. Schweigen gilt NICHT
+// als Ja und es gibt keine Frist: die Frage bleibt offen, bis alle geantwortet haben. Wer fragt, zaehlt als Ja.
+// Ein entschiedener Fall bleibt unveraendert als Dokumentation erhalten (wer, wann, wie geantwortet hat).
+// Liegt in der Sammlung 'termine' (art 'Frage' und 'FrageAntwort'), damit keine neue Datenbankregel noetig ist.
+// =====================================================================
+export const FRAGE_STATUS = { offen: 'Antworten offen', angenommen: 'Angenommen', abgelehnt: 'Abgelehnt' };
+export const FRAGE_TITEL_MAX = 80, FRAGE_TEXT_MAX = 600, FRAGE_GRUND_MAX = 300;
+export function pruefeFrage(f) {
+  const e = [];
+  const t = (f.titel || '').trim(), x = (f.text || '').trim();
+  if (!t) e.push('Bitte die Frage kurz formulieren (z. B. «Darf Marokko bereist werden?»).');
+  else if (t.length > FRAGE_TITEL_MAX) e.push(`Die Frage ist zu lang (höchstens ${FRAGE_TITEL_MAX} Zeichen). Details bitte in die Begründung schreiben.`);
+  if (!x) e.push('Bitte die Begründung angeben: Warum wird gefragt, was ändert sich?');
+  else if (x.length > FRAGE_TEXT_MAX) e.push(`Die Begründung ist zu lang (höchstens ${FRAGE_TEXT_MAX} Zeichen).`);
+  return { ok: e.length === 0, fehler: e };
+}
+// aktionen: Eintraege mit art 'FrageAntwort' (frageId, personId, stimme, grund). Gezaehlt wird je Person die erste Antwort.
+export function frageStand(f, aktionen, ids) {
+  const antworten = {};
+  const alle = [...(aktionen || [])].filter((a) => a.art === 'FrageAntwort' && a.frageId === f.id && ids.includes(a.personId) && a.personId !== f.erfasstVon && ['ja', 'nein'].includes(a.stimme))
+    .sort((a, b) => ((a.erfasstAm || '') < (b.erfasstAm || '') ? -1 : (a.erfasstAm || '') > (b.erfasstAm || '') ? 1 : 0));
+  for (const a of alle) if (!antworten[a.personId]) antworten[a.personId] = a;
+  const andere = ids.filter((i) => i !== f.erfasstVon);
+  const nein = andere.filter((i) => antworten[i] && antworten[i].stimme === 'nein');
+  const jaVon = andere.filter((i) => antworten[i] && antworten[i].stimme === 'ja');
+  const ohneAntwort = andere.filter((i) => !antworten[i]);
+  const ja = (ids.includes(f.erfasstVon) ? 1 : 0) + jaVon.length;
+  let status = 'offen';
+  if (nein.length > 0) status = 'abgelehnt';
+  else if (ohneAntwort.length === 0 && ja === ids.length) status = 'angenommen';
+  // Zeitpunkt des Entscheids: die Antwort, die die Frage entschieden hat (erstes Nein, sonst die letzte Ja-Antwort)
+  let entschiedenAm = '';
+  if (status === 'abgelehnt') entschiedenAm = antworten[nein[0]] ? nein.map((i) => antworten[i].erfasstAm || '').sort()[0] : '';
+  else if (status === 'angenommen') entschiedenAm = jaVon.map((i) => antworten[i].erfasstAm || '').sort().slice(-1)[0] || '';
+  return { antworten, ohneAntwort, nein, jaVon, ja, status, entschiedenAm, gesamt: ids.length };
 }
