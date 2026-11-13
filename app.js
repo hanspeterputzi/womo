@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113n';
-import * as S from './speicher.js?v=20261113n';
+} from './regeln.js?v=20261113o';
+import * as S from './speicher.js?v=20261113o';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -295,7 +295,7 @@ function unterwegs() {
   bindRahmen();
 }
 const VERTRAG_REGELN = [
-  ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres an eine/n andere/n Eigentümer/in abgetreten werden. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App erfasst das im Kalender unter «Nutzungstage tauschen».', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
+  ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres abgetreten werden, in der App nur von Vater und Mutter an beide Kinder zugleich (beide bekommen gleich viele Tage dazu). Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App erfasst das im Kalender unter «Nutzungstage abtreten».', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
   ['Verbot (Ziffer 7 b)', ['Das Fahrzeug wird nicht verliehen oder vermietet.', 'Wer gegen das Verleih-, Rauch- oder Tierverbot verstösst, zahlt Reinigung und Schaden voll (Ziffer 12 g).']],
   ['Alltagsfahrten der Eltern (Ziffer 7 c)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Vater und Mutter nutzen das Fahrzeug erst dann für Alltagsfahrten, wenn sie den Skoda nicht mehr einlösen.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.', 'Wer Mitreisende mitnimmt, informiert sie über Rauch- und Tierverbot und trägt Schäden am Fahrzeug, die sie verursachen (Ziffer 12 f).']],
@@ -405,7 +405,7 @@ function ringe(J) {
       const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
       const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${zahl(sw[k])} Tagen`;
       const sub2 = k === 'eltern' && st.alltag ? `<div class="sub">davon Alltag ${st.alltag}</div>` : '';
-      const dl = sw[k] - SCHWELLE[k], sub3 = dl ? `<div class="sub">${dl > 0 ? '+' : '−'}${zahl(Math.abs(dl))} getauscht</div>` : '';
+      const dl = sw[k] - SCHWELLE[k], sub3 = dl ? `<div class="sub">${dl > 0 ? '+' : '−'}${zahl(Math.abs(dl))} abgetreten</div>` : '';
       return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
       <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}${sub3}</div>`;
     }).join('') + '</div></div>';
@@ -591,43 +591,42 @@ function fahrten() {
   });
 }
 
-// Tausch von Nutzungstagen: ungenutzte Tage des Kalenderjahres an eine andere Person abtreten (Vertrag Ziffer 7 a).
+// Abtretung von Nutzungstagen: Eltern treten ungenutzte Tage an beide Kinder zugleich ab (Vertrag Ziffer 7 a).
 function tauschSek(J) {
   const L = tauschListe().filter((x) => Number(x.jahr) === J).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1));
-  return `<details class="sek"><summary><span>Nutzungstage tauschen</span><b>${L.length ? L.length + (L.length === 1 ? ' Tausch' : ' Tausche') : 'keiner'}</b></summary><div class="sek-in">
-    <p class="info" style="margin:0 0 8px">Wer will, tritt ungenutzte Tage des Kalenderjahres an eine andere Person ab. Die Tage verfallen am Jahresende, ein Übertrag ins nächste Jahr gibt es nicht. Für Vater und Mutter bleibt die Höchstgrenze von 181 Tagen.</p>
-    ${L.length ? L.map((t) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${zahl(t.tage)} ${t.tage === 1 ? 'Tag' : 'Tage'}: ${h(KONTO_NAME[t.von] || '?')} an ${h(KONTO_NAME[t.an] || '?')}${neuPille(t)}</div><div class="meta">${fmt(t.datum)} · erfasst von ${h(D.personen[t.erfasstVon]?.name || '?')}</div></div>${eigener(t) ? `<button class="kl" data-td="${h(t.id)}">Löschen</button>` : ''}</div>`).join('') : `<p class="leer-t">Kein Tausch im Jahr ${J}.</p>`}
+  return `<details class="sek"><summary><span>Nutzungstage abtreten</span><b>${L.length ? L.length + (L.length === 1 ? ' Abtretung' : ' Abtretungen') : 'keine'}</b></summary><div class="sek-in">
+    <p class="info" style="margin:0 0 8px">Vater und Mutter können ungenutzte Tage des Kalenderjahres an die Kinder abtreten. Die Abtretung geht immer an beide Kinder zugleich: Nanouk und Nene bekommen beide gleich viele Tage dazu. Die Tage verfallen am Jahresende, ein Übertrag ins nächste Jahr gibt es nicht.</p>
+    ${L.length ? L.map((t) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${zahl(t.tage)} ${t.tage === 1 ? 'Tag' : 'Tage'}: ${h(KONTO_NAME[t.von] || '?')} an ${t.an === 'kinder' ? 'Nanouk und Nene (je ' + zahl(t.tage) + ')' : h(KONTO_NAME[t.an] || '?')}${neuPille(t)}</div><div class="meta">${fmt(t.datum)} · erfasst von ${h(D.personen[t.erfasstVon]?.name || '?')}</div></div>${eigener(t) ? `<button class="kl" data-td="${h(t.id)}">Löschen</button>` : ''}</div>`).join('') : `<p class="leer-t">Keine Abtretung im Jahr ${J}.</p>`}
     <div class="btnzeile"><button class="btn pri" id="tneu" type="button">Tage abtreten</button></div></div></details>`;
 }
 function bindTausch(J) {
   const b = document.getElementById('tneu'); if (b) b.onclick = () => tauschForm(J);
-  app.querySelectorAll('[data-td]').forEach((el) => el.onclick = async () => { const x = D.termine[el.dataset.td]; if (!eigener(x)) return nurEigene(); if (confirm('Diesen Tausch löschen? Die Tage gehen an die ursprüngliche Person zurück.')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); kalender(); }); });
+  app.querySelectorAll('[data-td]').forEach((el) => el.onclick = async () => { const x = D.termine[el.dataset.td]; if (!eigener(x)) return nurEigene(); if (confirm('Diese Abtretung löschen? Die Tage gehen an die Eltern zurück.')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); kalender(); }); });
 }
 function tauschForm(J) {
   const meins = D.personen[ich].konto, jetztJ = +heute().slice(0, 4);
-  const an = Object.keys(KONTO_NAME).filter((k) => k !== meins && k !== 'eltern');
+  if (meins !== 'eltern') { sheet(`<h3>Nutzungstage abtreten</h3><p class="info">Abtreten können nur Vater und Mutter, und nur an beide Kinder zugleich.</p><div class="aktion"><button class="primaer" id="abb">Schliessen</button></div>`); document.getElementById('abb').onclick = schliessen; return; }
   const jahre = [jetztJ, jetztJ + 1];
   const stand = (jj) => kontostaendeMitAlltag(liste(), D.personen, jj, alltagMap(), D.buchungen);
-  const frei = (jj) => Math.max(0, schwellen(tauschMap(), jj)[meins] - stand(jj)[meins]);
+  const frei = (jj) => Math.max(0, schwellen(tauschMap(), jj).eltern - stand(jj).eltern);
   const j0 = jahre.includes(J) ? J : jetztJ;
   sheet(`<h3>Nutzungstage abtreten</h3>
-  <p class="info" style="margin:0 0 4px">Von: <strong>${h(KONTO_NAME[meins])}</strong>. Abgetreten werden nur ungenutzte Tage.</p>
-  <label for="t_an">An</label><select id="t_an">${an.map((k) => `<option value="${k}">${h(KONTO_NAME[k])}</option>`).join('')}</select>
+  <p class="info" style="margin:0 0 4px">Du trittst ungenutzte Tage ab. <strong>Nanouk und Nene bekommen beide gleich viele Tage dazu</strong>, damit es gerecht bleibt. Beispiel: Du trittst 5 Tage ab, dann bekommt jedes Kind 5 Tage mehr und das Konto der Eltern sinkt um 5. Die Tage gelten nur im gewählten Kalenderjahr und verfallen am Jahresende.</p>
   <label for="t_jahr">Kalenderjahr</label><select id="t_jahr">${jahre.map((jj) => `<option value="${jj}"${jj === j0 ? ' selected' : ''}>${jj}</option>`).join('')}</select>
   <p class="info" id="t_frei" style="margin:6px 0 0"></p>
   <label for="t_tage">Anzahl Tage (ganz oder halb, höchstens ${TAUSCH_MAX_TAGE})</label><input id="t_tage" inputmode="decimal" placeholder="z. B. 5">
   <div id="msg"></div>
   <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Abtreten</button></div>`);
-  const zeigeFrei = () => { document.getElementById('t_frei').textContent = `Frei im Jahr ${val('t_jahr')}: ${zahl(frei(+val('t_jahr')))} ungenutzte Tage.`; };
+  const zeigeFrei = () => { document.getElementById('t_frei').textContent = `Frei im Jahr ${val('t_jahr')}: ${zahl(frei(+val('t_jahr')))} ungenutzte Tage der Eltern.`; };
   zeigeFrei(); document.getElementById('t_jahr').onchange = zeigeFrei;
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
-    const t = { von: meins, an: val('t_an'), tage: Number(val('t_tage').trim().replace(',', '.')), jahr: +val('t_jahr') };
+    const t = { von: 'eltern', an: 'kinder', tage: Number(val('t_tage').trim().replace(',', '.')), jahr: +val('t_jahr') };
     const p = pruefeTausch(t, tauschMap(), stand(t.jahr), jetztJ);
     const fe = [...p.fehler];
     if (zahlungsSperre(D.zahlstatus[ich], heute()).stufe === 'gesperrt') fe.push('Du hast ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4).');
     if (fe.length) { fehler([...new Set(fe)]); return; }
-    await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tausch', titel: 'Tausch Nutzungstage', faelligAm: heute(), datum: heute(), ...t, personId: ich, erfasstVon: ich, erledigtAm: '' }); schliessen(); kalender(); hinweis('Tausch gespeichert.'); });
+    await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tausch', titel: 'Abtretung Nutzungstage', faelligAm: heute(), datum: heute(), ...t, personId: ich, erfasstVon: ich, erledigtAm: '' }); schliessen(); kalender(); hinweis('Abtretung gespeichert.'); });
   };
 }
 

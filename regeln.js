@@ -396,11 +396,15 @@ export function kontostaendeMitAlltag(buchungen, personen, J, alltag, buchungenO
 // =====================================================================
 export const TAUSCH_MAX_TAGE = 91;
 
-// Schwellen je Konto im Jahr J, nach Abzug und Zuschlag aus den Tauschen. Eltern nie ueber 181.
+// Schwellen je Konto im Jahr J, nach Abtretung. Regel (HP77, 13.11.2026): Abgetreten wird nur von Vater und Mutter,
+// und nur an beide Kinder zugleich. Eintrag {von:'eltern', an:'kinder', tage}: Eltern minus tage, jedes Kind plus tage.
+// Aeltere Einzel-Eintraege (an: ein Konto) werden weiter mitgerechnet. Eltern nie ueber 181.
 export function schwellen(tausch, J) {
   const s = { ...SCHWELLE };
   for (const t of Object.values(tausch || {})) {
-    if (Number(t.jahr) !== Number(J) || !(t.von in s) || !(t.an in s)) continue;
+    if (Number(t.jahr) !== Number(J)) continue;
+    if (t.von === 'eltern' && t.an === 'kinder') { s.eltern -= t.tage; s['kind-1'] += t.tage; s['kind-2'] += t.tage; continue; }
+    if (!(t.von in s) || !(t.an in s)) continue;
     s[t.von] -= t.tage; s[t.an] += t.tage;
   }
   s.eltern = Math.min(SCHWELLE.eltern, s.eltern);
@@ -410,10 +414,7 @@ export function schwellen(tausch, J) {
 // t: {von, an, tage, jahr}; stand: Tage je Konto im Jahr (mit Alltag); heuteJahr: aktuelles Jahr (vergangene Jahre sind abgeschlossen).
 export function pruefeTausch(t, tauschBisher, stand, heuteJahr) {
   const fehler = [];
-  const ks = Object.keys(SCHWELLE);
-  if (!ks.includes(t.von) || !ks.includes(t.an)) fehler.push('Von und An müssen Eltern, Nanouk oder Nene sein.');
-  else if (t.von === t.an) fehler.push('Von und An sind dieselbe Person.');
-  else if (t.an === 'eltern') fehler.push('Für Vater und Mutter bleibt die Höchstgrenze von 181 Tagen. Tage an die Eltern abzutreten bringt nichts.');
+  if (t.von !== 'eltern' || t.an !== 'kinder') fehler.push('Abgetreten wird nur von Vater und Mutter und nur an beide Kinder zugleich (Nanouk und Nene).');
   if (!Number.isInteger(t.jahr) || t.jahr < heuteJahr || t.jahr > heuteJahr + 1) fehler.push('Das Jahr muss das laufende oder das nächste sein. Vergangene Tage sind verfallen.');
   if (typeof t.tage !== 'number' || !(t.tage > 0) || t.tage > TAUSCH_MAX_TAGE || (t.tage * 2) % 1 !== 0) fehler.push(`Die Zahl der Tage muss ganz oder halb sein (zum Beispiel 3 oder 2.5), mindestens 0.5 und höchstens ${TAUSCH_MAX_TAGE}.`);
   if (fehler.length === 0) {

@@ -56,7 +56,7 @@
 .start:not(.los) .start-karte{opacity:0}
 .start.los .van-wrap{animation:rolle 1.7s cubic-bezier(.12,.8,.24,1) both}
 .start.los .van{animation:federn .7s ease-out 1.55s both}
-.start.los .strasse i{animation:fahrt 1.7s cubic-bezier(.12,.8,.24,1) both}
+/* Strasse und Mittelstreifen stehen still, nur das Wohnmobil faehrt ein */
 .start.los .licht{animation:licht 1.2s ease-out 1.5s both}
 .start.los .start-karte{animation:hoch .9s cubic-bezier(.2,.8,.2,1) .35s both}
 .start.los .wolke.w1{animation:drift 70s linear infinite alternate}.start.los .wolke.w2{animation:drift 90s linear infinite alternate-reverse}.start.los .wolke.w3{animation:drift 110s linear infinite alternate}
