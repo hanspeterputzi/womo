@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113g';
-import * as S from './speicher.js?v=20261113g';
+} from './regeln.js?v=20261113i';
+import * as S from './speicher.js?v=20261113i';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -110,7 +110,7 @@ async function start() {
   }
   try { await S.abonnieren(D, () => { if (ich && formEl.innerHTML === '') zeige(); }); }
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div><button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
-  try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id]) { ich = id; besuchStart(); } } catch {}
+  try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id] && !abgelaufen()) { ich = id; besuchStart(); aktivMerken(); } } catch {}
   zeige();
 }
 
@@ -132,7 +132,7 @@ function anmeldung() {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
     if (Date.now() < sp.bis) { document.getElementById('msg').innerHTML = `<div class="fehler">Zu viele Fehlversuche. Bitte ${Math.ceil((sp.bis - Date.now()) / 1000)} Sekunden warten.</div>`; return; }
-    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} besuchStart(); zeige(); }
+    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; aktivMerken(); try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} besuchStart(); zeige(); }
     else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">Passwort für ${h(D.personen[id].name)} falsch (Gross- und Kleinschreibung beachten). Name oben richtig gewählt?</div>`; }
   };
   document.getElementById('ok').onclick = los;
@@ -271,12 +271,14 @@ function unterwegs() {
   bindRahmen();
 }
 const VERTRAG_REGELN = [
-  ['Nutzung (Ziffer 7)', ['Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Übernahme und Rückgabe immer zu Hause in Chur.', 'Das Fahrzeug wird nicht verliehen oder vermietet.']],
+  ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres an eine/n andere/n Eigentümer/in abgetreten werden. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App kann das noch nicht erfassen.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
+  ['Verbot (Ziffer 7 b)', ['Das Fahrzeug wird nicht verliehen oder vermietet.', 'Wer gegen das Verleih-, Rauch- oder Tierverbot verstösst, zahlt Reinigung und Schaden voll (Ziffer 12 g).']],
   ['Alltagsfahrten der Eltern (Ziffer 7 c)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Vater und Mutter nutzen das Fahrzeug erst dann für Alltagsfahrten, wenn sie den Skoda nicht mehr einlösen.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.']],
-  ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.']],
-  ['Bussen (Ziffer 12)', ['Bussen und Strafen trägt der/die fahrende Eigentümer/in.']],,
+  ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.', 'Wer Mitreisende mitnimmt, informiert sie über Rauch- und Tierverbot und trägt Schäden am Fahrzeug, die sie verursachen (Ziffer 12 f).']],
+  ['Bussen (Ziffer 12 b und e)', ['Bussen und Strafen trägt der/die fahrende Eigentümer/in.', 'Parkbussen und Radarbussen, bei denen der Halter belangt wird, zahlt der Vater zuerst. Der Fahrer ersetzt sie innert 30 Tagen (der Fahrer ergibt sich aus der Reservierung in der App).']],
+  ['Entscheide und Patt (Ziffer 13)', ['Alltagsentscheide brauchen die qualifizierte Mehrheit: alle Stimmen ausser einer, bei vier Eigentümer/innen also 3 zu 1. Bei Gleichstand ist das Geschäft abgelehnt.', 'Pflichtmassnahmen (MFK, Haftpflichtversicherung, sicherheitsrelevante Reparaturen) gelten mit dem Vertrag als beschlossen. Bei Gleichstand über eine Reservierung entscheidet das Los. Bei anderem Gleichstand bleibt die bisherige Regelung, nach 2 Wochen folgt die Mediation.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien, Slowakei, Bulgarien, Irland, Grossbritannien, Zypern, Malta.', 'Verboten: andere Kontinente, Serbien, Türkei, Rumänien und ex-russische Staaten ausser dem Baltikum. Streng verboten: Russland, Ukraine, Weissrussland und Moldau.', 'Auf Autobahnraststätten wird aus Sicherheitsgründen nicht übernachtet. Mögliche Plätze zeigt «Unterwegs».', 'Winter: Im Winter wird nur Richtung Süden mit sehr tiefer Schneewahrscheinlichkeit gefahren. Das Fahrzeug hat weder Allrad noch ist es speziell winterfest.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
-  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.', 'Bei jeder Übernahme und Rückgabe wird die Checkliste in der App (Fahrten) ausgefüllt.']],
+  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.', 'Bei jeder Übernahme und Rückgabe wird die Checkliste in der App (Fahrten) ausgefüllt.', 'Gibt jemand das Fahrzeug nicht voll zurück, trägt er/sie Tankstand und Grund in die Checkliste ein. Die App warnt alle. Voll tankt, wer das Fahrzeug als Nächster benützt. Die Person, die nicht voll zurückgab, bezahlt den Treibstoff gegen Tankbeleg und einen Zuschlag. Bei Wiederholung berät der Familienrat.']],
   ['Übernahme-Checkliste (Fahrten)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
 function vertrag() {
@@ -292,7 +294,7 @@ function vertrag() {
 function rahmen(inhalt) {
   const nz = neuZ().nach;
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
-    <button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div>
+    <div class="kopfr"><button class="thm" id="thm" title="Darstellung wechseln: Auto, Hell, Dunkel" aria-label="Darstellung wechseln">${THEMA_NAME[themaLesen()]}</button><button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
   <main>${inhalt}</main>
   <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}${nz[k] ? `<i class="tb" aria-label="${nz[k]} neu">${nz[k]}</i>` : ''}</button>`).join('')}</nav>`;
 }
@@ -309,7 +311,30 @@ function bindNeu() {
   if (g) g.onclick = () => { besuchMerken(); seitLesen(); zeige(); };
   app.querySelectorAll('[data-neu]').forEach((b) => b.onclick = () => { tab = b.dataset.neu; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
+// ---------- Hell, Dunkel oder Auto (folgt dem Handy) ----------
+const THEMA_NAME = { auto: 'Auto', hell: 'Hell', dunkel: 'Dunkel' };
+function themaLesen() { try { const t = localStorage.getItem('womo-theme'); return t === 'hell' || t === 'dunkel' ? t : 'auto'; } catch { return 'auto'; } }
+function themaSetzen(t) {
+  try { if (t === 'auto') localStorage.removeItem('womo-theme'); else localStorage.setItem('womo-theme', t); } catch {}
+  const r = document.documentElement; if (t === 'hell') r.setAttribute('data-theme', 'light'); else if (t === 'dunkel') r.setAttribute('data-theme', 'dark'); else r.removeAttribute('data-theme');
+}
+// ---------- Abmeldung nach 30 Minuten ohne Benutzung ----------
+// Danach ist die Anmeldung nötig. Die Seite wird dabei neu geladen, so holt jede/r die aktuelle Version.
+const INAKTIV_MS = 30 * 60 * 1000;
+function aktivMerken() { try { localStorage.setItem('womo-aktiv', String(Date.now())); } catch {} }
+function abgelaufen() { try { const t = +localStorage.getItem('womo-aktiv') || 0; return !t || Date.now() - t > INAKTIV_MS; } catch { return false; } }
+function inaktivPruefen() {
+  if (!ich || !abgelaufen()) return;
+  besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {}
+  location.reload();
+}
+let aktivT = 0;
+['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach((ev) => addEventListener(ev, () => { if (ich && Date.now() - aktivT > 5000) { aktivT = Date.now(); aktivMerken(); } }, { passive: true, capture: true }));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') inaktivPruefen(); });
+addEventListener('pageshow', inaktivPruefen);
+setInterval(inaktivPruefen, 30000);
 function bindRahmen() {
+  document.getElementById('thm').onclick = (e) => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); e.currentTarget.textContent = THEMA_NAME[n]; hinweis('Darstellung: ' + THEMA_NAME[n]); };
   document.getElementById('aus').onclick = (e) => { e.preventDefault(); besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
   app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.t; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
@@ -732,7 +757,7 @@ function kosten() {
   const total = (titel, rp) => `<div class="z" style="border-top:2px solid var(--line)"><div class="l"><strong>${titel}</strong></div><div class="r"><strong>${chf(rp)}</strong></div></div>`;
   const kopf = (titel) => `<div class="z" style="padding-bottom:2px"><div class="l"><span class="meta" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">${titel}</span></div></div>`;
   const leerZ = (txt) => `<div class="z"><div class="l"><span class="meta">${txt}</span></div></div>`;
-  const mein = `<div class="hero-zeile"><div><div class="hero-l">Bank CHF</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">Aufwand ${J}</div><div class="hero-z">${chf(er.sAufwand)}</div></div></div>
+  const mein = `<div class="hero-zeile"><div><div class="hero-l">Reise CHF bei Migros Bank</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">Aufwand ${J}</div><div class="hero-z">${chf(er.sAufwand)}</div></div></div>
       <div class="hero-stand ${bi.stimmt ? 'ok' : 'rot'}">${!Object.keys(jn).length ? 'Noch keine Buchungen erfasst.' : bi.stimmt ? `Bilanz stimmt: Aktiven und Passiven je CHF ${chf(bi.sAktiven)}.` : 'Achtung: Die Bilanz geht nicht auf. Bitte die Buchungen prüfen.'}</div>`;
   const bilanzInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Konten ohne Buchungen sind ausgeblendet. Antippen zeigt das Kontoblatt.</p>
     <div class="zeilen">${kopf('Aktiven')}${bi.aktiven.length ? bi.aktiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}${total('Total Aktiven', bi.sAktiven)}</div>

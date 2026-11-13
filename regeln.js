@@ -481,7 +481,7 @@ export function pruefeKauf(w, betrag, datum) {
 export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' };
 const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
 export const KONTEN_BASIS = [
-  K('1000', 'Kasse', 'aktiv'), K('1020', 'Bank CHF', 'aktiv'),
+  K('1000', 'Kasse', 'aktiv'), K('1020', 'Reise CHF bei Migros Bank', 'aktiv'),
   K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
