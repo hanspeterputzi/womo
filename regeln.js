@@ -880,7 +880,7 @@ export function notfallAuszug(d, heute, jetzt) {
 
 // =====================================================================
 // Unsere Orte (13.11.2026): nur ausserordentlich gute Stellplaetze und Campingplaetze, mit Bild und kurzer Beschreibung.
-// Huerden gegen Mittelmass: (1) nur von einer eigenen, beendeten Reise, (2) ein Ort pro Reise und Person, (3) hoechstens
+// Huerden gegen Mittelmass: (1) nur von einer eigenen Reise (laufend oder beendet), (2) ein Ort pro Reise und Person, (3) hoechstens
 // 5 Orte pro Person und Jahr, (4) Foto und Begruendung sind Pflicht, (5) andere bestaetigen («war auch dort»).
 // Orte liegen in 'orte', Bestaetigungen in 'ortstimmen' (id <ortId>_<Person>).
 // =====================================================================
@@ -906,7 +906,7 @@ export function pruefeOrt(o, ctx) {
   if (!b) f.push('Bitte die Reise wählen, auf der du dort warst. Nur Orte von eigenen Reisen sind erlaubt.');
   else {
     if (!(b.fahrerId === o.erfasstVon || (b.mitreisende || []).includes(o.erfasstVon))) f.push('Du warst auf dieser Reise nicht dabei. Nur wer dort war, kann einen Ort eintragen.');
-    if (!(b.bis <= heute)) f.push('Diese Reise ist noch nicht vorbei. Den Ort bitte nach der Rückkehr eintragen.');
+    if (!(b.von <= heute)) f.push('Diese Reise hat noch nicht begonnen. Einen Ort kannst du eintragen, sobald du unterwegs bist.');
     if ((ctx.orte || []).some((x) => x.id !== o.id && x.buchungId === o.buchungId && x.erfasstVon === o.erfasstVon)) f.push('Von dieser Reise hast du schon einen Ort eingetragen. Pro Reise zählt nur dein bester Ort.');
   }
   const dieses = (o.erfasstAm || heute).slice(0, 4) || jahr;

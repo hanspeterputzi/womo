@@ -7,8 +7,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114d';
-import * as S from './speicher.js?v=20261114d';
+} from './regeln.js?v=20261114e';
+import * as S from './speicher.js?v=20261114e';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1581,10 +1581,10 @@ function ortForm(id) {
   const ex = id ? D.orte[id] : null;
   if (ex && !eigener(ex)) return nurEigene();
   const t = heute();
-  const meine = liste().filter((b) => b.bis <= t && (b.fahrerId === ich || (b.mitreisende || []).includes(ich)) && (!ortListe().some((o) => o.buchungId === b.id && o.erfasstVon === ich) || (ex && ex.buchungId === b.id))).sort((a, b) => (a.von < b.von ? 1 : -1));
+  const meine = liste().filter((b) => b.von <= t && (b.fahrerId === ich || (b.mitreisende || []).includes(ich)) && (!ortListe().some((o) => o.buchungId === b.id && o.erfasstVon === ich) || (ex && ex.buchungId === b.id))).sort((a, b) => (a.von < b.von ? 1 : -1));
   const chk = pruefeOrt({ erfasstVon: ich, erfasstAm: ex?.erfasstAm || new Date().toISOString() , id }, { heute: t, buchungen: {}, orte: ortListe() });
   if (!ex && chk.platzFrei === 0) { hinweis(`Du hast dieses Jahr schon ${ORT_PRO_JAHR} Orte eingetragen. Mehr geht nicht. Einen eigenen Ort löschen macht einen Platz frei.`); return; }
-  if (!ex && !meine.length) { hinweis('Ein Ort geht nur von einer eigenen, beendeten Reise, von der du noch keinen Ort eingetragen hast.'); return; }
+  if (!ex && !meine.length) { hinweis('Ein Ort geht nur von einer eigenen Reise (auch während der Reise), von der du noch keinen Ort eingetragen hast.'); return; }
   const zielLand = (b) => ORT_LAENDER.find((l) => (b?.ziel || '').toLowerCase().includes(l.toLowerCase())) || '';
   const b0 = ex ? D.buchungen[ex.buchungId] : meine[0];
   let foto = ex?.foto || '', pos = ex && ex.lat != null ? { lat: ex.lat, lon: ex.lon } : null;
