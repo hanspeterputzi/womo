@@ -1,0 +1,71 @@
+/* stil.css: wird von app.js geladen, mit der Version aus version.json. So sind neue Stile sofort da,
+   auch wenn index.html noch im Zwischenspeicher des Handys liegt. Enthält Hell/Dunkel, Kopfleiste und Startseite. */
+:root{--bar:#121722;--barfg:#ffffff;--sb:#121722;--keil:#ffffff;--chipbg:rgba(255,255,255,.12);--chipfg:#ffffff;--sky1:#b9d8ff;--sky2:#e4f0ff;--hill1:#c9dcec;--hill2:#abc9d6;--hill3:#93b8ae;--road:#3a4150;--roadline:#f3f5f9;--sun:#ffe08a;--sunglow:rgba(255,206,100,.55);--wolke:rgba(255,255,255,.9);--stern:0;--licht:0;}
+:root[data-theme="light"]{--bg:#f2f4f8;--card:#ffffff;--fg:#121722;--muted:#667085;--line:#e4e8ef;--soft:#f6f8fb;--acc:#2f6fed;--rot-t:#c62828;--ok-t:#15803d;--gelb-t:#92400e;--shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);--bar:#121722;--barfg:#ffffff;--sb:#121722;--keil:#ffffff;--chipbg:rgba(255,255,255,.12);--chipfg:#ffffff;--sky1:#b9d8ff;--sky2:#e4f0ff;--hill1:#c9dcec;--hill2:#abc9d6;--hill3:#93b8ae;--road:#3a4150;--roadline:#f3f5f9;--sun:#ffe08a;--sunglow:rgba(255,206,100,.55);--wolke:rgba(255,255,255,.9);--stern:0;--licht:0;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0c1018;--card:#171d29;--fg:#f1f4f9;--muted:#98a2b3;--line:#263042;--soft:#1d2533;--acc:#3b6fd8;--rot-t:#ff8a8f;--ok-t:#4ade80;--gelb-t:#fbbf24;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);--bar:#ffffff;--barfg:#0c1018;--sb:#0c1018;--keil:#0c1018;--chipbg:rgba(12,16,24,.10);--chipfg:#0c1018;--sky1:#060a15;--sky2:#101b36;--hill1:#141f33;--hill2:#192840;--hill3:#1d3047;--road:#0d111a;--roadline:#aeb8cc;--sun:#e8eeff;--sunglow:rgba(160,185,255,.35);--wolke:rgba(125,145,200,.16);--stern:1;--licht:1;color-scheme:dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c1018;--card:#171d29;--fg:#f1f4f9;--muted:#98a2b3;--line:#263042;--soft:#1d2533;--acc:#3b6fd8;--rot-t:#ff8a8f;--ok-t:#4ade80;--gelb-t:#fbbf24;--shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);--bar:#ffffff;--barfg:#0c1018;--sb:#0c1018;--keil:#0c1018;--chipbg:rgba(12,16,24,.10);--chipfg:#0c1018;--sky1:#060a15;--sky2:#101b36;--hill1:#141f33;--hill2:#192840;--hill3:#1d3047;--road:#0d111a;--roadline:#aeb8cc;--sun:#e8eeff;--sunglow:rgba(160,185,255,.35);--wolke:rgba(125,145,200,.16);--stern:1;--licht:1;color-scheme:dark}}
+
+/* Kopfleiste (im Dunkeln weiss, der Streifen hinter der Handy-Uhr bleibt dunkel) */
+.kopf{background-color:var(--bar);background-image:linear-gradient(var(--sb),var(--sb));background-repeat:no-repeat;background-size:100% env(safe-area-inset-top,0px);color:var(--barfg)}
+.keil{background:var(--keil)}
+.kopfr{display:flex;align-items:center;gap:8px}
+.thm{background:var(--chipbg);border:0;color:var(--chipfg);padding:8px 12px;min-height:38px;border-radius:999px;font:inherit;font-size:13px;font-weight:700}
+.chip{background:var(--chipbg);color:var(--chipfg)}
+.hero-l{line-height:1.3;min-height:2.6em}
+
+/* Unterwegs: Stellplätze in Rosa, damit sie sich von den blauen Campingplätzen abheben */
+.u2{background:rgba(219,39,119,.13);color:#be185d}
+.u-hint.u2{color:#be185d!important}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .u2,:root:not([data-theme="light"]) .u-hint.u2{color:#f9a8d4!important}}
+:root[data-theme="dark"] .u2,:root[data-theme="dark"] .u-hint.u2{color:#f9a8d4!important}
+:root[data-theme="light"] .u2,:root[data-theme="light"] .u-hint.u2{color:#be185d!important}
+
+/* Startseite: Szene mit Pössl, Karte mit Anmeldung */
+.start{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(26px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 50%,var(--bg) 100%)}
+.start-top{position:relative;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 18px 0}
+.start-marke{display:flex;align-items:center;gap:4px;font-weight:800;letter-spacing:.6px;font-size:15px;color:var(--fg)}
+.start-marke .keil{width:20px;height:12px;background:var(--fg)}
+.start-thm{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;min-height:38px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
+.start-szene{position:relative;height:clamp(240px,40vh,380px);margin-top:-6px}
+.sonne{position:absolute;top:6%;right:13%;width:58px;height:58px;border-radius:50%;background:var(--sun);box-shadow:0 0 70px 26px var(--sunglow)}
+.sterne{position:absolute;left:0;right:0;top:0;height:62%;opacity:var(--stern);pointer-events:none;
+  background-image:radial-gradient(1.4px 1.4px at 9% 24%,#fff,transparent),radial-gradient(1px 1px at 17% 52%,#dfe7ff,transparent),radial-gradient(1.6px 1.6px at 28% 14%,#fff,transparent),radial-gradient(1px 1px at 36% 40%,#cfd9ff,transparent),radial-gradient(1.3px 1.3px at 46% 20%,#fff,transparent),radial-gradient(1px 1px at 58% 8%,#dfe7ff,transparent),radial-gradient(1.5px 1.5px at 66% 34%,#fff,transparent),radial-gradient(1px 1px at 78% 18%,#cfd9ff,transparent),radial-gradient(1.2px 1.2px at 90% 44%,#fff,transparent),radial-gradient(1px 1px at 4% 8%,#fff,transparent),radial-gradient(1px 1px at 52% 56%,#dfe7ff,transparent)}
+.wolke{position:absolute;height:20px;border-radius:999px;background:var(--wolke)}
+.wolke::before,.wolke::after{content:"";position:absolute;border-radius:50%;background:inherit}
+.wolke::before{width:26px;height:26px;left:14%;top:-13px}.wolke::after{width:34px;height:34px;left:42%;top:-17px}
+.wolke.w1{top:20%;left:6%;width:96px}.wolke.w2{top:38%;right:4%;width:76px;transform:scale(.8)}.wolke.w3{top:12%;left:46%;width:64px;transform:scale(.65)}
+.hügel{position:absolute;left:-5%;width:110%;bottom:30px;height:46%;display:block}
+.hügel .h1{fill:var(--hill1)}.hügel .h2{fill:var(--hill2)}.hügel .h3{fill:var(--hill3)}
+.strasse{position:absolute;left:0;right:0;bottom:0;height:46px;background:var(--road)}
+.strasse::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:rgba(255,255,255,.14)}
+.strasse i{position:absolute;left:0;right:0;top:21px;height:4px;background:repeating-linear-gradient(90deg,var(--roadline) 0 34px,transparent 34px 72px);opacity:.85}
+.van-wrap{position:absolute;left:50%;bottom:14px;width:min(94%,520px);transform:translateX(-50%);opacity:0}
+.van{display:block;width:100%;height:auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.22))}
+.licht{position:absolute;left:88%;top:60%;width:62%;height:28%;transform:translateY(-50%);background:radial-gradient(ellipse at 0% 50%,rgba(255,236,170,.46),rgba(255,236,170,0) 66%);opacity:0;pointer-events:none}
+.start-karte{position:relative;z-index:6;width:min(100% - 32px,440px);margin:-2px auto 0;background:var(--card);border-radius:26px;box-shadow:0 18px 50px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.08);padding:24px 22px 20px}
+.start-karte h1{margin:0;font-size:36px;line-height:1.05;font-weight:800;letter-spacing:-.5px}
+.start-karte .sub{margin:6px 0 4px;color:var(--muted);font-size:15px}
+.start-karte label{display:block;margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--muted)}
+.start-karte select,.start-karte input{width:100%;font:inherit;font-size:17px;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--soft);color:var(--fg)}
+.start-karte select:focus-visible,.start-karte input:focus-visible,.start-karte button:focus-visible,.start-thm:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.start-karte .ok{width:100%;margin-top:18px;min-height:54px;font:inherit;font-weight:800;font-size:17px;border:0;border-radius:16px;color:#fff;background:linear-gradient(135deg,var(--acc),#1e40af);box-shadow:0 8px 20px rgba(47,111,237,.32);display:flex;align-items:center;justify-content:center;gap:10px}
+.start-karte .ok:active{transform:translateY(1px)}
+.start-karte .klein-t{margin:14px 0 0;font-size:12.5px;color:var(--muted)}
+.start:not(.los) .start-karte{opacity:0}
+.start.los .van-wrap{animation:rolle 1.7s cubic-bezier(.12,.8,.24,1) both}
+.start.los .van{animation:federn .7s ease-out 1.55s both}
+.start.los .strasse i{animation:fahrt 1.7s cubic-bezier(.12,.8,.24,1) both}
+.start.los .licht{animation:licht 1.2s ease-out 1.5s both}
+.start.los .start-karte{animation:hoch .9s cubic-bezier(.2,.8,.2,1) .35s both}
+.start.los .wolke.w1{animation:drift 70s linear infinite alternate}.start.los .wolke.w2{animation:drift 90s linear infinite alternate-reverse}.start.los .wolke.w3{animation:drift 110s linear infinite alternate}
+.start.los .sterne{animation:funkeln 5s ease-in-out infinite alternate}
+@keyframes rolle{from{opacity:1;transform:translateX(calc(-50% - 115vw))}to{opacity:1;transform:translateX(-50%)}}
+@keyframes fahrt{from{background-position:0 0}to{background-position:-432px 0}}
+@keyframes federn{0%{transform:translateY(0)}35%{transform:translateY(3px)}65%{transform:translateY(-1px)}100%{transform:translateY(0)}}
+@keyframes licht{from{opacity:0}to{opacity:var(--licht)}}
+@keyframes hoch{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes drift{from{translate:-18px 0}to{translate:26px 0}}
+@keyframes funkeln{from{opacity:calc(var(--stern)*.55)}to{opacity:var(--stern)}}
+@media(prefers-reduced-motion:reduce){.start .van-wrap{opacity:1}.start.los .van-wrap,.start.los .van,.start.los .strasse i,.start.los .licht,.start.los .start-karte,.start.los .wolke,.start.los .sterne{animation:none!important}.start .licht{opacity:var(--licht)}}
+

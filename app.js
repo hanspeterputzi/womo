@@ -1,12 +1,14 @@
 import {
-  SCHWELLE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
+  SCHWELLE, schwellen, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113k';
-import * as S from './speicher.js?v=20261113k';
+} from './regeln.js?v=20261113l';
+import * as S from './speicher.js?v=20261113l';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
+// Stile kommen aus stil.css mit der aktuellen Version. So passt das Aussehen immer zu diesem Programm, auch wenn index.html noch im Zwischenspeicher liegt.
+await new Promise((ok) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'stil.css?v=' + VER; l.onload = l.onerror = () => ok(); document.head.appendChild(l); setTimeout(ok, 2500); });
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -52,7 +54,10 @@ const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1
 const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch');
+// Tausch von Nutzungstagen (Vertrag Ziffer 7 a): Eintraege mit art 'Tausch' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
+const tauschListe = () => Object.values(D.termine).filter((x) => x.art === 'Tausch');
+const tauschMap = () => Object.fromEntries(tauschListe().map((x) => [x.id, x]));
 const tankFuellungen = () => Object.values(D.termine).filter((x) => x.art === 'Tank');
 const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 const tankText = (tk, wann, wer) => `⛽ Womo: Der Tank ist nicht voll (${tk}), zuletzt erfasst am ${fmt(wann.slice(0, 10))} von ${wer}. Bitte volltanken, bevor das Womo wieder gebraucht wird (Vertrag Ziffer 10).`;
@@ -142,7 +147,9 @@ function anmeldung() {
     </div></div>`;
   { const st = document.getElementById('sthm'), sz = app.querySelector('.start'), im = app.querySelector('.van'); const go = () => sz.classList.add('los');
     st.onclick = () => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); st.textContent = THEMA_NAME[n]; };
-    if (im.complete) go(); else { im.onload = go; im.onerror = go; setTimeout(go, 2500); } }
+    if (im.complete) go(); else { im.onload = go; im.onerror = go; setTimeout(go, 2500); }
+    // Notbremse: falls Animationen auf dem Gerät nicht laufen, bleibt der Van trotzdem sichtbar.
+    setTimeout(() => { const w = app.querySelector('.van-wrap'); if (w && getComputedStyle(w).opacity === '0') w.style.opacity = '1'; }, 3600); }
   const los = async () => {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
@@ -174,7 +181,7 @@ const ORTE = [
     ['Gruppen und Ketten', [['Leading Campings of Europe', 'https://www.leadingcampings.com/de/'], ['Les Castels (FR)', 'https://www.les-castels.com/'], ['Huttopia', 'https://europe.huttopia.com/'], ['Top Camping Austria', 'https://www.topcamping.at/']]],
     ['Rabattkarten und Führer', [['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/']]],
     ['Suchportale', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['camping.ch (CH)', 'https://camping.ch/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]]]],
-  ['u2', '@img:stellplatz.png', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
+  ['u2', '<path d="M3 17V8.5A1.5 1.5 0 0 1 4.5 7H14v10"/><path d="M14 10h3.300l3.200 3.600V17"/><path d="M3 17h2.200M8.800 17h6.400M18.800 17H21"/><circle cx="7" cy="17.500" r="1.800"/><circle cx="17" cy="17.500" r="1.800"/><path d="M5.500 10h4v2.500h-4zM11.500 10v5"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
     ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['promobil Stellplatz-Atlas', 'https://www.promobil.de/stellplaetze/'], ['Stellplatz-Radar-App (promobil)', 'https://www.promobil.de/stellplatz-radar'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Bordatlas (Europa)', 'https://bordatlas.de/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]],
     ['Autohöfe in Deutschland', [['Artikel: Übernachten auf Autohöfen (promobil)', 'https://www.promobil.de/uebernachtungstipps/auf-vielen-deutschen-autohoefen-kann-man-mit-dem-camper-guenstig-uebernachten/'], ['Websuche: Autohof Wohnmobil übernachten', 'https://www.google.com/search?q=' + encodeURIComponent('Autohof Wohnmobil übernachten Stellplatz')]], 'In Deutschland gibt es rund 230 Autohöfe direkt an Autobahnausfahrten, etwa die Hälfte erlaubt Wohnmobilen das Übernachten. Kosten: 0 bis 25 Euro pro Nacht, bezahlt wird meist an der Tankstelle, Strom gibt es selten. In stellplatz.info und Campercontact (oben) einfach nach «Autohof» suchen.'],
     ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]]]],
@@ -269,7 +276,7 @@ function unterwegs() {
   app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
-      const kopf = `<span class="u-ic ${c}">${ic.startsWith('@img:') ? `<img src="${ic.slice(5)}?v=${VER}" alt="" width="40" height="22">` : SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
+      const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       const kopfLink = `<a class="u-ortlink u-kopf" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
       return gruppen ? `<div class="u-ort" style="flex-direction:column;gap:0">${kopfLink}
         <div style="margin-top:4px">${gruppen.map(([g, l, hin2]) => `<details class="u-det"><summary><span>${h(g)}</span><b>${l.length}</b></summary>${hin2 ? `<p class="info" style="margin:0 0 8px">${h(hin2)}</p>` : ''}<div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
@@ -286,7 +293,7 @@ function unterwegs() {
   bindRahmen();
 }
 const VERTRAG_REGELN = [
-  ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres an eine/n andere/n Eigentümer/in abgetreten werden. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App kann das noch nicht erfassen.', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
+  ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres an eine/n andere/n Eigentümer/in abgetreten werden. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App erfasst das im Kalender unter «Nutzungstage tauschen».', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
   ['Verbot (Ziffer 7 b)', ['Das Fahrzeug wird nicht verliehen oder vermietet.', 'Wer gegen das Verleih-, Rauch- oder Tierverbot verstösst, zahlt Reinigung und Schaden voll (Ziffer 12 g).']],
   ['Alltagsfahrten der Eltern (Ziffer 7 c)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Vater und Mutter nutzen das Fahrzeug erst dann für Alltagsfahrten, wenn sie den Skoda nicht mehr einlösen.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.']],
   ['Wer fährt (Ziffer 8)', ['Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.', 'Wer Mitreisende mitnimmt, informiert sie über Rauch- und Tierverbot und trägt Schäden am Fahrzeug, die sie verursachen (Ziffer 12 f).']],
@@ -388,15 +395,17 @@ function hinweiseHtml() {
 // =====================================================================
 function ringe(J) {
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
+  const sw = schwellen(tauschMap(), J);
   const U = 2 * Math.PI * 32;
   return `<div class="karte"><p class="titel">Tageskonto ${J}</p><div class="ringe">` +
     Object.keys(SCHWELLE).map((k) => {
-      const t = st[k], s = stufe(t, k), pr = Math.min(1, t / SCHWELLE[k]);
+      const t = st[k], s = stufe(t, k, sw[k]), pr = Math.min(1, t / sw[k]);
       const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
-      const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${SCHWELLE[k]} Tagen`;
+      const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${zahl(sw[k])} Tagen`;
       const sub2 = k === 'eltern' && st.alltag ? `<div class="sub">davon Alltag ${st.alltag}</div>` : '';
+      const dl = sw[k] - SCHWELLE[k], sub3 = dl ? `<div class="sub">${dl > 0 ? '+' : '−'}${zahl(Math.abs(dl))} getauscht</div>` : '';
       return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
-      <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}</div>`;
+      <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}${sub3}</div>`;
     }).join('') + '</div></div>';
 }
 
@@ -421,7 +430,7 @@ function kalender() {
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
   const monatsT = termineEcht().filter((x) => x.faelligAm >= iso(J, M, 1) && x.faelligAm <= iso(J, M, n)).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1));
   const TCHIP = { ueberfaellig: ['rot', 'überfällig'], bald: ['gelb', 'bald fällig'], offen: ['', 'offen'], erledigt: ['ok', 'erledigt'] };
-  app.innerHTML = rahmen(`${seitenkopf('Kalender', 'resneu', '＋ Reservieren')}${neuKarte()}${hinweiseHtml()}${ringe(J)}
+  app.innerHTML = rahmen(`${seitenkopf('Kalender', 'resneu', '＋ Reservieren')}${neuKarte()}${hinweiseHtml()}${ringe(J)}${tauschSek(J)}
   <div class="karte">
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
@@ -431,7 +440,7 @@ function kalender() {
   </div>
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
   <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
-  bindRahmen(); bindNeu();
+  bindRahmen(); bindNeu(); bindTausch(J);
   const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
@@ -499,7 +508,7 @@ function formularZeigen(tag, ex) {
     }
     if (fehlerListe.length) { fehler(fehlerListe); return; }
     if (b.bis < heute() && !(ex && ex.von === b.von && ex.bis === b.bis) && !confirm('Diese Reservierung liegt in der Vergangenheit. Das verändert die Tageskonten rückwirkend. Trotzdem speichern?')) return;
-    const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap());
+    const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap(), tauschMap());
     const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
     if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;
     await sicher(async () => {
@@ -580,14 +589,54 @@ function fahrten() {
   });
 }
 
+// Tausch von Nutzungstagen: ungenutzte Tage des Kalenderjahres an eine andere Person abtreten (Vertrag Ziffer 7 a).
+function tauschSek(J) {
+  const L = tauschListe().filter((x) => Number(x.jahr) === J).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1));
+  return `<details class="sek"><summary><span>Nutzungstage tauschen</span><b>${L.length ? L.length + (L.length === 1 ? ' Tausch' : ' Tausche') : 'keiner'}</b></summary><div class="sek-in">
+    <p class="info" style="margin:0 0 8px">Wer will, tritt ungenutzte Tage des Kalenderjahres an eine andere Person ab. Die Tage verfallen am Jahresende, ein Übertrag ins nächste Jahr gibt es nicht. Für Vater und Mutter bleibt die Höchstgrenze von 181 Tagen.</p>
+    ${L.length ? L.map((t) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${zahl(t.tage)} ${t.tage === 1 ? 'Tag' : 'Tage'}: ${h(KONTO_NAME[t.von] || '?')} an ${h(KONTO_NAME[t.an] || '?')}${neuPille(t)}</div><div class="meta">${fmt(t.datum)} · erfasst von ${h(D.personen[t.erfasstVon]?.name || '?')}</div></div>${eigener(t) ? `<button class="kl" data-td="${h(t.id)}">Löschen</button>` : ''}</div>`).join('') : `<p class="leer-t">Kein Tausch im Jahr ${J}.</p>`}
+    <div class="btnzeile"><button class="btn pri" id="tneu" type="button">Tage abtreten</button></div></div></details>`;
+}
+function bindTausch(J) {
+  const b = document.getElementById('tneu'); if (b) b.onclick = () => tauschForm(J);
+  app.querySelectorAll('[data-td]').forEach((el) => el.onclick = async () => { const x = D.termine[el.dataset.td]; if (!eigener(x)) return nurEigene(); if (confirm('Diesen Tausch löschen? Die Tage gehen an die ursprüngliche Person zurück.')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); kalender(); }); });
+}
+function tauschForm(J) {
+  const meins = D.personen[ich].konto, jetztJ = +heute().slice(0, 4);
+  const an = Object.keys(KONTO_NAME).filter((k) => k !== meins && k !== 'eltern');
+  const jahre = [jetztJ, jetztJ + 1];
+  const stand = (jj) => kontostaendeMitAlltag(liste(), D.personen, jj, alltagMap(), D.buchungen);
+  const frei = (jj) => Math.max(0, schwellen(tauschMap(), jj)[meins] - stand(jj)[meins]);
+  const j0 = jahre.includes(J) ? J : jetztJ;
+  sheet(`<h3>Nutzungstage abtreten</h3>
+  <p class="info" style="margin:0 0 4px">Von: <strong>${h(KONTO_NAME[meins])}</strong>. Abgetreten werden nur ungenutzte Tage.</p>
+  <label for="t_an">An</label><select id="t_an">${an.map((k) => `<option value="${k}">${h(KONTO_NAME[k])}</option>`).join('')}</select>
+  <label for="t_jahr">Kalenderjahr</label><select id="t_jahr">${jahre.map((jj) => `<option value="${jj}"${jj === j0 ? ' selected' : ''}>${jj}</option>`).join('')}</select>
+  <p class="info" id="t_frei" style="margin:6px 0 0"></p>
+  <label for="t_tage">Anzahl Tage (ganz oder halb, höchstens ${TAUSCH_MAX_TAGE})</label><input id="t_tage" inputmode="decimal" placeholder="z. B. 5">
+  <div id="msg"></div>
+  <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Abtreten</button></div>`);
+  const zeigeFrei = () => { document.getElementById('t_frei').textContent = `Frei im Jahr ${val('t_jahr')}: ${zahl(frei(+val('t_jahr')))} ungenutzte Tage.`; };
+  zeigeFrei(); document.getElementById('t_jahr').onchange = zeigeFrei;
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const t = { von: meins, an: val('t_an'), tage: Number(val('t_tage').trim().replace(',', '.')), jahr: +val('t_jahr') };
+    const p = pruefeTausch(t, tauschMap(), stand(t.jahr), jetztJ);
+    const fe = [...p.fehler];
+    if (zahlungsSperre(D.zahlstatus[ich], heute()).stufe === 'gesperrt') fe.push('Du hast ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4).');
+    if (fe.length) { fehler([...new Set(fe)]); return; }
+    await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tausch', titel: 'Tausch Nutzungstage', faelligAm: heute(), datum: heute(), ...t, personId: ich, erfasstVon: ich, erledigtAm: '' }); schliessen(); kalender(); hinweis('Tausch gespeichert.'); });
+  };
+}
+
 // Alltagsfahrten der Eltern: ohne Reservierung, zaehlen mit Ferienreisen zusammen auf das Konto der Eltern (181 Tage).
 function alltagSek(J) {
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const L = Object.values(alltagMap()).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1)).slice(0, 15);
-  const rot = st.eltern > SCHWELLE.eltern;
-  return `<details class="sek"><summary><span>Alltagsfahrten der Eltern</span><b>${st.eltern} / ${SCHWELLE.eltern}</b></summary><div class="sek-in">
+  const sw = schwellen(tauschMap(), J), rot = st.eltern > sw.eltern;
+  return `<details class="sek"><summary><span>Alltagsfahrten der Eltern</span><b>${st.eltern} / ${zahl(sw.eltern)}</b></summary><div class="sek-in">
     <p class="info" style="margin:0 0 6px">${st.eltern - st.alltag} ${st.eltern - st.alltag === 1 ? 'Tag' : 'Tage'} Ferienreisen + ${st.alltag} ${st.alltag === 1 ? 'Tag' : 'Tage'} Alltag. Alltag ${J}: ${zahl(alltagKm(alltagMap(), J))} km.</p>
-    ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${SCHWELLE.eltern} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
+    ${rot ? `<div class="hinweiskarte rot">Die Eltern haben mehr als ${zahl(sw.eltern)} Tage erreicht (Ferien und Alltag zusammen).</div>` : ''}
     <p class="info" style="margin:0 0 8px">Alltagsfahrten brauchen keine Reservierung. Ein Tag zählt einmal, egal wie viele Fahrten. Ferienreisen gehen immer vor. Vor einer Ferienreise der Kinder sind die Eltern dafür verantwortlich, dass der Tank voll ist.</p>
     ${L.length ? L.map((a) => `<div class="b" style="padding:8px 0"><div class="inhalt"><div class="zeit" style="font-size:15px">${fmt(a.datum)} · ${zahl(a.km)} km${neuPille(a)}</div><div class="meta">${h(D.personen[a.personId]?.name || '?')}${a.notiz ? ' · ' + h(a.notiz) : ''}</div></div>${eigener(a) ? `<button class="kl" data-ad="${h(a.id)}">Löschen</button>` : ''}</div>`).join('') : '<p class="leer-t">Noch keine Alltagsfahrten.</p>'}</div></details>`;
 }

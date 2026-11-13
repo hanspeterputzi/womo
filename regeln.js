@@ -64,8 +64,8 @@ export function kontostaende(buchungen, personen, J) {
 }
 
 // Warnstufe: gelb ab 90 % der Schwelle, rot darueber. Nur Anzeige.
-export function stufe(tageImJahr, konto) {
-  const s = SCHWELLE[konto];
+export function stufe(tageImJahr, konto, schwelle) {
+  const s = schwelle !== undefined ? schwelle : SCHWELLE[konto];
   return tageImJahr > s ? 'rot' : tageImJahr >= 0.9 * s ? 'gelb' : 'ok';
 }
 
@@ -389,6 +389,41 @@ export function kontostaendeMitAlltag(buchungen, personen, J, alltag, buchungenO
   return { ...r, alltag: al };
 }
 
+// =====================================================================
+// Tausch von Nutzungstagen (Vertrag Ziffer 7 a): ungenutzte Tage eines Kalenderjahres duerfen an eine andere Person
+// (ein anderes Konto) abgetreten werden. Die Hoechstgrenze von 181 Tagen fuer Vater und Mutter bleibt.
+// Ein Tausch ist ein Eintrag mit art 'Tausch' in der Sammlung 'termine': von, an (Konto), tage, jahr.
+// =====================================================================
+export const TAUSCH_MAX_TAGE = 91;
+
+// Schwellen je Konto im Jahr J, nach Abzug und Zuschlag aus den Tauschen. Eltern nie ueber 181.
+export function schwellen(tausch, J) {
+  const s = { ...SCHWELLE };
+  for (const t of Object.values(tausch || {})) {
+    if (Number(t.jahr) !== Number(J) || !(t.von in s) || !(t.an in s)) continue;
+    s[t.von] -= t.tage; s[t.an] += t.tage;
+  }
+  s.eltern = Math.min(SCHWELLE.eltern, s.eltern);
+  return s;
+}
+
+// t: {von, an, tage, jahr}; stand: Tage je Konto im Jahr (mit Alltag); heuteJahr: aktuelles Jahr (vergangene Jahre sind abgeschlossen).
+export function pruefeTausch(t, tauschBisher, stand, heuteJahr) {
+  const fehler = [];
+  const ks = Object.keys(SCHWELLE);
+  if (!ks.includes(t.von) || !ks.includes(t.an)) fehler.push('Von und An müssen Eltern, Nanouk oder Nene sein.');
+  else if (t.von === t.an) fehler.push('Von und An sind dieselbe Person.');
+  else if (t.an === 'eltern') fehler.push('Für Vater und Mutter bleibt die Höchstgrenze von 181 Tagen. Tage an die Eltern abzutreten bringt nichts.');
+  if (!Number.isInteger(t.jahr) || t.jahr < heuteJahr || t.jahr > heuteJahr + 1) fehler.push('Das Jahr muss das laufende oder das nächste sein. Vergangene Tage sind verfallen.');
+  if (typeof t.tage !== 'number' || !(t.tage > 0) || t.tage > TAUSCH_MAX_TAGE || (t.tage * 2) % 1 !== 0) fehler.push(`Die Zahl der Tage muss ganz oder halb sein (zum Beispiel 3 oder 2.5), mindestens 0.5 und höchstens ${TAUSCH_MAX_TAGE}.`);
+  if (fehler.length === 0) {
+    const sw = schwellen(tauschBisher, t.jahr);
+    const frei = sw[t.von] - (stand[t.von] || 0);
+    if (t.tage > frei) fehler.push(`Es sind nur noch ${Math.max(0, frei)} ungenutzte Tage im Jahr ${t.jahr} frei. Bereits genutzte oder reservierte Tage lassen sich nicht abtreten.`);
+  }
+  return { ok: fehler.length === 0, fehler };
+}
+
 // Letzter bekannter Tankstand: aus Uebergaben/Rueckgaben und «Getankt»-Meldungen (nach Datum und Uhrzeit). Nicht voll -> Warnung.
 export function tankOffen(uebergaben, fuellungen) {
   const alle = [
@@ -400,7 +435,7 @@ export function tankOffen(uebergaben, fuellungen) {
 }
 
 // Vorschau vor dem Speichern: Konten, die mit der neuen Reservierung ueber der Schwelle liegen (je Jahr), und Alltagstage, die dadurch entfallen.
-export function vorschauBuchung(b, buchungen, personen, alltag) {
+export function vorschauBuchung(b, buchungen, personen, alltag, tausch) {
   const ohne = Object.values(buchungen).filter((x) => x.id !== b.id);
   const mit = [...ohne, b];
   const bm = Object.fromEntries(mit.map((x) => [x.id || '_neu', x]));
@@ -408,7 +443,8 @@ export function vorschauBuchung(b, buchungen, personen, alltag) {
   const j1 = +b.von.slice(0, 4), j2 = +b.bis.slice(0, 4);
   for (let J = j1; J <= j2; J++) {
     const st = kontostaendeMitAlltag(mit, personen, J, alltag, bm);
-    for (const k of konten(b, personen)) if (st[k] > SCHWELLE[k]) ueber.push({ konto: k, jahr: J, tage: st[k], schwelle: SCHWELLE[k] });
+    const sw = schwellen(tausch, J);
+    for (const k of konten(b, personen)) if (st[k] > sw[k]) ueber.push({ konto: k, jahr: J, tage: st[k], schwelle: sw[k] });
   }
   const entfallen = Object.values(alltag || {}).filter((a) => a.datum >= b.von && a.datum <= b.bis).map((a) => a.datum);
   return { ueber, entfallen: [...new Set(entfallen)].sort() };
@@ -661,7 +697,7 @@ export function neuZaehlen(d, seit, ich) {
   const n = (x) => istNeu(x, seit, ich);
   Object.values(d.buchungen || {}).forEach((x) => { if (n(x)) z.kalender++; });
   Object.values(d.uebergaben || {}).forEach((x) => { if (n(x)) z.fahrten++; });
-  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank') return; if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
+  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
   Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.journal || {}).forEach((x) => { if (n(x)) z.kosten++; });
