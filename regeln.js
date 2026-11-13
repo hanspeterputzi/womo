@@ -397,13 +397,13 @@ export function kontostaendeMitAlltag(buchungen, personen, J, alltag, buchungenO
 export const TAUSCH_MAX_TAGE = 91;
 
 // Schwellen je Konto im Jahr J, nach Abtretung. Regel (HP77, 13.11.2026): Abgetreten wird nur von Vater und Mutter,
-// und nur an beide Kinder zugleich. Eintrag {von:'eltern', an:'kinder', tage}: Eltern minus tage, jedes Kind plus tage.
+// und nur an beide Kinder zugleich. Eintrag {von:'eltern', an:'kinder', tage}: jedes Kind plus tage, HP und Nora je minus tage (Konto Eltern minus 2 x tage).
 // Aeltere Einzel-Eintraege (an: ein Konto) werden weiter mitgerechnet. Eltern nie ueber 181.
 export function schwellen(tausch, J) {
   const s = { ...SCHWELLE };
   for (const t of Object.values(tausch || {})) {
     if (Number(t.jahr) !== Number(J)) continue;
-    if (t.von === 'eltern' && t.an === 'kinder') { s.eltern -= t.tage; s['kind-1'] += t.tage; s['kind-2'] += t.tage; continue; }
+    if (t.von === 'eltern' && t.an === 'kinder') { s.eltern -= 2 * t.tage; s['kind-1'] += t.tage; s['kind-2'] += t.tage; continue; }
     if (!(t.von in s) || !(t.an in s)) continue;
     s[t.von] -= t.tage; s[t.an] += t.tage;
   }
@@ -419,8 +419,8 @@ export function pruefeTausch(t, tauschBisher, stand, heuteJahr) {
   if (typeof t.tage !== 'number' || !(t.tage > 0) || t.tage > TAUSCH_MAX_TAGE || (t.tage * 2) % 1 !== 0) fehler.push(`Die Zahl der Tage muss ganz oder halb sein (zum Beispiel 3 oder 2.5), mindestens 0.5 und höchstens ${TAUSCH_MAX_TAGE}.`);
   if (fehler.length === 0) {
     const sw = schwellen(tauschBisher, t.jahr);
-    const frei = sw[t.von] - (stand[t.von] || 0);
-    if (t.tage > frei) fehler.push(`Es sind nur noch ${Math.max(0, frei)} ungenutzte Tage im Jahr ${t.jahr} frei. Bereits genutzte oder reservierte Tage lassen sich nicht abtreten.`);
+    const frei = sw.eltern - (stand.eltern || 0);
+    if (t.tage * 2 > frei) fehler.push(`Die Eltern haben im Jahr ${t.jahr} nur noch ${Math.max(0, frei)} ungenutzte Tage frei. Für ${t.tage} Tage je Kind braucht es ${t.tage * 2}. Bereits genutzte oder reservierte Tage lassen sich nicht abtreten.`);
   }
   return { ok: fehler.length === 0, fehler };
 }
