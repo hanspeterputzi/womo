@@ -3,10 +3,10 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  FRAGE_ANHANG_MAX, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
+  FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113z';
-import * as S from './speicher.js?v=20261113z';
+} from './regeln.js?v=20261113za';
+import * as S from './speicher.js?v=20261113za';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -1219,18 +1219,20 @@ function fotoVerkleinern(file, gross) {
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => {
       try {
-        const ziel = gross ? 235000 : 150000, qmin = gross ? 0.55 : 0.4;
-        let max = gross ? 2000 : 1000, q = gross ? 0.85 : 0.72, out = '';
-        for (let i = 0; i < 10; i++) {
+        // gross = Zielgrösse in Zeichen (Fragen: Dokumente müssen lesbar bleiben); sonst Wunsch-Foto (150 KB).
+        const ziel = gross || 150000;
+        let max = gross ? 2600 : 1000, q = gross ? 0.82 : 0.72, out = '';
+        for (let i = 0; i < 16; i++) {
           const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
           const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
           const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
           out = c.toDataURL('image/jpeg', q);
           if (out.length <= ziel) break;
-          q = Math.max(qmin, q - 0.06); max = Math.round(max * 0.88);
+          if (gross && q > 0.6) q = Math.max(0.6, q - 0.07);          // bei Dokumenten zuerst die Qualität senken, die Auflösung möglichst behalten
+          else { q = Math.max(gross ? 0.5 : 0.4, q - 0.06); max = Math.round(max * 0.9); }
         }
         URL.revokeObjectURL(url);
-        if (out.length > WUNSCH_FOTO_MAX) nein(new Error('Das Foto ist auch verkleinert zu gross.')); else ok(out);
+        if (out.length > (gross ? FRAGE_BILD_MAX : WUNSCH_FOTO_MAX)) nein(new Error('Das Foto ist auch verkleinert zu gross.')); else ok(out);
       } catch (e) { URL.revokeObjectURL(url); nein(e); }
     };
     img.onerror = () => { URL.revokeObjectURL(url); nein(new Error('Das Bild kann nicht gelesen werden.')); };
@@ -1390,10 +1392,11 @@ function frageForm() {
   };
   document.getElementById('f_dat').onchange = async (e) => {
     const dateien = [...(e.target.files || [])]; e.target.value = '';
-    for (const d of dateien) {
+    for (let n = 0; n < dateien.length; n++) {
+      const d = dateien[n];
       if (anhaenge.length >= FRAGE_ANHANG_MAX) { fehler(`Höchstens ${FRAGE_ANHANG_MAX} Anhänge pro Frage.`); break; }
       try {
-        if (d.type.startsWith('image/')) anhaenge.push({ name: d.name.slice(0, 80) || 'Bild', typ: 'bild', daten: await fotoVerkleinern(d, true) });
+        if (d.type.startsWith('image/')) anhaenge.push({ name: d.name.slice(0, 80) || 'Bild', typ: 'bild', daten: await fotoVerkleinern(d, Math.max(120000, Math.min(600000, Math.floor((FRAGE_ANHANG_SUMME - anhaenge.reduce((a, x) => a + x.daten.length, 0)) / Math.max(1, Math.min(dateien.length - n, FRAGE_ANHANG_MAX - anhaenge.length)))))) });
         else if (d.type === 'application/pdf') {
           const daten = await new Promise((ok, nein) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => nein(new Error('Die Datei kann nicht gelesen werden.')); r.readAsDataURL(d); });
           if (daten.length > FRAGE_PDF_MAX) throw new Error('Die PDF-Datei ist zu gross (höchstens etwa 300 KB): ' + d.name);
@@ -1416,7 +1419,7 @@ function anhangHtml(f) {
   const an = Array.isArray(f.anhaenge) ? f.anhaenge : [];
   if (!an.length) return '';
   return `<div style="margin:6px 0 10px">${an.map((x, i) => x.typ === 'bild'
-    ? `<img class="w-foto" data-bild="1" src="${h(x.daten)}" alt="Anhang: ${h(x.name)}">`
+    ? `<img class="w-foto" data-bild="1" src="${h(x.daten)}" alt="Anhang: ${h(x.name)}"><div class="info" style="margin:-2px 0 8px;text-align:center">🔍 Bild antippen: gross ansehen und vergrössern</div>`
     : `<button type="button" class="btn" data-pdf="${i}" style="margin:0 8px 8px 0">📄 ${h(x.name)}</button>`).join('')}</div>`;
 }
 

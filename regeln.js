@@ -773,7 +773,7 @@ export function fahrfreigabeStand(f, aktionen, ids, heute) {
 // Liegt in der Sammlung 'termine' (art 'Frage' und 'FrageAntwort'), damit keine neue Datenbankregel noetig ist.
 // =====================================================================
 export const FRAGE_STATUS = { offen: 'Antworten offen', angenommen: 'Angenommen', abgelehnt: 'Abgelehnt' };
-export const FRAGE_ANHANG_MAX = 3, FRAGE_PDF_MAX = 400000, FRAGE_ANHANG_SUMME = 750000;   // Zeichen (Text-Form der Datei); Firestore erlaubt 1 MiB pro Eintrag
+export const FRAGE_ANHANG_MAX = 3, FRAGE_PDF_MAX = 400000, FRAGE_ANHANG_SUMME = 750000, FRAGE_BILD_MAX = 650000;   // Zeichen (Text-Form der Datei); Firestore erlaubt 1 MiB pro Eintrag
 export const FRAGE_TITEL_MAX = 80, FRAGE_TEXT_MAX = 600, FRAGE_GRUND_MAX = 300;
 export function pruefeFrage(f) {
   const e = [];
@@ -789,7 +789,7 @@ export function pruefeFrage(f) {
       let summe = 0;
       for (const x of an) {
         const ok = x && typeof x.name === 'string' && x.name.length > 0 && x.name.length <= 80 && typeof x.daten === 'string'
-          && ((x.typ === 'bild' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x.daten) && x.daten.length <= WUNSCH_FOTO_MAX)
+          && ((x.typ === 'bild' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x.daten) && x.daten.length <= FRAGE_BILD_MAX)
            || (x.typ === 'pdf' && /^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/.test(x.daten) && x.daten.length <= FRAGE_PDF_MAX));
         if (!ok) { e.push('Ein Anhang ist ungültig oder zu gross (Bilder werden verkleinert, PDF höchstens etwa 300 KB). Bitte neu auswählen.'); break; }
         summe += x.daten.length;
