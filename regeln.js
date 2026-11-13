@@ -881,10 +881,10 @@ export function notfallAuszug(d, heute, jetzt) {
 // =====================================================================
 // Unsere Orte (13.11.2026): nur ausserordentlich gute Stellplaetze und Campingplaetze, mit Bild und kurzer Beschreibung.
 // Huerden gegen Mittelmass: (1) nur von einer eigenen, beendeten Reise, (2) ein Ort pro Reise und Person, (3) hoechstens
-// 3 Orte pro Person und Jahr, (4) Foto und Begruendung sind Pflicht, (5) andere bestaetigen («war auch dort»).
+// 5 Orte pro Person und Jahr, (4) Foto und Begruendung sind Pflicht, (5) andere bestaetigen («war auch dort»).
 // Orte liegen in 'orte', Bestaetigungen in 'ortstimmen' (id <ortId>_<Person>).
 // =====================================================================
-export const ORT_PRO_JAHR = 3, ORT_FOTO_MAX = 250000, ORT_TEXT_MIN = 30, ORT_TEXT_MAX = 300, ORT_PRAKTISCH_MAX = 150, ORT_FAVORIT_AB = 2;
+export const ORT_PRO_JAHR = 5, ORT_FOTO_MAX = 250000, ORT_TEXT_MIN = 30, ORT_TEXT_MAX = 300, ORT_PRAKTISCH_MAX = 150, ORT_FAVORIT_AB = 2;
 export const ORT_ARTEN = ['Campingplatz', 'Stellplatz', 'Bauernhof', 'Gasthof', 'Anderer Platz mit Erlaubnis'];
 export const ORT_LAENDER = ['Schweiz', 'Liechtenstein', 'Frankreich', 'Italien', 'Spanien', 'Portugal', 'Deutschland', 'Österreich', 'Belgien', 'Niederlande', 'Luxemburg', 'Dänemark', 'Schweden', 'Norwegen', 'Finnland', 'Island', 'Irland', 'Vereinigtes Königreich', 'Tschechien', 'Slowakei', 'Polen', 'Ungarn', 'Slowenien', 'Kroatien', 'Bosnien-Herzegowina', 'Montenegro', 'Albanien', 'Nordmazedonien', 'Griechenland', 'Bulgarien', 'Estland', 'Lettland', 'Litauen', 'Zypern', 'Malta'];
 export function pruefeOrt(o, ctx) {

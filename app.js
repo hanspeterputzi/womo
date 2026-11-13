@@ -7,8 +7,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114c';
-import * as S from './speicher.js?v=20261114c';
+} from './regeln.js?v=20261114d';
+import * as S from './speicher.js?v=20261114d';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1567,7 +1567,7 @@ function orteKarte() {
   const kachel = ({ o, s }) => `<button class="ort" data-ort="${h(o.id)}"><span class="ort-bild"><img src="${h(o.foto)}" alt="" loading="lazy">${s.favorit ? `<span class="ort-fav"><svg viewBox="0 0 24 24" aria-hidden="true">${ORT_STERN}</svg> Familien-Favorit</span>` : ''}</span>
     <span class="ort-tx"><strong>${h(o.titel)}${neuPille(o)}</strong><small>${h(o.land)} · ${h(o.ort)} · ${h(o.art)}</small><span class="ort-bes">${h(o.text)}</span><small>${s.anzahl ? `✓ bestätigt von ${s.bestaetigt.map((i) => h(D.personen[i]?.name || '?')).join(', ')}` : `von ${h(D.personen[o.erfasstVon]?.name || '?')}`}</small></span></button>`;
   return `<div class="karte ort-karte"><div class="ort-kopf"><p class="titel" style="margin:0">Unsere besten Orte</p><button class="t-plus lang" id="ort_neu">＋ Ort</button></div>
-    <p class="info" style="margin:6px 0 10px">Nur Orte, für die wir <strong>extra wieder hinfahren</strong> würden. Foto und Begründung sind Pflicht, höchstens ${ORT_PRO_JAHR} Orte pro Person und Jahr. Andere bestätigen mit «war auch dort». Ab ${ORT_FAVORIT_AB} Bestätigungen wird ein Ort Familien-Favorit.</p>
+    <p class="info" style="margin:6px 0 10px">Nur Orte, an die wir wieder hinfahren würden. Foto und Begründung sind Pflicht, höchstens ${ORT_PRO_JAHR} Orte pro Person und Jahr. Andere bestätigen mit «war auch dort». Ab ${ORT_FAVORIT_AB} Bestätigungen wird ein Ort Familien-Favorit.</p>
     ${reihe.length ? `<div class="ort-liste">${reihe.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Ort. Nach einer Reise, wenn ein Platz wirklich begeistert hat: hier eintragen.</p>'}
     <p class="info" style="margin:10px 0 0">Du hast dieses Jahr noch <strong>${frei} von ${ORT_PRO_JAHR}</strong> Plätzen frei.</p></div>`;
 }
