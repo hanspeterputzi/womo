@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113q';
-import * as S from './speicher.js?v=20261113q';
+  achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261113r';
+import * as S from './speicher.js?v=20261113r';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -188,7 +188,7 @@ const ORTE = [
     ['Autohöfe in Deutschland', [['Artikel: Übernachten auf Autohöfen (promobil)', 'https://www.promobil.de/uebernachtungstipps/auf-vielen-deutschen-autohoefen-kann-man-mit-dem-camper-guenstig-uebernachten/'], ['Websuche: Autohof Wohnmobil übernachten', 'https://www.google.com/search?q=' + encodeURIComponent('Autohof Wohnmobil übernachten Stellplatz')]], 'In Deutschland gibt es rund 230 Autohöfe direkt an Autobahnausfahrten, etwa die Hälfte erlaubt Wohnmobilen das Übernachten. Kosten: 0 bis 25 Euro pro Nacht, bezahlt wird meist an der Tankstelle, Strom gibt es selten. In stellplatz.info und Campercontact (oben) einfach nach «Autohof» suchen.'],
     ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]]]],
   ['u3', '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 11v10"/><path fill="currentColor" d="M17 3c-2.300 1.600-3 4.600-3 8h3z"/>', 'Gasthöfe, Restaurants, Hotels', 'Stellplatz auf dem Parkplatz des Betriebs', 'Vorher fragen, oft gratis bei Konsumation', null],
-  ['u4', '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-5h4v5"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [
+  ['u4', '<path d="M8.200 6.500c1-.6 2.400-.9 3.800-.9s2.800.3 3.800.9l1 4.500c.3 1.800-.2 3.600-1.200 5.200H8.400C7.400 14.600 6.900 12.800 7.200 11z"/><path d="M8.300 6.600C7.500 5 6 4.300 4.800 4.800M15.700 6.600C16.500 5 18 4.300 19.200 4.800"/><path d="M7.300 9.300 3.200 8.300c-.9 1.300.2 3.200 4 3.600M16.700 9.300l4.100-1c.9 1.300-.2 3.200-4 3.600"/><path d="M8.400 15.800c-.3 2.700 1.200 4.700 3.600 4.700s3.900-2 3.600-4.700"/><circle cx="9.800" cy="11" r=".75" fill="currentColor" stroke="none"/><circle cx="14.200" cy="11" r=".75" fill="currentColor" stroke="none"/><circle cx="10.400" cy="18" r=".6" fill="currentColor" stroke="none"/><circle cx="13.600" cy="18" r=".6" fill="currentColor" stroke="none"/><path d="M11 5.700c.4-.9 1.600-.9 2 0"/>', 'Bauernhöfe, Winzer, Private', 'Auch Bekannte und Verwandte mit Garten oder Parkplatz', 'Meist einfach, dafür ruhig. Vorab anfragen', [
     ['Schweiz', [['Landcamp.ch', 'https://www.landcamp.ch/'], ['Nomady', 'https://nomady.camp/'], ['Myfarm.ch', 'https://www.myfarm.ch/de']]],
     ['Europa', [['AlpacaCamping', 'https://www.alpacacamping.de/'], ['Landvergnügen', 'https://landvergnuegen.com/'], ['Hinterland', 'https://hinterland.camp/en'], ['VanSite', 'https://vansite.eu/de'], ['Roadsurfer Spots', 'https://roadsurfer.com/de/spots/'], ['Camperland', 'https://www.camperland.de/'], ['France Passion (FR)', 'https://www.france-passion.com/'], ['Campspace', 'https://campspace.com/en'], ['Hipcamp', 'https://www.hipcamp.com/en-GB']]]]],
 ];
@@ -527,6 +527,8 @@ function formularZeigen(tag, ex) {
 // =====================================================================
 // Fahrten: Uebergabe-Checkliste und Kilometerstand (Version 2)
 // =====================================================================
+const ICON_ALK = '<circle cx="12" cy="12" r="10"/><path d="M8.500 6.500h7l-.6 4a2.900 2.900 0 0 1-5.800 0zM12 13.300V17.500M9.500 17.500h5"/><path d="M4.900 4.900l14.200 14.200"/>';
+const ICON_RAUCH = '<circle cx="12" cy="12" r="10"/><path d="M5.500 14.500h9v3h-9zM12.500 14.500v3M16.500 14.500c0-1.500 1.500-1.500 1.500-3.200S16.500 9.700 16.500 8"/><path d="M4.900 4.900l14.200 14.200"/>';
 const FAHRT_ICON = '<path d="M3 17V8a2 2 0 0 1 2-2h9l5 5v6M3 17h2M9 17h6M19 17h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
 const KOSTEN_ICON = '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/>';
 function reiseText(b, kurz) {
@@ -569,7 +571,8 @@ function fahrten() {
   };
   const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}${neuPille(b)}${neuPille(f.ab)}${neuPille(f.rk)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
   app.innerHTML = rahmen(`${seitenkopf('Fahrten', elternIch ? 'aneu' : null, '＋ Alltagsfahrt')}
-  <div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
+  <div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Fahren unter Alkohol ist verboten</strong></div></div>
+  <div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
@@ -624,13 +627,14 @@ function freigabeForm() {
   <label for="ff_g">Grund</label><input id="ff_g" maxlength="150" placeholder="Warum soll diese Person fahren?" autocomplete="off">
   <div class="zwei"><div><label for="ff_v">Reise von</label><input type="date" id="ff_v" value="${heute()}"></div><div><label for="ff_t">bis</label><input type="date" id="ff_t" value="${heute()}"></div></div>
   <label for="ff_m">Welche/r Eigentümer/in reist im Fahrzeug mit?</label><select id="ff_m"><option value="">Bitte wählen</option>${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select>
+  <div class="zwei"><div><label for="ff_al">Alter der Person</label><input id="ff_al" type="number" inputmode="numeric" min="18" max="99" placeholder="z. B. 34"></div><div><label for="ff_pr">Führerprüfung bestanden am</label><input type="date" id="ff_pr"></div></div>
   <label>Das ist geklärt (zum Bestätigen antippen)</label>
-  <div class="mitw ff-chk">${chk('ff_a', 'Der Führerausweis ist geprüft.')}${chk('ff_e', 'Die Fahrerfahrung ist geklärt.')}${chk('ff_s', 'Der Versicherungsschutz ist geklärt.')}${chk('ff_h', 'Ich trage im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.')}</div>
+  <div class="mitw ff-chk">${chk('ff_a', 'Der Führerausweis ist geprüft.')}${chk('ff_s', 'In der Haftpflichtversicherung der Person ist das Fahren fremder Fahrzeuge versichert.')}${chk('ff_h', 'Ich trage im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.')}</div>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
     const f = { art: 'Fahrfreigabe', person: val('ff_p').trim(), bez: val('ff_b').trim(), grund: val('ff_g').trim(), von: val('ff_v'), bis: val('ff_t'), mitEig: val('ff_m'),
-      ausweis: document.getElementById('ff_a').checked, erfahrung: document.getElementById('ff_e').checked, versicherung: document.getElementById('ff_s').checked, haftung: document.getElementById('ff_h').checked,
+      ausweis: document.getElementById('ff_a').checked, alter: parseInt(val('ff_al'), 10), pruefung: val('ff_pr'), versicherung: document.getElementById('ff_s').checked, haftung: document.getElementById('ff_h').checked,
       datum: heute(), erfasstVon: ich };
     const p = pruefeFahrfreigabe(f, heute(), idsGeordnet());
     if (!p.ok) { fehler(p.fehler); return; }
@@ -653,7 +657,7 @@ function freigabeDetail(id) {
   const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Fahrten) mit Ja oder Nein antworten.`;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
-    <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Geklärt:</strong> Führerausweis, Fahrerfahrung, Versicherungsschutz. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
+    <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.alter} Jahre, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
     <div class="zeilen">${zeilen}</div>
     ${meinAntwort ? '<label for="ff_grund">Nur bei Nein: Grund</label><input id="ff_grund" maxlength="200" placeholder="Warum nicht?">' : ''}
     <div id="msg"></div>
@@ -751,7 +755,7 @@ function uebergabeForm(bid, phase) {
   const dis = darf ? '' : 'disabled';
   const radio = (name, wert, text, cls, aktiv) => `<span class="chk ${cls}"><input type="radio" name="${name}" id="${name}_${wert}" value="${wert}" ${aktiv ? 'checked' : ''} ${dis}><label for="${name}_${wert}">${text}</label></span>`;
   sheet(`<h3>${phase === 'ab' ? 'Übernahme' : 'Rückgabe'}</h3>
-  ${phase === 'ab' ? `<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Wer fährt, trinkt nicht: Fahren unter Alkohol ist verboten</strong></div></div><div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
+  ${phase === 'ab' ? `<div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Wer fährt, trinkt nicht: Fahren unter Alkohol ist verboten</strong></div></div><div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
   <p class="info" style="margin:0">${fmt(b.von)} – ${fmt(b.bis)} · ${h(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?')}${ex ? ` · erfasst von ${h(D.personen[ex.erfasstVon]?.name || '?')}` : ''}</p>
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übernahme: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>

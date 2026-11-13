@@ -718,6 +718,12 @@ export function neuZaehlen(d, seit, ich) {
 // =====================================================================
 export const FAHRFREIGABE_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', abgelehnt: 'Abgelehnt', vorbei: 'Reise vorbei' };
 
+// Volle Jahre zwischen zwei ISO-Daten.
+export function jahreSeit(von, bis) {
+  const [a, b, c] = von.split('-').map(Number), [x, y, z] = bis.split('-').map(Number);
+  return x - a - ((y < b || (y === b && z < c)) ? 1 : 0);
+}
+
 export function pruefeFahrfreigabe(f, heute, ids) {
   const e = [];
   if (!(f.person || '').trim()) e.push('Bitte den Namen der Person angeben, die fahren soll.');
@@ -730,8 +736,11 @@ export function pruefeFahrfreigabe(f, heute, ids) {
     else if (f.von < heute) e.push('Die Reise hat schon begonnen. Die Freigabe muss vor der Reise erfolgen.');
   }
   if (!f.ausweis) e.push('Bitte bestätigen: Der Führerausweis wurde geprüft.');
-  if (!f.erfahrung) e.push('Bitte bestätigen: Die Fahrerfahrung ist geklärt.');
-  if (!f.versicherung) e.push('Bitte bestätigen: Der Versicherungsschutz ist geklärt.');
+  if (!Number.isInteger(f.alter) || f.alter < 18 || f.alter > 99) e.push('Bitte das Alter der Person angeben (mindestens 18).');
+  if (!datumGueltig(f.pruefung || '')) e.push('Bitte das Datum der Führerprüfung angeben.');
+  else if (f.pruefung > heute) e.push('Die Führerprüfung kann nicht in der Zukunft liegen.');
+  else if (Number.isInteger(f.alter) && f.alter >= 18 && jahreSeit(f.pruefung, heute) > f.alter - 18) e.push('Alter und Datum der Führerprüfung passen nicht zusammen (die Prüfung wäre vor dem 18. Geburtstag gewesen).');
+  if (!f.versicherung) e.push('Bitte bestätigen: Die Haftpflichtversicherung der Person deckt das Fahren fremder Fahrzeuge.');
   if (!f.haftung) e.push('Bitte bestätigen: Du trägst im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.');
   if (!f.mitEig || !(ids || []).includes(f.mitEig)) e.push('Bitte wählen, welche Eigentümerin oder welcher Eigentümer im Fahrzeug mitreist.');
   return { ok: e.length === 0, fehler: e };
