@@ -275,7 +275,7 @@ function unterwegs() {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
-  app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
+  app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
@@ -627,14 +627,14 @@ function freigabeForm() {
   <label for="ff_g">Grund</label><input id="ff_g" maxlength="150" placeholder="Warum soll diese Person fahren?" autocomplete="off">
   <div class="zwei"><div><label for="ff_v">Reise von</label><input type="date" id="ff_v" value="${heute()}"></div><div><label for="ff_t">bis</label><input type="date" id="ff_t" value="${heute()}"></div></div>
   <label for="ff_m">Welche/r Eigentümer/in reist im Fahrzeug mit?</label><select id="ff_m"><option value="">Bitte wählen</option>${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select>
-  <div class="zwei"><div><label for="ff_al">Alter der Person</label><input id="ff_al" type="number" inputmode="numeric" min="18" max="99" placeholder="z. B. 34"></div><div><label for="ff_pr">Führerprüfung bestanden am</label><input type="date" id="ff_pr"></div></div>
+  <div class="zwei" style="align-items:start"><div><label for="ff_al">Jahrgang<br>der Person</label><input id="ff_al" style="height:54px" type="number" inputmode="numeric" min="1900" max="${new Date().getFullYear() - 18}" placeholder="z. B. 1990"></div><div><label for="ff_pr">Führerprüfung<br>bestanden am</label><input type="date" id="ff_pr" style="height:54px"></div></div>
   <label>Das ist geklärt (zum Bestätigen antippen)</label>
   <div class="mitw ff-chk">${chk('ff_a', 'Der Führerausweis ist geprüft.')}${chk('ff_s', 'In der Haftpflichtversicherung der Person ist das Fahren fremder Fahrzeuge versichert.')}${chk('ff_h', 'Ich trage im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.')}</div>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
     const f = { art: 'Fahrfreigabe', person: val('ff_p').trim(), bez: val('ff_b').trim(), grund: val('ff_g').trim(), von: val('ff_v'), bis: val('ff_t'), mitEig: val('ff_m'),
-      ausweis: document.getElementById('ff_a').checked, alter: parseInt(val('ff_al'), 10), pruefung: val('ff_pr'), versicherung: document.getElementById('ff_s').checked, haftung: document.getElementById('ff_h').checked,
+      ausweis: document.getElementById('ff_a').checked, jahrgang: parseInt(val('ff_al'), 10), alter: new Date().getFullYear() - parseInt(val('ff_al'), 10), pruefung: val('ff_pr'), versicherung: document.getElementById('ff_s').checked, haftung: document.getElementById('ff_h').checked,
       datum: heute(), erfasstVon: ich };
     const p = pruefeFahrfreigabe(f, heute(), idsGeordnet());
     if (!p.ok) { fehler(p.fehler); return; }
@@ -657,7 +657,7 @@ function freigabeDetail(id) {
   const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Fahrten) mit Ja oder Nein antworten.`;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
-    <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.alter} Jahre, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
+    <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.jahrgang ? 'Jahrgang ' + f.jahrgang : f.alter + ' Jahre'}, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
     <div class="zeilen">${zeilen}</div>
     ${meinAntwort ? '<label for="ff_grund">Nur bei Nein: Grund</label><input id="ff_grund" maxlength="200" placeholder="Warum nicht?">' : ''}
     <div id="msg"></div>

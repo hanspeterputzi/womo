@@ -736,7 +736,7 @@ export function pruefeFahrfreigabe(f, heute, ids) {
     else if (f.von < heute) e.push('Die Reise hat schon begonnen. Die Freigabe muss vor der Reise erfolgen.');
   }
   if (!f.ausweis) e.push('Bitte bestätigen: Der Führerausweis wurde geprüft.');
-  if (!Number.isInteger(f.alter) || f.alter < 18 || f.alter > 99) e.push('Bitte das Alter der Person angeben (mindestens 18).');
+  if (!Number.isInteger(f.alter) || f.alter < 18 || f.alter > 99) e.push('Bitte den Jahrgang der Person angeben (mindestens 18 Jahre alt).');
   if (!datumGueltig(f.pruefung || '')) e.push('Bitte das Datum der Führerprüfung angeben.');
   else if (f.pruefung > heute) e.push('Die Führerprüfung kann nicht in der Zukunft liegen.');
   else if (Number.isInteger(f.alter) && f.alter >= 18 && jahreSeit(f.pruefung, heute) > f.alter - 18) e.push('Alter und Datum der Führerprüfung passen nicht zusammen (die Prüfung wäre vor dem 18. Geburtstag gewesen).');
