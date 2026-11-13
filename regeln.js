@@ -800,7 +800,7 @@ export function pruefeFrage(f) {
   return { ok: e.length === 0, fehler: e };
 }
 // aktionen: Eintraege mit art 'FrageAntwort' (frageId, personId, stimme, grund). Gezaehlt wird je Person die erste Antwort.
-export function frageStand(f, aktionen, ids) {
+export function frageStand(f, aktionen, ids, heute) {
   const antworten = {};
   const alle = [...(aktionen || [])].filter((a) => a.art === 'FrageAntwort' && a.frageId === f.id && ids.includes(a.personId) && a.personId !== f.erfasstVon && ['ja', 'nein'].includes(a.stimme))
     .sort((a, b) => ((a.erfasstAm || '') < (b.erfasstAm || '') ? -1 : (a.erfasstAm || '') > (b.erfasstAm || '') ? 1 : 0));
@@ -817,5 +817,8 @@ export function frageStand(f, aktionen, ids) {
   let entschiedenAm = '';
   if (status === 'abgelehnt') entschiedenAm = antworten[nein[0]] ? nein.map((i) => antworten[i].erfasstAm || '').sort()[0] : '';
   else if (status === 'angenommen') entschiedenAm = jaVon.map((i) => antworten[i].erfasstAm || '').sort().slice(-1)[0] || '';
-  return { antworten, ohneAntwort, nein, jaVon, ja, status, entschiedenAm, gesamt: ids.length };
+  // Frist wie bei Wünschen (5 Tage ab Fragedatum). Sie ändert nichts am Ergebnis: Schweigen ist kein Ja, die Frage bleibt offen.
+  const frist = /^\d{4}-\d{2}-\d{2}$/.test(f.datum || f.faelligAm || '') ? addTage(f.datum || f.faelligAm, WUNSCH_FRIST_TAGE) : '';
+  const ueberfaellig = status === 'offen' && !!frist && !!heute && heute > frist;
+  return { antworten, ohneAntwort, nein, jaVon, ja, status, entschiedenAm, gesamt: ids.length, frist, ueberfaellig };
 }

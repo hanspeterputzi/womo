@@ -5,8 +5,8 @@ import {
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113y';
-import * as S from './speicher.js?v=20261113y';
+} from './regeln.js?v=20261113z';
+import * as S from './speicher.js?v=20261113z';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -384,7 +384,12 @@ function hinweiseHtml() {
   // Fahrerfreigabe: was auf dich wartet
   fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="fahrten" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
   // Fragen: was auf deine Antwort wartet (ein Tipp öffnet die Rubrik)
-  frageListe().forEach((f) => { const st = frageStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="wunschliste" data-fa="fragen" style="cursor:pointer">❓ Frage von ${h(D.personen[f.erfasstVon]?.name || '?')}: «${h(f.titel)}» wartet auf deine Antwort.</div>`; });
+  frageListe().forEach((f) => {
+    const st = frageStandVon(f), von = h(D.personen[f.erfasstVon]?.name || '?');
+    if (st.status !== 'offen') return;
+    if (f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte ${st.ueberfaellig ? 'rot' : 'gelb'}" data-neu="wunschliste" data-fa="fragen" style="cursor:pointer">❓ Frage von ${von}: «${h(f.titel)}» wartet auf deine Antwort${st.ueberfaellig ? ' (Frist abgelaufen)' : ' bis ' + fmt(st.frist)}.</div>`;
+    else if (f.erfasstVon === ich && st.ueberfaellig) out += `<div class="hinweiskarte rot" data-neu="wunschliste" data-fa="fragen" style="cursor:pointer">❓ Deine Frage «${h(f.titel)}» ist überfällig. Es fehlt die Antwort von ${st.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}. Tippe, um zu erinnern.</div>`;
+  });
   // Wunschliste: was auf dich wartet (ein Tipp öffnet den Tab)
   wunschListe().forEach((w) => {
     const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
@@ -1328,7 +1333,7 @@ let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'fragen' oder 'wunsch'
 const FRAGE_ICON = '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M10 9.500a2 2 0 1 1 3 1.700c-.7.400-1 .800-1 1.500M12 14.500v.01"/>';
 const frageListe = () => Object.values(D.termine).filter((x) => x.art === 'Frage');
 const frageAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FrageAntwort');
-const frageStandVon = (f) => frageStand(f, frageAntworten(), idsGeordnet());
+const frageStandVon = (f) => frageStand(f, frageAntworten(), idsGeordnet(), heute());
 // Standardhinweis: gilt für jede Frage, die etwas ändert, das der Vertrag regelt.
 const ZUSATZ_REGEL = '<strong>Vertragszusatz nötig:</strong> Wird ein Punkt geändert, der im Vertrag geregelt ist, braucht es zusätzlich einen schriftlichen Vertragszusatz, den alle Eigentümer unterschreiben (Ziffer 13 c). Ein Ja in der App ersetzt ihn nicht.';
 const frageKlasse = (st) => ({ offen: 'blau', angenommen: 'ok', abgelehnt: 'rot' })[st];
@@ -1348,7 +1353,7 @@ function fragenSeite() {
     const { f, s } = e, k = frageKlasse(s.status);
     const txt = s.status === 'offen' ? `${s.ja} von ${s.gesamt}` : FRAGE_STATUS[s.status];
     const sub = `${h(D.personen[f.erfasstVon]?.name || '?')} · ${fmt(f.datum || f.faelligAm)}${archiv ? `<br>Ja ${s.ja}, Nein ${s.nein.length}` : ''}`;
-    const neuP = neuPille(f), fehlt = frageWartet(f, s) ? '<span class="neu gelb">Antwort fehlt</span>' : '';
+    const neuP = neuPille(f), fehlt = s.ueberfaellig ? '<span class="neu rot">überfällig</span>' : frageWartet(f, s) ? '<span class="neu gelb">Antwort fehlt</span>' : '';
     return `<button class="t-z ${k}" data-fid="${h(f.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><span class="t-zt"><strong>${h(f.titel)}${neuP}${fehlt}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
   };
   const gruppe = (titel, xs) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map((e) => zeile(e, false)).join('')}` : '';
@@ -1358,7 +1363,7 @@ function fragenSeite() {
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Fragen. Mit «＋ Frage» legst du der Familie etwas zum Entscheid vor.</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Fragen', 'fneu', '＋ Frage')}${famSeg()}
     <div class="karte"><p class="info" style="margin:0">Hier stellst du der Familie eine Frage, wenn etwas entschieden werden soll, das der Vertrag heute nicht erlaubt oder nicht regelt (zum Beispiel ein Reiseland ausserhalb Europas).</p>
-      <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p>
+      <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Antwortfrist wie bei Wünschen: ${WUNSCH_FRIST_TAGE} Tage. Danach wird die Frage als «überfällig» markiert und du kannst per WhatsApp erinnern. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p>
       <p class="info zusatz" style="margin:8px 0 0">${ZUSATZ_REGEL}</p></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Antworten laufen', laufend)}
     ${fertig.length ? `<details class="sek" style="margin-top:20px"${dein.length || laufend.length ? '' : ' open'}><summary><span>Entschieden (Dokumentation)</span><b>${fertig.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle entschiedenen Fragen bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wann wie geantwortet hat.</p>${fertig.map((e) => zeile(e, true)).join('')}</div></details>` : ''}`);
@@ -1428,10 +1433,11 @@ function frageDetail(id) {
     const a = s.antworten[i], zt = i === f.erfasstVon ? zeitText(f.erfasstAm) : a ? zeitText(a.erfasstAm) : '';
     return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${zt ? `<div class="meta">${zt}</div>` : ''}${a && a.stimme === 'nein' && a.grund ? `<div class="meta">Grund: ${h(a.grund)}</div>` : ''}</div><div class="r">${chip(i)}</div></div>`;
   }).join('');
-  const stand = s.status === 'offen' ? `Offen: ${s.ja} von ${s.gesamt} haben Ja gesagt. Es braucht alle. Noch keine Antwort: ${s.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}.`
+  const stand = s.status === 'offen' ? `Offen: ${s.ja} von ${s.gesamt} haben Ja gesagt. Es braucht alle. Noch keine Antwort: ${s.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}. ${s.ueberfaellig ? 'Die Frist (' + fmt(s.frist) + ') ist abgelaufen. Die Frage bleibt offen, Schweigen ist kein Ja.' : 'Bitte antworten bis ' + fmt(s.frist) + '.'}`
     : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt.`
     : `Abgelehnt${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: ${s.nein.map((i) => h(D.personen[i].name)).join(', ')} ${s.nein.length > 1 ? 'haben' : 'hat'} Nein gesagt. Es gilt weiter die bisherige Regel.`;
-  const waText = `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel} Bitte in der Womo-App mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+  const waText = `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel} Bitte in der Womo-App bis ${fmt(s.frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+  const waErinnerung = `⏰ Erinnerung Womo-Frage: «${f.titel}» von ${D.personen[f.erfasstVon]?.name || '?'}. Die Frist ist abgelaufen. Es fehlt noch die Antwort von ${s.ohneAntwort.map((i) => D.personen[i].name).join(', ')}. Bitte in der Womo-App mit Ja oder Nein antworten.`;
   const antwort = s.status === 'offen' && !mein && !s.antworten[ich];
   const loeschbar = mein && Object.keys(s.antworten).length === 0 && s.status === 'offen';
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><div><h3 style="margin:0">${h(f.titel)}</h3><div class="info" style="margin:2px 0 0">von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${zeitText(f.erfasstAm) || fmt(f.datum || f.faelligAm)}</div></div></div>
@@ -1444,7 +1450,7 @@ function frageDetail(id) {
     ${antwort ? '<label for="f_grund">Nur bei Nein: Grund</label><input id="f_grund" maxlength="' + FRAGE_GRUND_MAX + '" placeholder="Warum nicht?"><p class="info">Deine Antwort kann danach nicht mehr geändert werden.</p>' : ''}
     <div id="msg"></div>
     <div class="t-akt2">${antwort ? '<button class="gross-btn pri" id="f_ja">Ja, einverstanden</button><button class="gross-btn rot" id="f_nein">Nein</button>' : ''}
-      ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
+      ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(s.ueberfaellig ? waErinnerung : waText)}" target="_blank" rel="noopener">${s.ueberfaellig ? 'Erinnerung per WhatsApp senden' : 'Familie per WhatsApp informieren'}</a>` : ''}
       <button class="gross-btn" id="abb">Schliessen</button>${loeschbar ? '<button class="gross-btn rot" id="f_del">Frage zurückziehen</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
   const antw = (stimme, grund) => sicher(async () => {
