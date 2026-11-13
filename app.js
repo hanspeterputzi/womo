@@ -4,8 +4,9 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113j';
-import * as S from './speicher.js?v=20261113j';
+} from './regeln.js?v=20261113k';
+import * as S from './speicher.js?v=20261113k';
+const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -122,12 +123,26 @@ function zeige() {
 function anmeldung() {
   if (!Object.keys(D.personen).length) { app.innerHTML = '<div class="login"><p class="gross">Womo</p><div class="fehler">Es sind noch keine Personen eingerichtet. Bitte zuerst die Einrichtung durchführen.</div></div>'; return; }
   let zuletzt = ''; try { zuletzt = localStorage.getItem('womo-person') || ''; } catch {}
-  app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Wer bist du?</p>
-  <label for="p">Name</label>
-  <select id="p">${personenGeordnet().map(([i, p]) => `<option value="${i}"${i === zuletzt ? ' selected' : ''}>${h(p.name)}</option>`).join('')}</select>
-  <label for="pin">Passwort</label><input id="pin" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" type="password">
-  <div id="msg"></div><button id="ok">Weiter</button>
-  <p class="klein-t" style="margin-top:14px">Das Passwort zeigt nur, wer eine Eintragung erfasst. Er schützt keine Daten.</p></div>`;
+  app.innerHTML = `<div class="start">
+    <div class="start-top"><span class="start-marke"><span class="keil"></span>PÖSSL</span><button class="start-thm" id="sthm" type="button" aria-label="Darstellung wechseln: Auto, Hell, Dunkel">${THEMA_NAME[themaLesen()]}</button></div>
+    <div class="start-szene" aria-hidden="true">
+      <div class="sterne"></div><div class="sonne"></div>
+      <div class="wolke w1"></div><div class="wolke w2"></div><div class="wolke w3"></div>
+      <svg class="hügel" viewBox="0 0 400 160" preserveAspectRatio="none"><path class="h1" d="M0 86C60 34 124 38 192 74S322 118 400 56V160H0Z"/><path class="h2" d="M0 118C70 78 142 94 212 108S342 78 400 102V160H0Z"/><path class="h3" d="M0 140C80 116 160 130 240 138S360 118 400 130V160H0Z"/></svg>
+      <div class="strasse"><i></i></div>
+      <div class="van-wrap"><img class="van" src="possl.png?v=${VER}" alt="" width="900" height="494" decoding="async"><div class="licht"></div></div>
+    </div>
+    <div class="start-karte">
+      <h1>Womo</h1><p class="sub">Unser Wohnmobil</p>
+      <label for="p">Wer bist du?</label>
+      <select id="p">${personenGeordnet().map(([i, p]) => `<option value="${i}"${i === zuletzt ? ' selected' : ''}>${h(p.name)}</option>`).join('')}</select>
+      <label for="pin">Passwort</label><input id="pin" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" type="password">
+      <div id="msg"></div><button class="ok" id="ok" type="button">Weiter<span aria-hidden="true">→</span></button>
+      <p class="klein-t">Das Passwort zeigt nur, wer eine Eintragung erfasst. Er schützt keine Daten.</p>
+    </div></div>`;
+  { const st = document.getElementById('sthm'), sz = app.querySelector('.start'), im = app.querySelector('.van'); const go = () => sz.classList.add('los');
+    st.onclick = () => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); st.textContent = THEMA_NAME[n]; };
+    if (im.complete) go(); else { im.onload = go; im.onerror = go; setTimeout(go, 2500); } }
   const los = async () => {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
@@ -159,7 +174,7 @@ const ORTE = [
     ['Gruppen und Ketten', [['Leading Campings of Europe', 'https://www.leadingcampings.com/de/'], ['Les Castels (FR)', 'https://www.les-castels.com/'], ['Huttopia', 'https://europe.huttopia.com/'], ['Top Camping Austria', 'https://www.topcamping.at/']]],
     ['Rabattkarten und Führer', [['ACSI CampingCard', 'https://www.campingcard.com/'], ['ADAC Campcard', 'https://www.pincamp.de/campingthemen/adac-campcard'], ['ADAC Campingführer', 'https://www.adac.de/services/buecher-magazine/campingfuehrer/']]],
     ['Suchportale', [['ACSI Eurocampings', 'https://www.eurocampings.de/'], ['camping.info', 'https://www.camping.info/de'], ['camping.ch (CH)', 'https://camping.ch/'], ['NorCamp (Skandinavien)', 'https://www.norcamp.de/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]]]],
-  ['u2', '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
+  ['u2', '@img:stellplatz.png', 'Offizielle Stellplätze', 'Gemeinden, Städte, Häfen, Thermen, Freizeitparks, Bergbahnen', 'Nur ausgewiesene Plätze, Platzregeln beachten', [
     ['Stellplatz-Apps und Verzeichnisse', [['Wohnmobilland (CH)', 'https://www.womoland.ch/'], ['stellplatz.info', 'https://stellplatz.info/'], ['Campercontact', 'https://www.campercontact.com/de'], ['promobil Stellplatz-Atlas', 'https://www.promobil.de/stellplaetze/'], ['Stellplatz-Radar-App (promobil)', 'https://www.promobil.de/stellplatz-radar'], ['CaraMaps', 'https://www.caramaps.com/'], ['Camping-App.eu', 'https://camping-app.eu/'], ['Bordatlas (Europa)', 'https://bordatlas.de/'], ['Searchforsites', 'https://www.searchforsites.co.uk/'], ['iOverlander', 'https://ioverlander.com/'], ['StayFree (Camping, Stellplätze, frei)', 'https://www.stayfree.app/'], ['park4night (Camping, Stellplätze, frei)', 'https://park4night.com/en']]],
     ['Autohöfe in Deutschland', [['Artikel: Übernachten auf Autohöfen (promobil)', 'https://www.promobil.de/uebernachtungstipps/auf-vielen-deutschen-autohoefen-kann-man-mit-dem-camper-guenstig-uebernachten/'], ['Websuche: Autohof Wohnmobil übernachten', 'https://www.google.com/search?q=' + encodeURIComponent('Autohof Wohnmobil übernachten Stellplatz')]], 'In Deutschland gibt es rund 230 Autohöfe direkt an Autobahnausfahrten, etwa die Hälfte erlaubt Wohnmobilen das Übernachten. Kosten: 0 bis 25 Euro pro Nacht, bezahlt wird meist an der Tankstelle, Strom gibt es selten. In stellplatz.info und Campercontact (oben) einfach nach «Autohof» suchen.'],
     ['Parkplatz-Apps (nur, wo erlaubt)', [['EasyPark', 'https://easypark.com/de-ch']]]]],
@@ -254,7 +269,7 @@ function unterwegs() {
   app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
-      const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
+      const kopf = `<span class="u-ic ${c}">${ic.startsWith('@img:') ? `<img src="${ic.slice(5)}?v=${VER}" alt="" width="40" height="22">` : SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       const kopfLink = `<a class="u-ortlink u-kopf" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
       return gruppen ? `<div class="u-ort" style="flex-direction:column;gap:0">${kopfLink}
         <div style="margin-top:4px">${gruppen.map(([g, l, hin2]) => `<details class="u-det"><summary><span>${h(g)}</span><b>${l.length}</b></summary>${hin2 ? `<p class="info" style="margin:0 0 8px">${h(hin2)}</p>` : ''}<div class="u-chips">${l.map(chip).join('')}</div></details>`).join('')}</div></div>`
@@ -757,7 +772,7 @@ function kosten() {
   const total = (titel, rp) => `<div class="z" style="border-top:2px solid var(--line)"><div class="l"><strong>${titel}</strong></div><div class="r"><strong>${chf(rp)}</strong></div></div>`;
   const kopf = (titel) => `<div class="z" style="padding-bottom:2px"><div class="l"><span class="meta" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">${titel}</span></div></div>`;
   const leerZ = (txt) => `<div class="z"><div class="l"><span class="meta">${txt}</span></div></div>`;
-  const mein = `<div class="hero-zeile"><div><div class="hero-l">Reise CHF bei Migros Bank</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">Aufwand ${J}</div><div class="hero-z">${chf(er.sAufwand)}</div></div></div>
+  const mein = `<div class="hero-zeile"><div><div class="hero-l">Konto Reise CHF bei<br>Migros Bank</div><div class="hero-z">${chf(sal['1020'].saldo)}</div></div><div><div class="hero-l">Bisheriger Aufwand<br>für ${J}</div><div class="hero-z">${chf(er.sAufwand)}</div></div></div>
       <div class="hero-stand ${bi.stimmt ? 'ok' : 'rot'}">${!Object.keys(jn).length ? 'Noch keine Buchungen erfasst.' : bi.stimmt ? `Bilanz stimmt: Aktiven und Passiven je CHF ${chf(bi.sAktiven)}.` : 'Achtung: Die Bilanz geht nicht auf. Bitte die Buchungen prüfen.'}</div>`;
   const bilanzInhalt = `<p class="info" style="margin-top:0">Stand ${fmt(stichtag)}. Konten ohne Buchungen sind ausgeblendet. Antippen zeigt das Kontoblatt.</p>
     <div class="zeilen">${kopf('Aktiven')}${bi.aktiven.length ? bi.aktiven.map(kz).join('') : leerZ('Noch nichts gebucht.')}${total('Total Aktiven', bi.sAktiven)}</div>
