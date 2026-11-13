@@ -69,6 +69,16 @@ dd.fehlt{color:var(--muted);font-weight:500;font-style:italic}
 .gz{position:fixed;inset:0;z-index:20;background:#000;display:flex;align-items:center;justify-content:center;overflow:auto}
 .gz img{max-width:100%;max-height:100%}
 .gz button{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;border:0;border-radius:999px;background:#fff;color:#000;font:inherit;font-weight:800;padding:12px 16px}
+.pers2{display:flex;gap:8px;margin-top:8px}
+.anruf2{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:62px;border-radius:14px;background:var(--ok);color:#fff;text-decoration:none;padding:8px 16px}
+.anruf2 b{display:block;font-size:19px}.anruf2 small{display:block;font-size:14px;font-weight:600;opacity:.95}
+.anruf2 .pk{font-weight:800;font-size:16px}
+:root[data-theme="dark"] .anruf2{color:#06210f}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .anruf2{color:#06210f}}
+.sms2{flex:none;width:64px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--soft);color:var(--fg);text-decoration:none;font-weight:800}
+.med{margin:4px 2px 0;font-size:14px;font-weight:700;color:var(--rt)}
+a.tcs{display:flex;flex-direction:column;gap:2px;min-height:62px;justify-content:center;border-radius:14px;background:var(--soft);color:var(--fg);text-decoration:none;padding:8px 16px}
+a.tcs b{font-size:14px;color:var(--muted);font-weight:700}a.tcs span{font-size:22px;font-weight:800}
 </style>
 </head>
 <body>
@@ -173,18 +183,27 @@ dd.fehlt{color:var(--muted);font-weight:500;font-style:italic}
   function render() {
     var r = L.filter(function (x) { return x[0] === land; })[0];
     var out = '';
-    out += '<div class="offline">Diese Karte funktioniert auch ohne Handynetz. Nur die Nummern anrufen und der Standort brauchen Empfang bzw. GPS.</div>';
+    out += '<div class="offline">Diese Karte öffnet sich auch ohne Netz. Anrufen geht nur mit Empfang. Den Standort liefert das GPS im Handy.</div>';
     if (!A) out += '<div class="leer" style="margin-bottom:14px">Noch keine Daten auf diesem Handy. Einmal die Womo-App mit Netz öffnen und anmelden, dann liegen Familie und Fahrzeug hier bereit. Die Notrufnummern gehen schon jetzt.</div>';
 
     // 1. Anrufen
-    out += '<div class="karte"><a class="gross" href="tel:112"><span>112 anrufen<small>gilt in der ganzen EU und fast überall in Europa</small></span></a>';
+    out += '<div class="karte"><a class="gross" href="tel:112"><span>112 anrufen<small>Geht fast überall in Europa. Verbindet mit Polizei, Feuerwehr und Rettung.</small></span></a>';
     out += '<h2 style="margin-top:16px">Land</h2><select id="land" aria-label="Land wählen">' + L.map(function (x) { return '<option' + (x[0] === land ? ' selected' : '') + '>' + h(x[0]) + '</option>'; }).join('') + '</select>';
-    out += '<div class="nr"><a href="tel:' + r[1] + '">' + r[1] + '<small>Polizei</small></a><a href="tel:' + r[3] + '">' + r[3] + '<small>Rettung</small></a><a href="tel:' + r[2] + '">' + r[2] + '<small>Feuerwehr</small></a><a href="tel:112">112<small>Europa</small></a></div>';
+    out += '<div class="nr"><a href="tel:' + r[1] + '">' + r[1] + '<small>Polizei</small></a><a href="tel:' + r[3] + '">' + r[3] + '<small>Rettung</small></a><a href="tel:' + r[2] + '">' + r[2] + '<small>Feuerwehr</small></a><a href="tel:112">112<small>alle Dienste</small></a></div>';
     if (r[4]) out += '<p class="info">' + h(r[4]) + '</p>';
     out += '</div>';
 
+
+    // 1b. Pannenhilfe TCS (oeffentliche Nummern des TCS)
+    out += '<div class="karte"><h2>Pannenhilfe TCS</h2><div class="stack" style="margin-top:0">' +
+      '<a class="tcs" href="tel:0800140140"><b>In der Schweiz</b><span>0800 140 140</span></a>' +
+      '<a class="tcs" href="tel:+41588272220"><b>Im Ausland</b><span>+41 58 827 22 20</span></a>' +
+      '<a class="tcs" href="tel:+41588276655"><b>Dolmetscher-Dienst</b><span>+41 58 827 66 55</span></a></div>' +
+      (wert('tcs') ? '<p style="margin:12px 0 0">Unsere TCS-Nummer: <b>' + h(wert('tcs')) + '</b></p>' : '') +
+      (wert('schutzbrief') ? '<p class="info">' + h(wert('schutzbrief')) + '</p>' : '') + '</div>';
+
     // 2. Standort
-    out += '<div class="karte"><h2>Wo bin ich?</h2><button class="btn pri" id="gps">📍 Meinen Standort bestimmen</button><div id="posbox"></div><p class="info">Das GPS im Handy geht auch ohne Netz. Beim ersten Mal fragt das Handy, ob die Seite den Standort nutzen darf: Ja.</p></div>';
+    out += '<div class="karte"><h2>Wo bin ich?</h2><button class="btn pri" id="gps">📍 Meinen Standort bestimmen</button><div id="posbox"></div><p class="info">Das GPS geht auch ohne Netz. Beim ersten Mal fragt das Handy nach dem Standort: bitte «Erlauben» wählen.</p></div>';
 
     // 3. Was ist passiert
     out += '<div class="karte"><h2>Was ist passiert?</h2>' + FAELLE.map(function (f) {
@@ -192,7 +211,7 @@ dd.fehlt{color:var(--muted);font-weight:500;font-style:italic}
     }).join('') + '</div>';
 
     // 4. Fahrzeug
-    var rows = [['kennzeichen', 'Kennzeichen'], ['fahrzeug', 'Fahrzeug'], ['hoehe', 'Höhe (m)'], ['breite', 'Breite (m)'], ['laenge', 'Länge (m)'], ['gewicht', 'Gesamtgewicht (kg)'], ['reifen', 'Reifendruck (bar)'], ['treibstoff', 'Treibstoff'], ['gas', 'Gas'], ['versicherung', 'Versicherung'], ['police', 'Policennummer'], ['schutzbrief', 'Schutzbrief / Pannenhilfe'], ['hinweis', 'Wichtig für Helfer']];
+    var rows = [['kennzeichen', 'Kennzeichen'], ['fahrzeug', 'Fahrzeug'], ['hoehe', 'Höhe (m)'], ['breite', 'Breite (m)'], ['laenge', 'Länge (m)'], ['gewicht', 'Gesamtgewicht (kg)'], ['treibstoff', 'Treibstoff'], ['versicherung', 'Versicherung'], ['police', 'Policennummer'], ['schutzbrief', 'Schutzbrief'], ['tcs', 'TCS-Nummer'], ['hinweis', 'Wichtig für Helfer']];
     var tf = function (t) { var mm = String(t).match(/\+?[0-9][0-9 ]{7,}/); return mm ? '<br><a href="tel:' + tel(mm[0]) + '" style="color:var(--rt);font-weight:800">📞 ' + h(mm[0].trim()) + '</a>' : ''; };
     out += '<div class="karte"><h2>Fahrzeug</h2><dl>' + rows.map(function (x) {
       var w = wert(x[0]); var extra = (x[0] === 'versicherung' || x[0] === 'schutzbrief') && w ? tf(w) : '';
@@ -217,12 +236,13 @@ dd.fehlt{color:var(--muted);font-weight:500;font-style:italic}
     if (rz) out += '<p style="margin:0 0 6px"><b>Jetzt unterwegs:</b> ' + h(rz.fahrer) + (rz.mit && rz.mit.length ? ' mit ' + rz.mit.map(h).join(', ') : '') + (rz.gaeste ? ' und ' + rz.gaeste + ' Gast' + (rz.gaeste > 1 ? 'e' : '') : '') + (rz.ziel ? ', Ziel ' + h(rz.ziel) : '') + '</p>';
     out += personen.length ? personen.map(function (p) {
       var t = tel(p.tel);
-      return '<div class="pers"><div class="n"><b>' + h(p.name) + '</b><small>' + (p.tel ? h(p.tel) : 'keine Nummer erfasst') + '</small>' + (p.medizin ? '<small style="color:var(--rt);font-weight:700">⚕ ' + h(p.medizin) + '</small>' : '') + '</div>' + (t ? '<a class="anruf" href="tel:' + t + '">Anrufen</a><a href="sms:' + t + '" data-sms="1">SMS</a>' : '') + '</div>';
+      if (!t) return '<div class="pers"><div class="n"><b>' + h(p.name) + '</b><small>keine Nummer erfasst</small></div></div>';
+      return '<div class="pers2"><a class="anruf2" href="tel:' + t + '"><span><b>' + h(p.name) + '</b><small>' + h(p.tel) + '</small></span><span class="pk">Anrufen</span></a><a class="sms2" href="sms:' + t + '">SMS</a></div>' + (p.medizin ? '<p class="med">⚕ ' + h(p.name) + ': ' + h(p.medizin) + '</p>' : '');
     }).join('') : '<p class="info" style="margin:0">Keine Personen auf diesem Handy gespeichert.</p>';
     out += '</div>';
 
     var st = A && A.stand ? new Date(A.stand) : null;
-    out += '<p class="info" style="text-align:center">' + (st && !isNaN(st) ? 'Daten gespeichert am ' + st.toLocaleDateString('de-CH') + ' um ' + st.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }) + '. Wird bei jedem Öffnen der Womo-App aufgefrischt.' : '') + '<br>Notrufnummern Stand 13.11.2026. Vor der Reise prüfen.</p>';
+    out += '<p class="info" style="text-align:center">' + (st && !isNaN(st) ? 'Daten gespeichert am ' + st.toLocaleDateString('de-CH') + ' um ' + st.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }) + '. Wird bei jedem Öffnen der Womo-App erneuert.' : '') + '<br>Notrufnummern Stand 13.11.2026. Vor der Reise prüfen.</p>';
     m.innerHTML = out;
     bind();
   }

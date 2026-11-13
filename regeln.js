@@ -836,12 +836,11 @@ export const NOTFALL_FELDER = [
   ['breite', 'Breite in Metern', 'z. B. 2.05'],
   ['laenge', 'Länge in Metern', 'z. B. 5.99'],
   ['gewicht', 'Gesamtgewicht in kg', 'zulässiges Gesamtgewicht laut Fahrzeugausweis'],
-  ['reifen', 'Reifendruck in bar', 'vorne und hinten'],
   ['treibstoff', 'Treibstoff und AdBlue', 'z. B. Diesel, AdBlue ja'],
-  ['gas', 'Gas', 'Flaschentyp und Ort der Flasche'],
   ['versicherung', 'Versicherung', 'Gesellschaft und Telefon (Haftpflicht, Kasko)'],
   ['police', 'Policennummer', ''],
-  ['schutzbrief', 'Schutzbrief / Pannenhilfe', 'Name und Telefon, auch fürs Ausland'],
+  ['schutzbrief', 'Schutzbrief', 'z. B. ETI-Schutzbrief'],
+  ['tcs', 'TCS-Mitgliedsnummer', ''],
   ['hinweis', 'Wichtig für Helfer', 'z. B. Aufstelldach, Gasflasche im Bodenfach'],
 ];
 export const NOTFALL_DOKUMENTE = [['ausweis', 'Fahrzeugausweis'], ['vnachweis', 'Versicherungsnachweis']];   // Foto, lesbar, ohne Netz
