@@ -4,8 +4,8 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113i';
-import * as S from './speicher.js?v=20261113i';
+} from './regeln.js?v=20261113j';
+import * as S from './speicher.js?v=20261113j';
 
 const app = document.getElementById('app');
 const toast = document.getElementById('toast');
@@ -143,7 +143,7 @@ function anmeldung() {
 const ICON = {
   kalender: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   fahrten: '<rect x="5" y="4" width="14" height="17" rx="3"/><path d="M9 4v2h6V4M9 13l2 2 4-4"/>',
-  kosten: '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.500 0-2.500.8-2.500 2s1 1.700 2.500 2 2.500.8 2.500 2-1 2-2.500 2c-1 0-2-.5-2.500-1.500M12 6v2M12 16v2"/>',
+  kosten: '<circle cx="12" cy="12" r="9.500"/><text x="12" y="14.800" text-anchor="middle" font-size="7.200" font-weight="800" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="currentColor" stroke="none">CHF</text>',
   termine: '<path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/>',
   unterwegs: '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>',
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
@@ -278,7 +278,7 @@ const VERTRAG_REGELN = [
   ['Bussen (Ziffer 12 b und e)', ['Bussen und Strafen trägt der/die fahrende Eigentümer/in.', 'Parkbussen und Radarbussen, bei denen der Halter belangt wird, zahlt der Vater zuerst. Der Fahrer ersetzt sie innert 30 Tagen (der Fahrer ergibt sich aus der Reservierung in der App).']],
   ['Entscheide und Patt (Ziffer 13)', ['Alltagsentscheide brauchen die qualifizierte Mehrheit: alle Stimmen ausser einer, bei vier Eigentümer/innen also 3 zu 1. Bei Gleichstand ist das Geschäft abgelehnt.', 'Pflichtmassnahmen (MFK, Haftpflichtversicherung, sicherheitsrelevante Reparaturen) gelten mit dem Vertrag als beschlossen. Bei Gleichstand über eine Reservierung entscheidet das Los. Bei anderem Gleichstand bleibt die bisherige Regelung, nach 2 Wochen folgt die Mediation.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien, Slowakei, Bulgarien, Irland, Grossbritannien, Zypern, Malta.', 'Verboten: andere Kontinente, Serbien, Türkei, Rumänien und ex-russische Staaten ausser dem Baltikum. Streng verboten: Russland, Ukraine, Weissrussland und Moldau.', 'Auf Autobahnraststätten wird aus Sicherheitsgründen nicht übernachtet. Mögliche Plätze zeigt «Unterwegs».', 'Winter: Im Winter wird nur Richtung Süden mit sehr tiefer Schneewahrscheinlichkeit gefahren. Das Fahrzeug hat weder Allrad noch ist es speziell winterfest.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
-  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.', 'Bei jeder Übernahme und Rückgabe wird die Checkliste in der App (Fahrten) ausgefüllt.', 'Gibt jemand das Fahrzeug nicht voll zurück, trägt er/sie Tankstand und Grund in die Checkliste ein. Die App warnt alle. Voll tankt, wer das Fahrzeug als Nächster benützt. Die Person, die nicht voll zurückgab, bezahlt den Treibstoff gegen Tankbeleg und einen Zuschlag. Bei Wiederholung berät der Familienrat.']],
+  ['Sauberkeit und Übernahme (Ziffer 10)', ['Das Fahrzeug soll immer sauber übernommen werden können. Wer es zuvor gefahren hat, reinigt es und gibt es sauber zurück.', 'Das Fahrzeug wird IMMER mit vollem Tank zurückgegeben. Wer es zuletzt gefahren hat, tankt es vor der Rückgabe voll und trägt den Tankstand in die Checkliste ein.', 'Bei jeder Übernahme und Rückgabe wird die Checkliste in der App (Fahrten) ausgefüllt.', 'Gibt jemand das Fahrzeug nicht voll zurück, trägt er/sie Tankstand und Grund in die Checkliste ein. Die App warnt alle. Voll tankt, wer das Fahrzeug als Nächster benützt. Die Person, die nicht voll zurückgab, bezahlt den Treibstoff gegen Tankbeleg und zusätzlich einen Zuschlag von CHF 10. Bei Wiederholung berät der Familienrat.']],
   ['Übernahme-Checkliste (Fahrten)', ['Bei jeder Übernahme und Rückgabe in Chur ausfüllen. Jeder Eintrag mit Ja oder Nein, Mängel in der Bemerkung.', 'Tankstand: bei der Rückgabe immer voll.', 'Weitere Punkte: Kilometerstand, Innenraum und Aussen sauber, Kühlschrank geleert und geputzt, Frischwasser- und Abwassertank geleert, Gasflasche und Gasanlage, Toilette geleert, Wohnraumbatterie, Aufstelldach, Markise, Veloträger und Anhängerkupplung, Reifen, Unterlagen, Zubehör, neue Schäden.']],
 ];
 function vertrag() {
