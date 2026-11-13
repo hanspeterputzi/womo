@@ -7,8 +7,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114b';
-import * as S from './speicher.js?v=20261114b';
+} from './regeln.js?v=20261114c';
+import * as S from './speicher.js?v=20261114c';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -285,7 +285,7 @@ function unterwegs() {
   };
   app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
-  ${notfallKarte()}${orteKarte()}
+  ${orteKarte()}
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
       const kopfLink = `<a class="u-ortlink u-kopf" href="${such(t)}" target="_blank" rel="noopener">${kopf}<span class="u-pfeil" aria-hidden="true">›</span></a>`;
@@ -300,7 +300,8 @@ function unterwegs() {
       <div class="u-gt">Campingplätze und Verbände</div><div class="u-chips">${(LAND_LINKS[l] || []).map(chip).join('')}</div>
       <div class="u-gt">Regeln und Maut</div><div class="u-chips"><a class="u-chip" href="${suchL(l + ' Wohnmobil übernachten Regeln')}" target="_blank" rel="noopener">Regeln suchen</a><a class="u-chip" href="${suchL(l + ' Maut Wohnmobil')}" target="_blank" rel="noopener">Maut suchen</a></div></details>`).join('')}
     <p class="info">Stand 08.11.2026 (Slowakei, Bulgarien, Zypern, Malta: 11.11.2026). Quellen: Reiseportale, Automobilclubs und Berichte, keine amtlichen Stellen. Die Angaben ändern sich und widersprechen sich teils. Rot = Wildcampen oder Freistehen verboten. Vor der Reise prüfen. Der Vertrag (Ziffer 9) bestimmt, wohin wir dürfen.</p></div>
-  <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>`);
+  <p class="info" style="text-align:center;margin:4px 20px 0">Angebote, Preise und Regeln ändern sich. Vor der Reise prüfen. Die Liste ist eine Auswahl, keine Zusicherung.</p>
+  <button class="gross-btn" id="nf_edit" style="width:100%;margin-top:14px;min-height:46px;font-size:14px">SOS-Karte: Angaben ändern</button>`);
   bindRahmen(); bindNotfallOrte();
 }
 const VERTRAG_REGELN = [
@@ -1502,18 +1503,6 @@ function notfallMerken() {
       auszugLetzter = s;
     } catch {}
   }, 1500);
-}
-function notfallKarte() {
-  const f = notfallFehlt(D);
-  const meineTel = Object.values(D.notfall).some((x) => x.art === 'person' && x.personId === ich && (x.tel || '').trim());
-  const fehlt = f.fehlt.length + f.ohneTel.length;
-  const offen = !meineTel ? '<p class="info" style="margin:8px 0 0;color:var(--rot-t);font-weight:700">Deine Telefonnummer fehlt noch. Ohne sie kann dich niemand aus der Karte anrufen.</p>' : '';
-  return `<div class="karte not-karte"><p class="titel">Notfallkarte</p>
-    <p style="margin:0 0 4px;font-weight:700">Panne, Unfall, Gasgeruch? Ein Tipp auf <span class="sos klein">SOS</span> oben rechts.</p>
-    <p class="info" style="margin:0">Die Karte öffnet sich <strong>auch ohne Netz</strong>. Sie zeigt: Notrufnummern, deinen Standort, was bei Unfall, Panne, Gas und Feuer zu tun ist, die Fahrzeugdaten, die TCS-Nummern und die Familie. Ein Tipp auf einen Namen wählt sofort die Nummer.</p>
-    <div class="not-stand ${fehlt ? 'gelb' : 'ok'}">${fehlt ? `Es fehlen noch ${f.fehlt.length} von ${NOTFALL_FELDER.length + NOTFALL_DOKUMENTE.length} Fahrzeugangaben und ${f.ohneTel.length} von ${Object.keys(D.personen).length} Telefonnummern.` : 'Alles erfasst.'}</div>${offen}
-    <div class="t-akt2"><button class="gross-btn pri" id="nf_edit">Angaben erfassen und ändern</button><a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="notfall.html?v=${VER}">Notfallkarte ansehen</a></div>
-    <p class="info" style="margin:8px 0 0">Die Daten kommen bei jedem Öffnen der App auf dein Handy. Neues Handy: die App einmal mit Netz öffnen.</p></div>`;
 }
 function notfallForm() {
   const nf = D.notfall, fzE = (k) => nf['fz_' + k], pE = nf['p_' + ich] || {};
