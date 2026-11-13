@@ -3,9 +3,9 @@ import {
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
-  achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113p';
-import * as S from './speicher.js?v=20261113p';
+  achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
+} from './regeln.js?v=20261113q';
+import * as S from './speicher.js?v=20261113q';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
 try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
@@ -56,7 +56,7 @@ const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1
 const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort');
 // Tausch von Nutzungstagen (Vertrag Ziffer 7 a): Eintraege mit art 'Tausch' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
 const tauschListe = () => Object.values(D.termine).filter((x) => x.art === 'Tausch');
 const tauschMap = () => Object.fromEntries(tauschListe().map((x) => [x.id, x]));
@@ -140,7 +140,7 @@ function anmeldung() {
       <div class="van-wrap"><img class="van" src="possl.png?v=${VER}" alt="" width="760" height="417" decoding="async"><div class="licht"></div></div>
     </div>
     <div class="start-karte">
-      <h1>Womo</h1><p class="sub">Unser Wohnmobil</p>
+      <h1 class="wortmarke-h"><span class="wortmarke" role="img" aria-label="Roadcamp" style="-webkit-mask-image:url(roadcamp.png?v=${VER});mask-image:url(roadcamp.png?v=${VER})"></span></h1><p class="sub">Unser Wohnmobil</p>
       <label for="p">Wer bist du?</label>
       <select id="p">${personenGeordnet().map(([i, p]) => `<option value="${i}"${i === zuletzt ? ' selected' : ''}>${h(p.name)}</option>`).join('')}</select>
       <label for="pin">Passwort</label><input id="pin" maxlength="40" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" type="password">
@@ -298,7 +298,7 @@ const VERTRAG_REGELN = [
   ['Nutzungszeit (Ziffer 7 a)', ['Jede/r Eigentümer/in hat ein Viertel der Nutzungszeit pro Kalenderjahr: Tochter und Sohn je 92 Tage, Vater und Mutter zusammen die übrigen Tage, höchstens 181 Tage.', 'Gezählt wird in Tagen pro Kalenderjahr. Jeder angebrochene Tag zählt voll, Abreise- und Rückkehrtag beide.', 'Wer im Fahrzeug sitzt, zählt, auch wer nur mitreist. Sitzen Vater oder Mutter mit Tochter oder Sohn im Fahrzeug, zählen die Tage nur für Vater und Mutter.', 'Reisen Tochter und Sohn zusammen ohne Vater und Mutter, werden die Tage je zur Hälfte auf beide verteilt. Bei einer ungeraden Zahl trägt jedes Kind einen halben Tag mehr (7 Tage: je 3.5 Tage).', 'Ungenutzte Tage verfallen am Jahresende, kein Übertrag.', 'Nutzungstage dürfen innerhalb des Kalenderjahres abgetreten werden, in der App nur von den Eltern an beide Kinder zugleich: Nanouk und Nene bekommen je gleich viele Tage dazu, die Konten von HP und Nora sinken je um dieselbe Zahl. Die Höchstgrenze von 181 Tagen für Vater und Mutter bleibt. Die App erfasst das im Kalender unter «Nutzungstage abtreten».', 'Im Dezember werden die Ferienwochen des Folgejahres besprochen. Wochenenden können kurzfristig über die App reserviert werden.', 'Kollisionen werden im gemeinsamen Gespräch gelöst, mit Rücksicht auf berufliche Bindungen wie Schulferien. Bei Gleichstand über eine Reservierung entscheidet das Los.', 'Übernahme und Rückgabe immer zu Hause in Chur.']],
   ['Verbot (Ziffer 7 b)', ['Das Fahrzeug wird nicht verliehen oder vermietet.', 'Wer gegen das Verleih-, Rauch- oder Tierverbot verstösst, zahlt Reinigung und Schaden voll (Ziffer 12 g).']],
   ['Alltagsfahrten der Eltern (Ziffer 7 c)', ['Vater und Mutter dürfen das Fahrzeug auch privat im Alltag nutzen. Alltagsfahrten müssen nicht reserviert werden.', 'Vater und Mutter nutzen das Fahrzeug erst dann für Alltagsfahrten, wenn sie den Skoda nicht mehr einlösen.', 'Jeder Tag mit mindestens einer Alltagsfahrt zählt als ein Tag im gemeinsamen Konto von Vater und Mutter. Mehrere Fahrten am selben Tag zählen einen Tag.', 'Reisetage und Alltagstage zusammen betragen für Vater und Mutter höchstens 181 Tage pro Kalenderjahr.', 'Datum und gefahrene Kilometer jeder Alltagsfahrt werden in der App eingetragen.', 'Reisen gehen Alltagsfahrten immer vor, Reisen der Eltern wie der Kinder. An reservierten Tagen gibt es keine Alltagsfahrt.']],
-  ['Wer fährt (Ziffer 8)', ['Wer fährt, trinkt nicht. Alkoholisiertes Fahren mit dem Fahrzeug ist verboten. Die Folgen trägt der/die Fahrende.', 'Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.', 'Wer Mitreisende mitnimmt, informiert sie über Rauch- und Tierverbot und trägt Schäden am Fahrzeug, die sie verursachen (Ziffer 12 f).']],
+  ['Wer fährt (Ziffer 8)', ['Wer fährt, trinkt nicht. Alkoholisiertes Fahren mit dem Fahrzeug ist verboten. Die Folgen trägt der/die Fahrende.', 'Grundsätzlich fahren nur die Eigentümer/innen. Partner, Freunde und Enkel reisen mit, fahren aber nicht. Insgesamt reisen höchstens 4 Personen.', 'Der Familienrat (alle vier Eigentümer/innen) kann vor der Reise im Einzelfall eine Person zum Fahren freigeben, wenn Versicherung, Führerausweis, Fahrerfahrung und Haftung geklärt sind. In der App: Tab «Fahrten», Abschnitt «Fahrerfreigabe». Es braucht 3 von 4 Stimmen, Schweigen gilt nicht als Ja.', 'Bei jeder Fahrt reist mindestens ein/e Eigentümer/in mit, auch bei freigegebenen Fahrern.', 'Wer Mitreisende mitnimmt, informiert sie über Rauch- und Tierverbot und trägt Schäden am Fahrzeug, die sie verursachen (Ziffer 12 f).']],
   ['Bussen (Ziffer 12 b und e)', ['Bussen und Strafen trägt der/die fahrende Eigentümer/in.', 'Parkbussen und Radarbussen, bei denen der Halter belangt wird, zahlt der Vater zuerst. Der Fahrer ersetzt sie innert 30 Tagen (der Fahrer ergibt sich aus der Reservierung in der App).']],
   ['Entscheide und Patt (Ziffer 13)', ['Alltagsentscheide brauchen die qualifizierte Mehrheit: alle Stimmen ausser einer, bei vier Eigentümer/innen also 3 zu 1. Bei Gleichstand ist das Geschäft abgelehnt.', 'Pflichtmassnahmen (MFK, Haftpflichtversicherung, sicherheitsrelevante Reparaturen) gelten mit dem Vertrag als beschlossen. Bei Gleichstand über eine Reservierung entscheidet das Los. Bei anderem Gleichstand bleibt die bisherige Regelung, nach 2 Wochen folgt die Mediation.']],
   ['Reiseregeln (Ziffer 9)', ['Erlaubt: Schweiz, Westeuropa, Nordeuropa, Tschechien, Polen, Baltikum, Ungarn, Slowenien bis Griechenland mit Kroatien, Bosnien-Herzegowina, Montenegro, Albanien, Nordmazedonien, Slowakei, Bulgarien, Irland, Grossbritannien, Zypern, Malta.', 'Verboten: andere Kontinente, Serbien, Türkei, Rumänien und ex-russische Staaten ausser dem Baltikum. Streng verboten: Russland, Ukraine, Weissrussland und Moldau.', 'Auf Autobahnraststätten wird aus Sicherheitsgründen nicht übernachtet. Mögliche Plätze zeigt «Unterwegs».', 'Winter: Im Winter wird nur Richtung Süden mit sehr tiefer Schneewahrscheinlichkeit gefahren. Das Fahrzeug hat weder Allrad noch ist es speziell winterfest.', 'Rauchen und Tiere im Fahrzeug sind verboten.']],
@@ -380,6 +380,8 @@ function hinweiseHtml() {
     const u = terminStufe(x, t) === 'ueberfaellig';
     out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
   });
+  // Fahrerfreigabe: was auf dich wartet
+  fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="fahrten" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
   // Wunschliste: was auf dich wartet (ein Tipp öffnet den Tab)
   wunschListe().forEach((w) => {
     const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
@@ -567,7 +569,6 @@ function fahrten() {
   };
   const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}${neuPille(b)}${neuPille(f.ab)}${neuPille(f.rk)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
   app.innerHTML = rahmen(`${seitenkopf('Fahrten', elternIch ? 'aneu' : null, '＋ Alltagsfahrt')}
-  <div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Wer fährt, trinkt nicht: Fahren unter Alkohol ist verboten</strong></div></div>
   <div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>')}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
@@ -575,11 +576,13 @@ function fahrten() {
     <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
     <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
   ${alltagSek(J)}
+  ${freigabeSek()}
   ${vorbei.length ? `<details class="sek"><summary><span>Vergangene Reisen</span><b>${vorbei.length}</b></summary><div class="sek-in">${vorbei.map(zeile).join('')}</div></details>` : ''}
   <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste.</p>`);
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
+  bindFreigabe();
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
   app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
@@ -590,6 +593,81 @@ function fahrten() {
     document.getElementById('f_ab').onclick = () => uebergabeForm(b.id, 'ab');
     document.getElementById('f_rk').onclick = () => uebergabeForm(b.id, 'rueck');
   });
+}
+
+// Fahrerfreigabe fuer eine Drittperson (Vertrag Ziffer 8 und 13). Vorschlag und Antworten liegen in 'termine' (keine neue Datenbankregel noetig).
+const fahrFreigaben = () => Object.values(D.termine).filter((x) => x.art === 'Fahrfreigabe');
+const fahrAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FahrAntwort');
+const fahrStandVon = (f) => fahrfreigabeStand(f, fahrAntworten(), idsGeordnet(), heute());
+const fahrKlasse = (st) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', vorbei: 'blau' })[st];
+function freigabeSek() {
+  const L = fahrFreigaben().map((f) => ({ f, s: fahrStandVon(f) })).sort((a, b) => (a.f.von < b.f.von ? 1 : a.f.von > b.f.von ? -1 : 0));
+  const dein = (e) => e.s.status === 'offen' && e.f.erfasstVon !== ich && !e.s.antworten[ich];
+  const wartet = L.filter(dein).length, aktiv = L.filter((e) => e.s.status !== 'vorbei').length;
+  const zeile = (e) => { const { f, s } = e, k = fahrKlasse(s.status);
+    return `<button class="t-z ${k}" data-ff="${h(f.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${h(f.person)}${dein(e) ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${fmt(f.von).slice(0, 6)} bis ${fmt(f.bis).slice(0, 6)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}</small></span><span class="t-pl ${k}">${FAHRFREIGABE_STATUS[s.status]}</span></button>`; };
+  return `<details class="sek"${wartet ? ' open' : ''}><summary><span>Fahrerfreigabe (Drittperson)</span><b>${wartet ? wartet + ' offen für dich' : aktiv ? aktiv : 'keine'}</b></summary><div class="sek-in">
+    <p class="info" style="margin:0 0 8px">Es fahren nur die Eigentümer/innen (Ziffer 8). Soll im Einzelfall eine andere Person fahren, schlägt ein/e Eigentümer/in sie vor der Reise hier vor. Die anderen antworten mit Ja oder Nein. Nötig sind 3 von 4 Stimmen, Schweigen gilt nicht als Ja. Die Freigabe gilt nur für diese Reise. Ein/e Eigentümer/in reist immer mit. Wer die Person fahren lässt, trägt im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.</p>
+    ${L.length ? L.map(zeile).join('') : '<p class="leer-t" style="margin:6px 0">Keine Freigaben.</p>'}
+    <button class="btn" id="ffneu" style="margin-top:10px">＋ Freigabe vorschlagen</button></div></details>`;
+}
+function bindFreigabe() {
+  const n = document.getElementById('ffneu'); if (n) n.onclick = freigabeForm;
+  app.querySelectorAll('[data-ff]').forEach((b) => b.onclick = () => freigabeDetail(b.dataset.ff));
+}
+function freigabeForm() {
+  const ids = idsGeordnet(), chk = (id, text) => `<span class="chk ja"><input type="checkbox" id="${id}"><label for="${id}">${text}</label></span>`;
+  sheet(`<h3>Fahrerfreigabe vorschlagen</h3>
+  <p class="info" style="margin:0 0 4px">Vor der Reise. Die anderen antworten, es braucht 3 von 4 Stimmen. Schweigen gilt nicht als Ja.</p>
+  <label for="ff_p">Wer soll fahren? (Name)</label><input id="ff_p" maxlength="60" autocomplete="off">
+  <label for="ff_b">Wer ist die Person?</label><input id="ff_b" maxlength="60" placeholder="z. B. Partner von Nanouk" autocomplete="off">
+  <label for="ff_g">Grund</label><input id="ff_g" maxlength="150" placeholder="Warum soll diese Person fahren?" autocomplete="off">
+  <div class="zwei"><div><label for="ff_v">Reise von</label><input type="date" id="ff_v" value="${heute()}"></div><div><label for="ff_t">bis</label><input type="date" id="ff_t" value="${heute()}"></div></div>
+  <label for="ff_m">Welche/r Eigentümer/in reist im Fahrzeug mit?</label><select id="ff_m"><option value="">Bitte wählen</option>${ids.map((i) => `<option value="${i}">${h(D.personen[i].name)}</option>`).join('')}</select>
+  <label>Das ist geklärt (zum Bestätigen antippen)</label>
+  <div class="mitw ff-chk">${chk('ff_a', 'Der Führerausweis ist geprüft.')}${chk('ff_e', 'Die Fahrerfahrung ist geklärt.')}${chk('ff_s', 'Der Versicherungsschutz ist geklärt.')}${chk('ff_h', 'Ich trage im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.')}</div>
+  <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const f = { art: 'Fahrfreigabe', person: val('ff_p').trim(), bez: val('ff_b').trim(), grund: val('ff_g').trim(), von: val('ff_v'), bis: val('ff_t'), mitEig: val('ff_m'),
+      ausweis: document.getElementById('ff_a').checked, erfahrung: document.getElementById('ff_e').checked, versicherung: document.getElementById('ff_s').checked, haftung: document.getElementById('ff_h').checked,
+      datum: heute(), erfasstVon: ich };
+    const p = pruefeFahrfreigabe(f, heute(), idsGeordnet());
+    if (!p.ok) { fehler(p.fehler); return; }
+    f.titel = ('Fahrfreigabe ' + f.person).slice(0, 80); f.faelligAm = f.von;
+    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fahrten(); hinweis('Vorschlag gespeichert. Die anderen müssen jetzt antworten.'); freigabeDetail(id); });
+  };
+}
+function freigabeDetail(id) {
+  const f = D.termine[id]; if (!f) return;
+  const s = fahrStandVon(f), ids = idsGeordnet(), mein = f.erfasstVon === ich, k = fahrKlasse(s.status);
+  const chip = (i) => { if (i === f.erfasstVon) return '<span class="chipk ok">Vorschlag</span>'; const a = s.antworten[i]; return a ? (a.stimme === 'ja' ? '<span class="chipk ok">Ja</span>' : '<span class="chipk rot">Nein</span>') : '<span class="chipk gelb">noch offen</span>'; };
+  const zeilen = ids.map((i) => { const a = s.antworten[i]; return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${a && a.stimme === 'nein' && a.grund ? `<div class="meta">Grund: ${h(a.grund)}</div>` : ''}</div><div class="r">${chip(i)}</div></div>`; }).join('');
+  const nein = s.nein.length;
+  const stand = s.status === 'offen' ? `Noch nicht entschieden: ${s.ja} Ja, ${nein} Nein, ${s.ohneAntwort.length} offen. Nötig sind ${ids.length - 1} Ja.`
+    : s.status === 'freigegeben' ? `Freigegeben für die Reise vom ${fmt(f.von)} bis ${fmt(f.bis)}: ${s.ja} Ja, ${nein} Nein.`
+    : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja, ${nein} Nein. ${h(f.person)} darf nicht fahren.`
+    : `Die Reise ist vorbei. Die Freigabe gilt nicht mehr.`;
+  const mitName = D.personen[f.mitEig]?.name || '?';
+  const meinAntwort = s.status === 'offen' && !mein;
+  const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Fahrten) mit Ja oder Nein antworten.`;
+  sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
+    <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
+    <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Geklärt:</strong> Führerausweis, Fahrerfahrung, Versicherungsschutz. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
+    <div class="zeilen">${zeilen}</div>
+    ${meinAntwort ? '<label for="ff_grund">Nur bei Nein: Grund</label><input id="ff_grund" maxlength="200" placeholder="Warum nicht?">' : ''}
+    <div id="msg"></div>
+    <div class="t-akt2">${meinAntwort ? `<button class="gross-btn pri" id="ff_ja">${s.antworten[ich] ? 'Antwort ändern: Ja' : 'Ja, einverstanden'}</button><button class="gross-btn rot" id="ff_nein">${s.antworten[ich] ? 'Antwort ändern: Nein' : 'Nein'}</button>` : ''}
+      ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
+      <button class="gross-btn" id="abb">Schliessen</button>${mein && s.status !== 'freigegeben' ? '<button class="gross-btn rot" id="ff_del">Vorschlag löschen</button>' : ''}</div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const antw = (stimme, grund) => sicher(async () => { await S.speichern(D, 'termine', `fa_${f.id}_${ich}`, { art: 'FahrAntwort', titel: 'Antwort Fahrfreigabe', faelligAm: heute(), freigabeId: f.id, personId: ich, stimme, grund: grund || '', erfasstVon: ich }); schliessen(); fahrten(); hinweis(stimme === 'ja' ? 'Danke, du hast Ja gesagt.' : 'Danke, dein Nein ist gespeichert.'); });
+  if (meinAntwort) {
+    document.getElementById('ff_ja').onclick = () => antw('ja');
+    document.getElementById('ff_nein').onclick = () => { const g = val('ff_grund').trim(); if (!g) { fehler('Bei Nein bitte einen Grund angeben.'); return; } antw('nein', g); };
+  }
+  const del = document.getElementById('ff_del');
+  if (del) del.onclick = async () => { if (confirm('Vorschlag löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of fahrAntworten().filter((x) => x.freigabeId === f.id)) await S.loeschen(D, 'termine', a.id); await S.loeschen(D, 'termine', f.id); schliessen(); fahrten(); }); };
 }
 
 // Abtretung von Nutzungstagen: Eltern treten ungenutzte Tage an beide Kinder zugleich ab (Vertrag Ziffer 7 a).

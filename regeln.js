@@ -708,3 +708,49 @@ export function neuZaehlen(d, seit, ich) {
   z.wunschliste = wunschIds.size;
   return { gesamt: z.kalender + z.termine + z.fahrten + z.kosten + z.wunschliste, nach: z, wunschIds };
 }
+
+// =====================================================================
+// Fahrerfreigabe fuer eine Drittperson (Vertrag Ziffer 8 und 13).
+// Ein/e Eigentuemer/in schlaegt eine bestimmte Person fuer eine bestimmte Reise vor. Entscheid mit der qualifizierten
+// Mehrheit: alle Stimmen ausser einer (bei vier Eigentuemern 3 zu 1), Gleichstand = abgelehnt. Anders als bei der Wunschliste
+// gilt Schweigen NICHT als Ja: wer nicht antwortet, hat nicht zugestimmt. Die Freigabe gilt nur fuer die genannte Reise.
+// Liegt in der Sammlung 'termine' (art 'Fahrfreigabe' und 'FahrAntwort'), damit keine neue Datenbankregel noetig ist.
+// =====================================================================
+export const FAHRFREIGABE_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', abgelehnt: 'Abgelehnt', vorbei: 'Reise vorbei' };
+
+export function pruefeFahrfreigabe(f, heute, ids) {
+  const e = [];
+  if (!(f.person || '').trim()) e.push('Bitte den Namen der Person angeben, die fahren soll.');
+  if (!(f.bez || '').trim()) e.push('Bitte angeben, wer die Person ist (z. B. Partner von Nanouk).');
+  if (!(f.grund || '').trim()) e.push('Bitte den Grund angeben (der Familienrat gibt nur in begründeten Fällen frei).');
+  if (!datumGueltig(f.von) || !datumGueltig(f.bis)) e.push('Bitte Beginn und Ende der Reise angeben.');
+  else {
+    if (f.bis < f.von) e.push('Das Ende liegt vor dem Beginn.');
+    if (f.bis < heute) e.push('Die Reise ist schon vorbei. Die Freigabe muss vor der Reise erfolgen.');
+    else if (f.von < heute) e.push('Die Reise hat schon begonnen. Die Freigabe muss vor der Reise erfolgen.');
+  }
+  if (!f.ausweis) e.push('Bitte bestätigen: Der Führerausweis wurde geprüft.');
+  if (!f.erfahrung) e.push('Bitte bestätigen: Die Fahrerfahrung ist geklärt.');
+  if (!f.versicherung) e.push('Bitte bestätigen: Der Versicherungsschutz ist geklärt.');
+  if (!f.haftung) e.push('Bitte bestätigen: Du trägst im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.');
+  if (!f.mitEig || !(ids || []).includes(f.mitEig)) e.push('Bitte wählen, welche Eigentümerin oder welcher Eigentümer im Fahrzeug mitreist.');
+  return { ok: e.length === 0, fehler: e };
+}
+
+// aktionen: Eintraege mit art 'FahrAntwort' (freigabeId, personId, stimme). Vorschlagende/r zaehlt als Ja.
+export function fahrfreigabeStand(f, aktionen, ids, heute) {
+  const antworten = {};
+  for (const a of aktionen || []) if (a.art === 'FahrAntwort' && a.freigabeId === f.id && ids.includes(a.personId) && a.personId !== f.erfasstVon && ['ja', 'nein'].includes(a.stimme)) antworten[a.personId] = a;
+  const andere = ids.filter((i) => i !== f.erfasstVon);
+  const ohneAntwort = andere.filter((i) => !antworten[i]);
+  const nein = andere.filter((i) => antworten[i] && antworten[i].stimme === 'nein');
+  const jaVon = andere.filter((i) => antworten[i] && antworten[i].stimme === 'ja');
+  const ja = 1 + jaVon.length;
+  const n = ids.length;
+  let status;
+  if (ja >= n - 1 && ja > nein.length) status = 'freigegeben';
+  else if (n - nein.length < n - 1 || ohneAntwort.length === 0) status = 'abgelehnt';
+  else status = 'offen';
+  if (f.bis < heute) status = status === 'freigegeben' ? 'vorbei' : status;
+  return { antworten, ohneAntwort, nein, jaVon, ja, status };
+}

@@ -46,6 +46,7 @@
 .licht{position:absolute;left:88%;top:60%;width:62%;height:28%;transform:translateY(-50%);background:radial-gradient(ellipse at 0% 50%,rgba(255,236,170,.46),rgba(255,236,170,0) 66%);opacity:0;pointer-events:none}
 .start-karte{position:relative;z-index:6;width:min(100% - 32px,440px);margin:-2px auto 0;background:var(--card);border-radius:26px;box-shadow:0 18px 50px rgba(15,23,42,.18),0 2px 6px rgba(15,23,42,.08);padding:24px 22px 20px}
 .start-karte h1{margin:0;font-size:36px;line-height:1.05;font-weight:800;letter-spacing:-.5px}
+.start-karte .wortmarke{display:block;width:min(100%,300px);aspect-ratio:1003/99;background:var(--fg);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:left center;mask-position:left center;-webkit-mask-size:contain;mask-size:contain}
 .start-karte .sub{margin:6px 0 4px;color:var(--muted);font-size:15px}
 .start-karte label{display:block;margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--muted)}
 .start-karte select,.start-karte input{width:100%;font:inherit;font-size:17px;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--soft);color:var(--fg)}
@@ -70,3 +71,5 @@
 @keyframes funkeln{from{opacity:calc(var(--stern)*.55)}to{opacity:var(--stern)}}
 @media(prefers-reduced-motion:reduce){.start .van-wrap{opacity:1}.start.los .van-wrap,.start.los .van,.start.los .strasse i,.start.los .licht,.start.los .start-karte,.start.los .wolke,.start.los .sterne{animation:none!important}.start .licht{opacity:var(--licht)}}
 
+
+.ff-chk{flex-direction:column;align-items:stretch;gap:8px}.ff-chk .chk label{display:flex;align-items:center;border-radius:14px;line-height:1.3;text-align:left;width:100%}.ff-chk .chk input:checked+label::before{content:'✓ ';margin-right:6px;font-weight:800}
