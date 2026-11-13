@@ -4,9 +4,11 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   achtJahrePlan, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261113l';
-import * as S from './speicher.js?v=20261113l';
+} from './regeln.js?v=20261113m';
+import * as S from './speicher.js?v=20261113m';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
+// Das Bild der Startseite wird sofort im Hintergrund geladen, waehrend die Daten noch kommen.
+try { const vor = new Image(); vor.src = 'possl.png?v=' + VER; } catch {}
 // Stile kommen aus stil.css mit der aktuellen Version. So passt das Aussehen immer zu diesem Programm, auch wenn index.html noch im Zwischenspeicher liegt.
 await new Promise((ok) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = 'stil.css?v=' + VER; l.onload = l.onerror = () => ok(); document.head.appendChild(l); setTimeout(ok, 2500); });
 
@@ -135,7 +137,7 @@ function anmeldung() {
       <div class="wolke w1"></div><div class="wolke w2"></div><div class="wolke w3"></div>
       <svg class="hügel" viewBox="0 0 400 160" preserveAspectRatio="none"><path class="h1" d="M0 86C60 34 124 38 192 74S322 118 400 56V160H0Z"/><path class="h2" d="M0 118C70 78 142 94 212 108S342 78 400 102V160H0Z"/><path class="h3" d="M0 140C80 116 160 130 240 138S360 118 400 130V160H0Z"/></svg>
       <div class="strasse"><i></i></div>
-      <div class="van-wrap"><img class="van" src="possl.png?v=${VER}" alt="" width="900" height="494" decoding="async"><div class="licht"></div></div>
+      <div class="van-wrap"><img class="van" src="possl.png?v=${VER}" alt="" width="760" height="417" decoding="async"><div class="licht"></div></div>
     </div>
     <div class="start-karte">
       <h1>Womo</h1><p class="sub">Unser Wohnmobil</p>
