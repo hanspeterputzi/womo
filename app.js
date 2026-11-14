@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114g';
-import * as S from './speicher.js?v=20261114g';
+} from './regeln.js?v=20261114i';
+import * as S from './speicher.js?v=20261114i';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1227,22 +1227,23 @@ function fotoGross(src) {
 }
 
 // Foto im Handy verkleinern (längste Seite höchstens 1000 px, JPEG), damit es in den Wunsch passt (Firestore: 1 MiB pro Eintrag).
-function fotoVerkleinern(file, gross) {
+// klein = Zielgroesse in Zeichen fuer Rundgang-Fotos mit halber Aufloesung (laengste Seite hoechstens 700 px).
+function fotoVerkleinern(file, gross, klein) {
   return new Promise((ok, nein) => {
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => {
       try {
         // gross = Zielgrösse in Zeichen (Fragen: Dokumente müssen lesbar bleiben); sonst Wunsch-Foto (150 KB).
-        const ziel = gross || 150000;
-        let max = gross ? 2600 : 1000, q = gross ? 0.82 : 0.72, out = '';
+        const ziel = klein || gross || 150000;
+        let max = klein ? 700 : gross ? 2600 : 1000, q = klein ? 0.72 : gross ? 0.82 : 0.72, out = '';
         for (let i = 0; i < 16; i++) {
           const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
           const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
           const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
           out = c.toDataURL('image/jpeg', q);
           if (out.length <= ziel) break;
-          if (gross && q > 0.6) q = Math.max(0.6, q - 0.07);          // bei Dokumenten zuerst die Qualität senken, die Auflösung möglichst behalten
-          else { q = Math.max(gross ? 0.5 : 0.4, q - 0.06); max = Math.round(max * 0.9); }
+          if (gross && !klein && q > 0.6) q = Math.max(0.6, q - 0.07);          // bei Dokumenten zuerst die Qualität senken, die Auflösung möglichst behalten
+          else { q = Math.max(gross && !klein ? 0.5 : 0.4, q - 0.06); max = Math.round(max * 0.9); }
         }
         URL.revokeObjectURL(url);
         if (out.length > (gross ? FRAGE_BILD_MAX : WUNSCH_FOTO_MAX)) nein(new Error('Das Foto ist auch verkleinert zu gross.')); else ok(out);
@@ -1523,7 +1524,7 @@ function rundgang(bid, phase) {
     const inp = document.getElementById('rg_in_' + slot); if (!inp) return;
     inp.onchange = async (ev) => {
       const f = ev.target.files && ev.target.files[0]; if (!f) return;
-      try { st.fotos[slot] = await fotoVerkleinern(f, 130000); merken(); if (voll) hinweis('Achtung: Der Speicher im Handy ist voll. Bitte die Übergabe jetzt ohne Pause fertig machen.'); nachher ? nachher() : zeige(); }
+      try { st.fotos[slot] = UE_FOTO_PFLICHT[slot] ? await fotoVerkleinern(f, 0, 60000) : await fotoVerkleinern(f, 130000); /* Pflichtfotos: halbe Aufloesung; Mangel- und Schadenfotos bleiben scharf */ merken(); if (voll) hinweis('Achtung: Der Speicher im Handy ist voll. Bitte die Übergabe jetzt ohne Pause fertig machen.'); nachher ? nachher() : zeige(); }
       catch (x) { fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
     };
   };
