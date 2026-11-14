@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115h';
-import * as S from './speicher.js?v=20261115h';
+} from './regeln.js?v=20261115i';
+import * as S from './speicher.js?v=20261115i';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -408,7 +408,7 @@ function bindRahmen() {
   app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.t; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
 
-// Hinweise oben im Kalender: Zahlungsverzug, faellige Termine
+// Hinweise oben im Kalender: Zahlungsverzug, Tank, Zahlungen (Termine stehen nur unter dem Kalender)
 const fzText = (f) => f.rueckstand ? `überfällig CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}` : f.naechste ? `nächste CHF ${chf(f.naechste.betrag)} am ${fmt(f.naechste.datum)}` : 'nichts mehr offen';
 function hinweiseHtml() {
   const t = heute(); let out = '';
@@ -420,10 +420,6 @@ function hinweiseHtml() {
   if (D.start && D.personen[ich]) faelligkeiten(D.start, t, zahlungenAusJournal(D.journal, D.personen), D.personen[ich], ich).forEach((f) => {
     if (f.rueckstand) out += `<div class="hinweiskarte rot">${ZWECKE[f.zweck]} überfällig: CHF ${chf(f.rueckstand.betrag)} seit ${fmt(f.rueckstand.seit)}.</div>`;
     else if (f.naechste && f.naechste.datum <= addTage(t, VORLAUF_TAGE)) out += `<div class="hinweiskarte gelb">${ZWECKE[f.zweck]} fällig am ${fmt(f.naechste.datum)}: CHF ${chf(f.naechste.betrag)}.</div>`;
-  });
-  termineEcht().filter((x) => ['ueberfaellig', 'bald'].includes(terminStufe(x, t))).sort((a, b) => (a.faelligAm < b.faelligAm ? -1 : 1)).slice(0, 3).forEach((x) => {
-    const u = terminStufe(x, t) === 'ueberfaellig';
-    out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
   });
   // Fahrerfreigabe: was auf dich wartet
   fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="wunschliste" data-fa="fahrer" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
