@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114s';
-import * as S from './speicher.js?v=20261114s';
+} from './regeln.js?v=20261114v';
+import * as S from './speicher.js?v=20261114v';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -394,7 +394,7 @@ function hinweiseHtml() {
     out += `<div class="hinweiskarte ${u ? 'rot' : 'gelb'}">${h(x.titel)}: ${u ? 'überfällig seit' : 'fällig am'} ${fmt(x.faelligAm)}</div>`;
   });
   // Fahrerfreigabe: was auf dich wartet
-  fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="fahrten" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
+  fahrFreigaben().forEach((f) => { const st = fahrStandVon(f); if (st.status === 'offen' && f.erfasstVon !== ich && !st.antworten[ich]) out += `<div class="hinweiskarte gelb" data-neu="wunschliste" data-fa="fahrer" style="cursor:pointer">🚐 Fahrerfreigabe: ${h(f.person)} soll vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren. Deine Antwort fehlt.</div>`; });
   // Fragen: was auf deine Antwort wartet (ein Tipp öffnet die Rubrik)
   frageListe().forEach((f) => {
     const st = frageStandVon(f), von = h(D.personen[f.erfasstVon]?.name || '?');
@@ -688,7 +688,7 @@ function fahrten() {
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Fahren unter Alkohol ist verboten</strong></div></div>
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
-  <div style="margin-top:8px">${freigabeSek()}</div>
+  <div style="margin-top:8px">${freigabeVerweis()}</div>
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
     <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
@@ -699,7 +699,7 @@ function fahrten() {
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
-  bindFreigabe();
+  bindNeu();
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
   app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
@@ -717,16 +717,29 @@ const fahrFreigaben = () => Object.values(D.termine).filter((x) => x.art === 'Fa
 const fahrAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FahrAntwort');
 const fahrStandVon = (f) => fahrfreigabeStand(f, fahrAntworten(), idsGeordnet(), heute());
 const fahrKlasse = (st) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', vorbei: 'blau' })[st];
-function freigabeSek() {
+function freigabeListe() {
   const L = fahrFreigaben().map((f) => ({ f, s: fahrStandVon(f) })).sort((a, b) => (a.f.von < b.f.von ? 1 : a.f.von > b.f.von ? -1 : 0));
   const dein = (e) => e.s.status === 'offen' && e.f.erfasstVon !== ich && !e.s.antworten[ich];
-  const wartet = L.filter(dein).length, aktiv = L.filter((e) => e.s.status !== 'vorbei').length;
+  return { L, dein, wartet: L.filter(dein).length, aktiv: L.filter((e) => e.s.status !== 'vorbei').length };
+}
+// Auf der Seite «Fahrten»: nur ein Verweis, die Freigabe selbst liegt im Tab «Familienrat» (Umschalter «Fahrer»).
+function freigabeVerweis() {
+  const { wartet, aktiv } = freigabeListe();
+  const k = wartet ? 'gelb' : 'blau';
+  return `<button class="t-z ${k}" data-neu="wunschliste" data-fa="fahrer"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>Fahrerfreigabe (Drittperson)</strong><small>Im Tab «Familienrat» unter «Fahrer»</small></span><span class="t-pl ${k}">${wartet ? wartet + ' offen für dich' : aktiv ? aktiv + ' aktiv' : 'keine'}</span></button>`;
+}
+function fahrerSeite() {
+  const { L, dein, wartet } = freigabeListe();
   const zeile = (e) => { const { f, s } = e, k = fahrKlasse(s.status);
     return `<button class="t-z ${k}" data-ff="${h(f.id)}"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${h(f.person)}${dein(e) ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${fmt(f.von).slice(0, 6)} bis ${fmt(f.bis).slice(0, 6)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}</small></span><span class="t-pl ${k}">${FAHRFREIGABE_STATUS[s.status]}</span></button>`; };
-  return `<details class="sek" style="background:rgba(245,158,11,.18);border:2px solid rgba(245,158,11,.7)"${wartet ? ' open' : ''}><summary><span>Fahrerfreigabe (Drittperson)</span><b>${wartet ? wartet + ' offen für dich' : aktiv ? aktiv : 'keine'}</b></summary><div class="sek-in">
-    <p class="info" style="margin:0 0 8px">Es fahren nur die Eigentümer/innen (Ziffer 8). Soll im Einzelfall eine andere Person fahren, schlägt ein/e Eigentümer/in sie vor der Reise hier vor. Die anderen antworten mit Ja oder Nein. Nötig sind 3 von 4 Stimmen, Schweigen gilt nicht als Ja. Die Freigabe gilt nur für diese Reise. Ein/e Eigentümer/in reist immer mit. Wer die Person fahren lässt, trägt im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.</p>
-    ${L.length ? L.map(zeile).join('') : '<p class="leer-t" style="margin:6px 0">Keine Freigaben.</p>'}
-    <button class="btn" id="ffneu" style="margin-top:10px">＋ Freigabe vorschlagen</button></div></details>`;
+  const gruppe = (titel, xs) => xs.length ? `<p class="t-lab2">${titel}</p>${xs.map(zeile).join('')}` : '';
+  const dn = L.filter(dein), lauf = L.filter((e) => e.s.status === 'offen' && !dein(e));
+  const frei = L.filter((e) => e.s.status === 'freigegeben'), abg = L.filter((e) => e.s.status === 'abgelehnt'), vor = L.filter((e) => e.s.status === 'vorbei');
+  app.innerHTML = rahmen(`${seitenkopf('Fahrerfreigabe', 'ffneu', '＋ Freigabe')}${famSeg()}
+    <div class="karte"><p class="info" style="margin:0">Es fahren nur die Eigentümer/innen (Ziffer 8). Soll im Einzelfall eine andere Person fahren, schlägt ein/e Eigentümer/in sie <strong>vor der Reise</strong> hier vor. Am besten, bevor du den Termin einträgst: Dann weisst du vorher, ob die Freigabe kommt.</p>
+      <p class="info" style="margin:8px 0 0"><strong>Nötig sind 3 von 4 Stimmen.</strong> Wer vorschlägt, zählt als Ja. Schweigen gilt nicht als Ja. Bei 2 zu 2 ist die Freigabe abgelehnt. Sie gilt nur für die genannte Reise. Ein/e Eigentümer/in reist immer mit. Wer die Person fahren lässt, trägt im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.</p></div>
+    ${L.length ? '' : '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Freigaben. Mit «＋ Freigabe» schlägst du eine Person als Fahrer/in vor.</p></div>'}${gruppe('Wartet auf deine Antwort', dn)}${gruppe('Antworten laufen', lauf)}${gruppe('Freigegeben', frei)}${gruppe('Abgelehnt', abg)}${gruppe('Reise vorbei', vor)}`);
+  bindRahmen(); bindNeu(); bindSeg(); bindFreigabe();
 }
 function bindFreigabe() {
   const n = document.getElementById('ffneu'); if (n) n.onclick = freigabeForm;
@@ -753,7 +766,7 @@ function freigabeForm() {
     const p = pruefeFahrfreigabe(f, heute(), idsGeordnet());
     if (!p.ok) { fehler(p.fehler); return; }
     f.titel = ('Fahrfreigabe ' + f.person).slice(0, 80); f.faelligAm = f.von;
-    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fahrten(); hinweis('Vorschlag gespeichert. Die anderen müssen jetzt antworten.'); freigabeDetail(id); });
+    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); wunschliste(); hinweis('Vorschlag gespeichert. Die anderen müssen jetzt antworten.'); freigabeDetail(id); });
   };
 }
 function freigabeDetail(id) {
@@ -768,7 +781,7 @@ function freigabeDetail(id) {
     : `Die Reise ist vorbei. Die Freigabe gilt nicht mehr.`;
   const mitName = D.personen[f.mitEig]?.name || '?';
   const meinAntwort = s.status === 'offen' && !mein;
-  const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Fahrten) mit Ja oder Nein antworten.`;
+  const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Familienrat, Umschalter Fahrer) mit Ja oder Nein antworten.`;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.jahrgang ? 'Jahrgang ' + f.jahrgang : f.alter + ' Jahre'}, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
@@ -779,13 +792,13 @@ function freigabeDetail(id) {
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
       <button class="gross-btn" id="abb">Schliessen</button>${mein && s.status !== 'freigegeben' ? '<button class="gross-btn rot" id="ff_del">Vorschlag löschen</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
-  const antw = (stimme, grund) => sicher(async () => { await S.speichern(D, 'termine', `fa_${f.id}_${ich}`, { art: 'FahrAntwort', titel: 'Antwort Fahrfreigabe', faelligAm: heute(), freigabeId: f.id, personId: ich, stimme, grund: grund || '', erfasstVon: ich }); schliessen(); fahrten(); hinweis(stimme === 'ja' ? 'Danke, du hast Ja gesagt.' : 'Danke, dein Nein ist gespeichert.'); });
+  const antw = (stimme, grund) => sicher(async () => { await S.speichern(D, 'termine', `fa_${f.id}_${ich}`, { art: 'FahrAntwort', titel: 'Antwort Fahrfreigabe', faelligAm: heute(), freigabeId: f.id, personId: ich, stimme, grund: grund || '', erfasstVon: ich }); schliessen(); wunschliste(); hinweis(stimme === 'ja' ? 'Danke, du hast Ja gesagt.' : 'Danke, dein Nein ist gespeichert.'); });
   if (meinAntwort) {
     document.getElementById('ff_ja').onclick = () => antw('ja');
     document.getElementById('ff_nein').onclick = () => { const g = val('ff_grund').trim(); if (!g) { fehler('Bei Nein bitte einen Grund angeben.'); return; } antw('nein', g); };
   }
   const del = document.getElementById('ff_del');
-  if (del) del.onclick = async () => { if (confirm('Vorschlag löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of fahrAntworten().filter((x) => x.freigabeId === f.id)) await S.loeschen(D, 'termine', a.id); await S.loeschen(D, 'termine', f.id); schliessen(); fahrten(); }); };
+  if (del) del.onclick = async () => { if (confirm('Vorschlag löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of fahrAntworten().filter((x) => x.freigabeId === f.id)) await S.loeschen(D, 'termine', a.id); await S.loeschen(D, 'termine', f.id); schliessen(); wunschliste(); }); };
 }
 
 // Abtretung von Nutzungstagen: Eltern treten ungenutzte Tage an beide Kinder zugleich ab (Vertrag Ziffer 7 a).
@@ -1271,6 +1284,7 @@ const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot
 
 function wunschliste() {
   if (famAnsicht === 'fragen') return fragenSeite();
+  if (famAnsicht === 'fahrer') return fahrerSeite();
   const t = heute();
   const alle = wunschListe().map((w) => ({ w, s: wunschStandVon(w) })).sort((a, b) => (a.w.datum < b.w.datum ? 1 : a.w.datum > b.w.datum ? -1 : 0));
   const pille = ({ w, s }) => {
@@ -1441,7 +1455,7 @@ function wunschDetail(id) {
 // Einstimmig: alle müssen Ja sagen, ein Nein genügt zur Ablehnung, Schweigen zählt nicht als Ja, keine Frist.
 // Gespeichert in der Sammlung «termine» (art «Frage» und «FrageAntwort»), damit keine neue Datenbankregel nötig ist.
 // =====================================================================
-let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'fragen' oder 'wunsch'
+let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'wunsch', 'fragen' oder 'fahrer'
 const FRAGE_ICON = '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M10 9.500a2 2 0 1 1 3 1.700c-.7.400-1 .800-1 1.500M12 14.500v.01"/>';
 const frageListe = () => Object.values(D.termine).filter((x) => x.art === 'Frage');
 const frageAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FrageAntwort');
@@ -1454,8 +1468,9 @@ const frageWartet = (f, st) => st.status === 'offen' && f.erfasstVon !== ich && 
 function famSeg() {
   const nF = frageListe().filter((f) => frageWartet(f, frageStandVon(f))).length;
   const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
+  const nFa = freigabeListe().wartet;
   const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
-  return `<div class="seg" role="tablist">${b('wunsch', 'Wunsch Anschaffung', nW)}${b('fragen', 'Idee kostenlos', nF)}</div>`;
+  return `<div class="seg" role="tablist">${b('wunsch', 'Wunsch Anschaffung', nW)}${b('fragen', 'Idee kostenlos', nF)}${b('fahrer', 'Fahrer', nFa)}</div>`;
 }
 function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
 

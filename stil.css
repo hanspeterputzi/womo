@@ -77,7 +77,7 @@
 .u-ban.slim .u-bic svg{width:26px;height:26px;stroke-width:1.8}
 
 /* Umschalter Fragen / Wünsche */
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--soft);border-radius:14px;padding:4px;margin:0 0 14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--soft);border-radius:14px;padding:4px;margin:0 0 14px}
 .seg button{border:0;background:none;color:var(--muted);font:inherit;font-size:15px;font-weight:700;min-height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:8px}
 .seg button.aktiv{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
 .seg button i{font-style:normal;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--rot);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;box-sizing:border-box}
@@ -177,3 +177,6 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 /* Tab-Leiste: «Familienrat» ist lang, darum etwas kleinere Schrift und schmaler Rand (14.11.2026) */
 .tabs{padding-left:2px;padding-right:2px}
 .tabs button{font-size:9.5px;letter-spacing:-.2px}
+
+/* Umschalter im Familienrat: drei Knöpfe, Schrift etwas kleiner (14.11.2026) */
+.seg button{font-size:13.5px;padding:0 2px;line-height:1.15;text-align:center}

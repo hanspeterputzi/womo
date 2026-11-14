@@ -699,7 +699,7 @@ export function neuZaehlen(d, seit, ich) {
   Object.values(d.buchungen || {}).forEach((x) => { if (n(x)) z.kalender++; });
   Object.values(d.uebergaben || {}).forEach((x) => { if (n(x)) z.fahrten++; });
   const frageIds = new Set();
-  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Frage') { frageIds.add(x.id); return; } if (x.art === 'FrageAntwort') { if (d.termine && d.termine[x.frageId]) frageIds.add(x.frageId); return; } if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
+  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Frage') { frageIds.add(x.id); return; } if (x.art === 'FrageAntwort') { if (d.termine && d.termine[x.frageId]) frageIds.add(x.frageId); return; } if (x.art === 'Fahrfreigabe') { frageIds.add(x.id); return; } if (x.art === 'FahrAntwort') { if (d.termine && d.termine[x.freigabeId]) frageIds.add(x.freigabeId); return; } if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
   Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.journal || {}).forEach((x) => { if (n(x)) z.kosten++; });
