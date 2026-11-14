@@ -173,3 +173,7 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tag .mi{position:absolute;left:3px;top:5px;display:flex;flex-direction:column;gap:1px;pointer-events:none;z-index:2}
 .tag .mi i{display:grid;place-items:center;width:10px;height:10px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-weight:800;font-style:normal;line-height:1;box-shadow:0 0 0 1px var(--soft)}
 .tag .mi i.viele{width:11px;height:11px;font-size:9px;background:var(--muted)}
+
+/* Tab-Leiste: «Familienrat» ist lang, darum etwas kleinere Schrift und schmaler Rand (14.11.2026) */
+.tabs{padding-left:2px;padding-right:2px}
+.tabs button{font-size:9.5px;letter-spacing:-.2px}

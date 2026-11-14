@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114q';
-import * as S from './speicher.js?v=20261114q';
+} from './regeln.js?v=20261114s';
+import * as S from './speicher.js?v=20261114s';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -184,8 +184,8 @@ const ICON = {
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
   wunschliste: '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>',
 };
-// Der Tab «Wunschliste» heisst in der Leiste «Wünsche» (7 Tabs, sonst ist die Beschriftung zu breit). Die Seite heisst «Wunschliste».
-const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['wunschliste', 'Wünsche'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+// Der Tab «Wunschliste» heisst in der Leiste «Familienrat» (7 Tabs, sonst ist die Beschriftung zu breit). Die Seite heisst «Wunschliste».
+const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['wunschliste', 'Familienrat'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
   ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [
@@ -1455,7 +1455,7 @@ function famSeg() {
   const nF = frageListe().filter((f) => frageWartet(f, frageStandVon(f))).length;
   const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
   const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
-  return `<div class="seg" role="tablist">${b('fragen', 'Fragen', nF)}${b('wunsch', 'Wünsche', nW)}</div>`;
+  return `<div class="seg" role="tablist">${b('wunsch', 'Wunsch Anschaffung', nW)}${b('fragen', 'Idee kostenlos', nF)}</div>`;
 }
 function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
 
