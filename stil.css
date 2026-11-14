@@ -180,3 +180,24 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 
 /* Umschalter im Familienrat: drei Knöpfe, Schrift etwas kleiner (14.11.2026) */
 .seg button{font-size:13.5px;padding:0 2px;line-height:1.15;text-align:center}
+
+/* Nicht verfuegbar: Stoppsignal (eigene gross rot, andere klein grau mit Namen) */
+.stopp{display:inline-block;width:11px;height:11px;flex:none;vertical-align:middle}
+.stopp polygon{fill:var(--muted)}.stopp rect{fill:#fff}
+.stopp.rot polygon{fill:var(--rot)}
+.stopp.gross{width:20px;height:20px}
+.tag .mi{position:absolute;left:0;right:0;top:25px;display:flex;flex-direction:column;align-items:center;gap:1px;pointer-events:none;z-index:2}
+.tag .mi .stopp.gross{width:19px;height:19px}
+.tag .mi .mn{display:flex;align-items:center;gap:2px;font-size:9px;font-weight:700;line-height:10px;color:var(--muted);max-width:100%;white-space:nowrap}
+.tag .mi .mn .stopp{width:9px;height:9px}
+.legende .stopp{width:14px;height:14px}
+/* Feiertag-Legende = orange Tag, Termin = blaue Glocke */
+.leg-fe{display:inline-block;width:14px;height:14px;border-radius:4px;background:rgba(245,158,11,.35);box-shadow:inset 0 0 0 1px var(--gelb-t)}
+.leg-tm,.tag .tm{display:inline-grid;place-items:center;border-radius:50%;background:var(--acc);color:#fff}
+.leg-tm{width:16px;height:16px}
+.leg-tm svg,.tag .tm svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tag .tm{position:absolute;top:3px;right:3px;width:15px;height:15px}
+.tm.offen,.tm.bald{background:var(--acc)}.tm.ueberfaellig{background:var(--rot)}.tm.erledigt{background:var(--ok);opacity:.6}
+.tag .mi.eigen{flex-direction:row;justify-content:center;gap:3px;align-items:center}
+.tm.lt{display:inline-grid;place-items:center;border-radius:50%;color:#fff;width:22px;height:22px;flex:none;margin-top:1px}
+.tm.lt svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}

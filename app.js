@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114w';
-import * as S from './speicher.js?v=20261114w';
+} from './regeln.js?v=20261115a';
+import * as S from './speicher.js?v=20261115a';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -497,11 +497,16 @@ function feiertagKarte() {
     <p class="info" style="margin:10px 0 0">Grosse Zahl = wie oft, kleine Zahl = zuletzt im Jahr. Grün hinterlegt = beim nächsten Feiertag bisher am seltensten. Es zählt, wer an mindestens einem Tag des Feiertags im Fahrzeug sass oder sitzen wird (Fahrer und Mitreisende), egal ob schon gefahren oder erst reserviert. ${von} Die App rechnet das aus allen Reservierungen und merkt es sich darum über alle Jahre, solange die Reservierungen bestehen. Reisen vor dem Start der App fehlen.</p></div></details>`;
 }
 
-// «Nicht verfuegbar»: kleine Minus-Punkte in der Farbe der Person, unter der Tageszahl.
+// «Nicht verfuegbar»: Stoppsignal im Tag. Eigener Eintrag = grosses rotes Signal, Eintraege der anderen = kleines graues Signal mit Namen.
+const STOPP = (kl) => `<svg class="stopp ${kl}" viewBox="0 0 24 24" aria-hidden="true"><polygon points="8,1.500 16,1.500 22.500,8 22.500,16 16,22.500 8,22.500 1.500,16 1.500,8"/><rect x="6" y="10" width="12" height="4" rx="1"/></svg>`;
+const KURZNAME = (i) => { const n = D.personen[i]?.name || '?'; return n.length > 5 ? n.slice(0, 5) : n; };
 function minusZelle(d) {
   const ids = minusAmTag(minusListe(), d).filter((i) => D.personen[i]);
   if (!ids.length) return '';
-  return `<span class="mi" title="${h('Nicht verfügbar: ' + ids.map((i) => D.personen[i].name).join(', '))}">${ids.length > 2 ? `<i class="viele">${ids.length}</i>` : ids.map((i) => `<i class="${PERSON_FARBE[i] || ''}">−</i>`).join('')}</span>`;
+  const eigen = ids.includes(ich), andere = ids.filter((i) => i !== ich);
+  const tip = 'Nicht verfügbar: ' + ids.map((i) => D.personen[i].name).join(', ');
+  const kl = eigen && andere.length ? `<span class="mn">${STOPP('grau')}${andere.length}</span>` : andere.length > 2 ? `<span class="mn">${STOPP('grau')}${andere.length}×</span>` : andere.map((i) => `<span class="mn">${STOPP('grau')}${h(KURZNAME(i))}</span>`).join('');
+  return `<span class="mi${eigen ? ' eigen' : ''}" title="${h(tip)}">${eigen ? STOPP('rot gross') : ''}${kl}</span>`;
 }
 function minusKarte(J, M, n) {
   const von = iso(J, M, 1), bis = iso(J, M, n);
@@ -509,7 +514,7 @@ function minusKarte(J, M, n) {
   const bereich = (x) => reiseText(x, true);
   return `<div class="karte"><p class="titel">Nicht verfügbar im ${MONATE[M]}</p>
   <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen nicht wegfahren kann. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
-  ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><i class="minus-p ${PERSON_FARBE[x.personId] || ''}" style="flex:none;margin-top:3px">−</i><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
+  ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><span style="flex:none;margin-top:1px">${STOPP(eigener(x) ? 'rot gross' : 'grau gross')}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
   <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich bin nicht verfügbar</button></div></div>`;
 }
 function minusForm(ex) {
@@ -536,6 +541,7 @@ function minusForm(ex) {
   };
 }
 
+const GLOCKE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg>';
 function kalender() {
   const J = ansicht.getFullYear(), M = ansicht.getMonth();
   const erster = new Date(J, M, 1), n = new Date(J, M + 1, 0).getDate();
@@ -552,7 +558,7 @@ function kalender() {
     const fe = feiertagAm(d);
     const cls = ['tag', wd >= 5 ? 'we' : '', fe ? 'fei' : '', hier.length > 1 ? 'koll' : '',
       d === tT ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${minusZelle(d)}${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${minusZelle(d)}${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h('Termin: ' + terminTag[d].map((x) => x.titel).join(', '))}">${GLOCKE}</span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
@@ -563,14 +569,14 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="punkt fe"></i>Feiertag</span><span><i class="minus-p">−</i>nicht verfügbar</span></div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="leg-fe"></i>Feiertag (Tag orange)</span><span><i class="leg-tm">${GLOCKE}</i>Termin</span><span>${STOPP("rot")}Ich nicht verfügbar</span><span>${STOPP("grau")}Andere nicht verfügbar</span></div>
     ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
+  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm lt ${terminStufe(x, tT)}">${GLOCKE}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>
   ${feiertagKarte()}
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
-  ${minusKarte(J, M, n)}
-  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
+  ${minusKarte(J, M, n)}`);
   bindRahmen(); bindNeu(); bindTausch(J);
   const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
   app.querySelectorAll('[data-medit]').forEach((el) => el.onclick = () => { const x = D.termine[el.dataset.medit]; if (!eigener(x)) return nurEigene(); minusForm(x); });
