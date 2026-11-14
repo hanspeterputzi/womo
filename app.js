@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115o';
-import * as S from './speicher.js?v=20261115o';
+} from './regeln.js?v=20261115p';
+import * as S from './speicher.js?v=20261115p';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -50,7 +50,8 @@ const keySeit = () => 'womo-zuletzt-' + ich;
 function seitLesen() { try { seit = localStorage.getItem(keySeit()) || ''; } catch { seit = ''; } }
 function besuchMerken() { if (!ich) return; try { localStorage.setItem(keySeit(), new Date().toISOString()); } catch {} }
 function besuchStart() { seitLesen(); if (!seit) besuchMerken(); }   // erster Besuch: nichts ist neu
-const neuZ = () => neuZaehlen(D, seit, ich);
+// «Kein Bedarf»-Eintraege zaehlen unter «Kalender»; ist der Schalter «Kalender-Zeichen» aus, zaehlen sie nicht (man sieht sie dann nicht).
+const neuZ = () => neuZaehlen(kbAus() ? { ...D, termine: Object.fromEntries(Object.entries(D.termine || {}).filter(([, x]) => x.art !== 'Minus')) } : D, seit, ich);
 const neuPille = (x) => istNeu(x, seit, ich) ? '<span class="neu">NEU</span>' : '';
 document.addEventListener('visibilitychange', () => {
   if (!ich || !D) return;
