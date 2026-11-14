@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114o';
-import * as S from './speicher.js?v=20261114o';
+} from './regeln.js?v=20261114p';
+import * as S from './speicher.js?v=20261114p';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1745,7 +1745,7 @@ function notfallForm() {
   const nf = D.notfall, fzE = (k) => nf['fz_' + k], pE = nf['p_' + ich] || {};
   const feld = ([k, name, hint]) => {
     const e = fzE(k), fremd = e && e.erfasstVon !== ich;
-    return `<label for="nf_${k}">${h(name)}${fremd ? ` <span style="font-weight:500">(von ${h(D.personen[e.erfasstVon]?.name || '?')}, nur diese Person ändert)</span>` : ''}</label><input id="nf_${k}" maxlength="${NOTFALL_WERT_MAX}" placeholder="${h(hint)}" value="${h(e?.wert || '')}" ${fremd ? 'disabled' : ''}>`;
+    return `<label for="nf_${k}">${h(name)}${fremd ? ` <span style="font-weight:500">(von ${h(D.personen[e.erfasstVon]?.name || '?')}, nur diese Person ändert)</span>` : ''}</label><input id="nf_${k}" maxlength="${NOTFALL_WERT_MAX}" placeholder="${h(hint)}" value="${h(e?.wert || (k === 'gewicht' ? '3500 kg' : ''))}" ${fremd ? 'disabled' : ''}>`;
   };
   const dok = ([k, name]) => {
     const e = fzE(k), fremd = e && e.erfasstVon !== ich;

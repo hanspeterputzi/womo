@@ -835,13 +835,12 @@ export const NOTFALL_FELDER = [
   ['hoehe', 'Höhe in Metern', 'z. B. 2.65 (Tunnel, Brücken)'],
   ['breite', 'Breite in Metern', 'z. B. 2.05'],
   ['laenge', 'Länge in Metern', 'z. B. 5.99'],
-  ['gewicht', 'Gesamtgewicht in kg', 'zulässiges Gesamtgewicht laut Fahrzeugausweis'],
+  ['gewicht', 'Gesamtgewicht in kg', '3500 kg'],
   ['treibstoff', 'Treibstoff und AdBlue', 'z. B. Diesel, AdBlue ja'],
   ['versicherung', 'Versicherung', 'Gesellschaft und Telefon (Haftpflicht, Kasko)'],
   ['police', 'Policennummer', ''],
   ['schutzbrief', 'Schutzbrief', 'z. B. ETI-Schutzbrief'],
   ['tcs', 'TCS-Mitgliedsnummer', ''],
-  ['hinweis', 'Wichtig für Helfer', 'z. B. Aufstelldach, Gasflasche im Bodenfach'],
 ];
 export const NOTFALL_DOKUMENTE = [['ausweis', 'Fahrzeugausweis'], ['vnachweis', 'Versicherungsnachweis']];   // Foto, lesbar, ohne Netz
 export const NOTFALL_WERT_MAX = 200, NOTFALL_TEL_MAX = 30, NOTFALL_MED_MAX = 200, NOTFALL_DOK_MAX = 400000;

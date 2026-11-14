@@ -26,7 +26,7 @@ main{max-width:620px;margin:0 auto;padding:14px 14px 0}
 .gross{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:64px;border:0;border-radius:16px;background:var(--rot);color:#fff;font:inherit;font-size:22px;font-weight:800;text-decoration:none;text-align:center}
 .gross:active{background:var(--rot2)}
 .gross small{font-size:13px;font-weight:600;opacity:.9;display:block}
-.nr{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.nr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
 .nr a,.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;border-radius:14px;background:var(--soft);color:var(--fg);text-decoration:none;font:inherit;font-weight:800;font-size:20px;border:0;padding:8px;text-align:center}
 .nr a small,.btn small{font-size:12px;font-weight:600;color:var(--muted)}
 .nr a{background:#c62828;color:#fff}.nr a small{color:#fff;opacity:.92}
@@ -188,7 +188,7 @@ a.tcs b{font-size:14px;color:#1a1a1a;font-weight:700}a.tcs span{font-size:22px;f
     // 1. Anrufen
     out += '<div class="karte"><a class="gross" href="tel:112"><span>112 anrufen<small>Geht fast überall in Europa. Verbindet mit Polizei, Feuerwehr und Rettung.</small></span></a>';
     out += '<h2 style="margin-top:16px">Land</h2><select id="land" aria-label="Land wählen">' + L.map(function (x) { return '<option' + (x[0] === land ? ' selected' : '') + '>' + h(x[0]) + '</option>'; }).join('') + '</select>';
-    out += '<div class="nr"><a href="tel:' + r[1] + '">' + r[1] + '<small>Polizei</small></a><a href="tel:' + r[3] + '">' + r[3] + '<small>Rettung</small></a><a href="tel:' + r[2] + '">' + r[2] + '<small>Feuerwehr</small></a><a href="tel:112">112<small>alle Dienste</small></a></div>';
+    out += '<div class="nr"><a href="tel:' + r[1] + '">' + r[1] + '<small>Polizei</small></a><a href="tel:' + r[3] + '">' + r[3] + '<small>Rettung</small></a><a href="tel:' + r[2] + '">' + r[2] + '<small>Feuerwehr</small></a></div>';
     if (r[4]) out += '<p class="info">' + h(r[4]) + '</p>';
     out += '</div>';
 
@@ -210,10 +210,10 @@ a.tcs b{font-size:14px;color:#1a1a1a;font-weight:700}a.tcs span{font-size:22px;f
     }).join('') + '</div>';
 
     // 4. Fahrzeug
-    var rows = [['kennzeichen', 'Kennzeichen'], ['fahrzeug', 'Fahrzeug'], ['hoehe', 'Höhe (m)'], ['breite', 'Breite (m)'], ['laenge', 'Länge (m)'], ['gewicht', 'Gesamtgewicht (kg)'], ['treibstoff', 'Treibstoff'], ['versicherung', 'Versicherung'], ['police', 'Policennummer'], ['schutzbrief', 'Schutzbrief'], ['tcs', 'TCS-Nummer'], ['hinweis', 'Wichtig für Helfer']];
+    var rows = [['kennzeichen', 'Kennzeichen'], ['fahrzeug', 'Fahrzeug'], ['hoehe', 'Höhe (m)'], ['breite', 'Breite (m)'], ['laenge', 'Länge (m)'], ['gewicht', 'Gesamtgewicht (kg)'], ['treibstoff', 'Treibstoff'], ['versicherung', 'Versicherung'], ['police', 'Policennummer'], ['schutzbrief', 'Schutzbrief'], ['tcs', 'TCS-Nummer']];
     var tf = function (t) { var mm = String(t).match(/\+?[0-9][0-9 ]{7,}/); return mm ? '<br><a href="tel:' + tel(mm[0]) + '" style="color:var(--rt);font-weight:800">📞 ' + h(mm[0].trim()) + '</a>' : ''; };
     out += '<div class="karte"><h2>Fahrzeug</h2><dl>' + rows.map(function (x) {
-      var w = wert(x[0]); var extra = (x[0] === 'versicherung' || x[0] === 'schutzbrief') && w ? tf(w) : '';
+      var w = wert(x[0]) || (x[0] === 'gewicht' ? '3500 kg' : ''); var extra = (x[0] === 'versicherung' || x[0] === 'schutzbrief') && w ? tf(w) : '';
       return '<dt>' + h(x[1]) + '</dt><dd' + (w ? '' : ' class="fehlt"') + '>' + (w ? h(w) + extra : 'nicht erfasst') + '</dd>';
     }).join('') + '</dl>';
     [['ausweis', 'Fahrzeugausweis'], ['vnachweis', 'Versicherungsnachweis']].forEach(function (d) {
