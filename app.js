@@ -71,6 +71,28 @@ const minusListe = () => Object.values(D.termine).filter((x) => x.art === 'Minus
 const tauschListe = () => Object.values(D.termine).filter((x) => x.art === 'Tausch');
 const tauschMap = () => Object.fromEntries(tauschListe().map((x) => [x.id, x]));
 const tankFuellungen = () => Object.values(D.termine).filter((x) => x.art === 'Tank');
+// Direktlink auf einen Punkt in der App (ohne Zugangscode): w = Wunsch, f = Frage, a = Fahrerfreigabe.
+// Der Code bleibt auf dem Gerät gespeichert; wer die App noch nicht eingerichtet hat, gibt ihn einmal ein und landet danach beim Punkt.
+const appLink = (art, id) => location.origin + location.pathname + '?' + art + '=' + encodeURIComponent(id);
+const mitLink = (text, art, id) => id ? text + '\n\nIn der App öffnen: ' + appLink(art, id) : text;
+const ZIEL_OK = /^[A-Za-z0-9_-]{1,80}$/;
+let ziel = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    for (const art of ['w', 'f', 'a']) { const id = q.get(art); if (id && ZIEL_OK.test(id)) { sessionStorage.setItem('womo-ziel', art + ':' + id); break; } }
+    const z = sessionStorage.getItem('womo-ziel') || '';
+    return /^[wfa]:[A-Za-z0-9_-]{1,80}$/.test(z) ? z : '';
+  } catch { return ''; }
+})();
+function zielOeffnen() {
+  if (!ziel || !ich) return;
+  const [art, id] = ziel.split(':'); ziel = ''; try { sessionStorage.removeItem('womo-ziel'); history.replaceState(null, '', location.pathname + location.hash); } catch {}
+  const da = art === 'w' ? D.wuensche[id] : D.termine[id];
+  tab = 'wunschliste'; famAnsicht = art === 'w' ? 'wunsch' : art === 'f' ? 'fragen' : 'fahrer';
+  zeige(); window.scrollTo(0, 0);
+  if (!da) { hinweis('Dieser Eintrag existiert nicht mehr.'); return; }
+  if (art === 'w') wunschDetail(id); else if (art === 'f') frageDetail(id); else freigabeDetail(id);
+}
 const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
 const tankText = (tk, wann, wer) => `⛽ Womo: Der Tank ist nicht voll (${tk}), zuletzt erfasst am ${fmt(wann.slice(0, 10))} von ${wer}. Bitte volltanken, bevor das Womo wieder gebraucht wird (Vertrag Ziffer 10).`;
 const alltagMap = () => Object.fromEntries(Object.values(D.termine).filter((x) => x.art === 'Alltag').map((x) => [x.id, x]));
@@ -130,6 +152,7 @@ async function start() {
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div>${SOS_GROSS}<button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
   try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id] && !abgelaufen()) { ich = id; besuchStart(); aktivMerken(); } } catch {}
   zeige();
+  zielOeffnen();
 }
 
 function zeige() {
@@ -167,7 +190,7 @@ function anmeldung() {
     const id = document.getElementById('p').value, pin = document.getElementById('pin').value;
     let sp = { n: 0, bis: 0 }; try { sp = JSON.parse(localStorage.getItem('womo-pinfehler')) || sp; } catch {}
     if (Date.now() < sp.bis) { document.getElementById('msg').innerHTML = `<div class="fehler">Zu viele Fehlversuche. Bitte ${Math.ceil((sp.bis - Date.now()) / 1000)} Sekunden warten.</div>`; return; }
-    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; aktivMerken(); try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} besuchStart(); zeige(); }
+    if (await S.pinPasst(D.personen[id], pin)) { try { localStorage.removeItem('womo-pinfehler'); } catch {} ich = id; tab = 'kalender'; aktivMerken(); try { sessionStorage.setItem('womo-ich', id); localStorage.setItem('womo-person', id); } catch {} besuchStart(); zeige(); zielOeffnen(); }
     else { sp.n++; if (sp.n >= 5) { sp.bis = Date.now() + 60000; sp.n = 0; } try { localStorage.setItem('womo-pinfehler', JSON.stringify(sp)); } catch {} document.getElementById('msg').innerHTML = `<div class="fehler">Passwort für ${h(D.personen[id].name)} falsch (Gross- und Kleinschreibung beachten). Name oben richtig gewählt?</div>`; }
   };
   document.getElementById('ok').onclick = los;
@@ -782,7 +805,7 @@ function freigabeDetail(id) {
     : `Die Reise ist vorbei. Die Freigabe gilt nicht mehr.`;
   const mitName = D.personen[f.mitEig]?.name || '?';
   const meinAntwort = s.status === 'offen' && !mein;
-  const waText = `🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Familienrat, Umschalter Fahrer) mit Ja oder Nein antworten.`;
+  const waText = mitLink(`🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Familienrat, Umschalter Fahrer) mit Ja oder Nein antworten.`, 'a', f.id);
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.jahrgang ? 'Jahrgang ' + f.jahrgang : f.alter + ' Jahre'}, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
@@ -1365,8 +1388,8 @@ function fotoVerkleinern(file, gross, klein) {
   });
 }
 
-const waTextWunsch = (w) => `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.groesse ? ' Grösse: ' + w.groesse + '.' : ''}${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(wunschStandVon(w).frist)} antworten (Ja oder Nein).`;
-const waTextFrage = (f) => `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel}${f.groesse ? ' (Grösse: ' + f.groesse + ')' : ''} Bitte in der Womo-App bis ${fmt(frageStandVon(f).frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+const waTextWunsch = (w) => mitLink(`⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.groesse ? ' Grösse: ' + w.groesse + '.' : ''}${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(wunschStandVon(w).frist)} antworten (Ja oder Nein).`, 'w', w.id);
+const waTextFrage = (f) => mitLink(`❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel}${f.groesse ? ' (Grösse: ' + f.groesse + ')' : ''} Bitte in der Womo-App bis ${fmt(frageStandVon(f).frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`, 'f', f.id);
 // Nach dem Speichern WhatsApp mit fertigem Text öffnen; Gruppe oder Person wählt man dort selbst, gesendet wird erst dort.
 const waAuto = (text) => setTimeout(() => { try { location.href = waLink(text); } catch {} }, 900);
 function wunschForm() {
@@ -1572,7 +1595,7 @@ function frageDetail(id) {
     : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt.`
     : `Abgelehnt${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: ${s.nein.map((i) => h(D.personen[i].name)).join(', ')} ${s.nein.length > 1 ? 'haben' : 'hat'} Nein gesagt. Es gilt weiter die bisherige Regel.`;
   const waText = waTextFrage(f);
-  const waErinnerung = `⏰ Erinnerung Womo-Frage: «${f.titel}» von ${D.personen[f.erfasstVon]?.name || '?'}. Die Frist ist abgelaufen. Es fehlt noch die Antwort von ${s.ohneAntwort.map((i) => D.personen[i].name).join(', ')}. Bitte in der Womo-App mit Ja oder Nein antworten.`;
+  const waErinnerung = mitLink(`⏰ Erinnerung Womo-Frage: «${f.titel}» von ${D.personen[f.erfasstVon]?.name || '?'}. Die Frist ist abgelaufen. Es fehlt noch die Antwort von ${s.ohneAntwort.map((i) => D.personen[i].name).join(', ')}. Bitte in der Womo-App mit Ja oder Nein antworten.`, 'f', f.id);
   const antwort = s.status === 'offen' && !mein && !s.antworten[ich];
   const loeschbar = mein && Object.keys(s.antworten).length === 0 && s.status === 'offen';
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FRAGE_ICON}</svg></span><div><h3 style="margin:0">${h(f.titel)}</h3><div class="info" style="margin:2px 0 0">von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${zeitText(f.erfasstAm) || fmt(f.datum || f.faelligAm)}</div></div></div>
