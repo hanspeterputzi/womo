@@ -1020,3 +1020,91 @@ export function pruefeRundgang(st, ctx) {
   const p = pruefeUebergabe(u, ctx.uebergaben || [], ctx.buchungen || {});
   return { ok: p.ok, fehler: p.fehler };
 }
+
+// =====================================================================
+// Feiertage (ueberregionale Schweizer Feiertage) und Fairness-Gedaechtnis
+// =====================================================================
+// Ostersonntag nach dem Verfahren von Meeus/Jones/Butcher (gilt fuer 1900 bis 2099 und darueber hinaus fuer den gregorianischen Kalender).
+export function ostern(J) {
+  const a = J % 19, b = Math.floor(J / 100), c = J % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const hh = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - hh - k) % 7, m = Math.floor((a + 11 * hh + 22 * l) / 451);
+  const mo = Math.floor((hh + l - 7 * m + 114) / 31), da = ((hh + l - 7 * m + 114) % 31) + 1;
+  return `${J}-${String(mo).padStart(2, '0')}-${String(da).padStart(2, '0')}`;
+}
+// Die sieben Feiertagsblöcke (Entscheid HP77, 14.11.2026). Reihenfolge = Reihenfolge im Jahr (Ostern kann vor oder nach dem 1. August nicht kippen, nur Ostern/Auffahrt/Pfingsten wandern).
+export const FEIERTAGE = [
+  { id: 'neujahr', name: 'Neujahr und Berchtoldstag' },
+  { id: 'ostern', name: 'Ostern' },
+  { id: 'auffahrt', name: 'Auffahrt' },
+  { id: 'pfingsten', name: 'Pfingsten' },
+  { id: 'bundesfeier', name: '1. August' },
+  { id: 'weihnachten', name: 'Weihnachten' },
+  { id: 'silvester', name: 'Silvester' },
+];
+// Alle Feiertagsblöcke eines Jahres: { id, name, von, bis }, nach Datum sortiert.
+// Ostern: Gruendonnerstag bis Ostermontag. Auffahrt: Donnerstag bis Sonntag. Pfingsten: Freitag bis Pfingstmontag.
+export function feiertage(J) {
+  const o = ostern(J), name = Object.fromEntries(FEIERTAGE.map((f) => [f.id, f.name]));
+  const blk = (id, von, bis) => ({ id, name: name[id], von, bis });
+  return [
+    blk('neujahr', `${J}-01-01`, `${J}-01-02`),
+    blk('ostern', addTage(o, -3), addTage(o, 1)),
+    blk('auffahrt', addTage(o, 39), addTage(o, 42)),
+    blk('pfingsten', addTage(o, 47), addTage(o, 50)),
+    blk('bundesfeier', `${J}-08-01`, `${J}-08-01`),
+    blk('weihnachten', `${J}-12-24`, `${J}-12-26`),
+    blk('silvester', `${J}-12-31`, `${J}-12-31`),
+  ].sort((a, b) => (a.von < b.von ? -1 : 1));
+}
+// Feiertagsblock, in dem ein Tag liegt (oder null). Fuer die Markierung im Kalender.
+export function feiertagAm(iso) {
+  const J = Number(String(iso).slice(0, 4));
+  return feiertage(J).find((f) => f.von <= iso && iso <= f.bis) || null;
+}
+// Nächster Feiertagsblock, der heute oder später endet.
+export function naechsterFeiertag(heuteIso) {
+  const J = Number(heuteIso.slice(0, 4));
+  return [...feiertage(J), ...feiertage(J + 1)].find((f) => f.bis >= heuteIso) || null;
+}
+
+// Fairness-Gedaechtnis: wer hatte wie oft welchen Feiertagsblock? Wird bei jedem Aufruf aus allen Reservierungen berechnet
+// (keine eigene Speicherung, also nichts, was verloren gehen oder nicht mehr stimmen kann). Solange die Reservierungen
+// bestehen, bleibt das Gedaechtnis ueber Jahre erhalten.
+// «Hatte» = die Person sass (als Fahrer oder Mitreisende) an mindestens einem Tag des Blocks im Fahrzeug.
+// Pro Person, Block und Jahr zaehlt das hoechstens einmal, auch bei mehreren Reservierungen. Tage zaehlen einzeln.
+// Rueckgabe: { jahre: [von..bis], je: { personId: { blockId: { mal, tage, jahre: [J..], zuletzt: J|null } } }, total: { personId: { mal, tage } } }
+export function feiertagStatistik(buchungen, personen) {
+  const bl = Array.isArray(buchungen) ? buchungen : Object.values(buchungen || {});
+  const gueltig = bl.filter((b) => datumGueltig(b.von) && datumGueltig(b.bis) && b.von <= b.bis);
+  const ids = Object.keys(personen);
+  const je = Object.fromEntries(ids.map((p) => [p, Object.fromEntries(FEIERTAGE.map((f) => [f.id, { mal: 0, tage: 0, jahre: [], zuletzt: null }]))]));
+  const total = Object.fromEntries(ids.map((p) => [p, { mal: 0, tage: 0 }]));
+  if (!gueltig.length) return { jahre: [], je, total };
+  const j0 = Number(gueltig.reduce((m, b) => (b.von < m ? b.von : m), gueltig[0].von).slice(0, 4));
+  const j1 = Number(gueltig.reduce((m, b) => (b.bis > m ? b.bis : m), gueltig[0].bis).slice(0, 4));
+  const imWagen = gueltig.map((b) => ({ b, wer: eigentuemer(b, personen) }));
+  for (let J = j0; J <= j1; J++) {
+    for (const f of feiertage(J)) {
+      for (const p of ids) {
+        const tg = new Set();
+        for (const { b, wer } of imWagen) {
+          if (!wer.includes(p) || b.bis < f.von || b.von > f.bis) continue;
+          const von = b.von > f.von ? b.von : f.von, bis = b.bis < f.bis ? b.bis : f.bis;
+          tageListe(von, bis).forEach((t) => tg.add(t));
+        }
+        if (!tg.size) continue;
+        const z = je[p][f.id];
+        z.mal++; z.tage += tg.size; z.jahre.push(J); z.zuletzt = J;
+        total[p].mal++; total[p].tage += tg.size;
+      }
+    }
+  }
+  return { jahre: Array.from({ length: j1 - j0 + 1 }, (_, i) => j0 + i), je, total };
+}
+// Wer hatte den Block bisher am seltensten? Rueckgabe: { ids: [personId], alleGleich: bool }.
+// Es zaehlen nur die Personen aus «ids» (z. B. die vier Eigentuemer).
+export function seltenstBlock(stat, blockId, ids) {
+  const m = ids.map((p) => [p, stat.je[p]?.[blockId]?.mal ?? 0]);
+  const min = Math.min(...m.map((x) => x[1])), max = Math.max(...m.map((x) => x[1]));
+  return { ids: m.filter((x) => x[1] === min).map((x) => x[0]), alleGleich: min === max, min };
+}

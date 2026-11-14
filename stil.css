@@ -145,3 +145,24 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .rg-kopf{align-items:center}
 .rg-x{margin-left:10px;width:40px;height:40px;border:0;border-radius:50%;background:var(--soft);color:var(--fg);font:inherit;font-size:18px;font-weight:800;flex:none}
 .rg-abbruch{display:block;width:100%;margin-top:2px;border:0;background:none;color:var(--rot-t);font:inherit;font-size:15px;font-weight:700;padding:12px;text-decoration:underline}
+
+/* Feiertage im Kalender und Fairness-Tabelle */
+.tag.fei{background:rgba(245,158,11,.20)}
+.tag.fei .nr{color:var(--gelb-t);font-weight:800}
+.tag.fei.we .nr{color:var(--gelb-t)}
+.tag.fei.heute .nr{color:var(--accfg)}
+.punkt.fe{background:rgba(245,158,11,.55);box-shadow:inset 0 0 0 1px var(--gelb-t)}
+.fe-zeile{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;font-size:13px;color:var(--muted)}
+.fe-zeile b{color:var(--gelb-t);font-weight:700}
+.ff-wrap{overflow-x:auto}
+.ff-tab{width:100%;border-collapse:collapse;font-size:13px}
+.ff-tab th,.ff-tab td{padding:7px 3px;text-align:center;border-top:1px solid var(--line)}
+.ff-tab tr:first-child th{border-top:0;font-size:12px;color:var(--muted);font-weight:700;vertical-align:bottom}
+.ff-tab tr:first-child th .punkt{display:block;margin:0 auto 3px}
+.ff-tab th:first-child{text-align:left;font-weight:600;color:var(--fg);padding-left:0;width:34%}
+.ff-tab td b{display:block;font-size:16px;line-height:1.1}
+.ff-tab td small{display:block;font-size:10px;color:var(--muted)}
+.ff-tab td.dran{background:rgba(22,163,74,.16);border-radius:8px}
+.ff-tab tr.sum th{color:var(--muted);font-size:12px}
+.ff-tab tr.nx th{color:var(--fg)}
+.ff-tab .nx-m{display:block;font-size:10px;font-weight:700;color:var(--ok-t)}

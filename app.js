@@ -1,5 +1,5 @@
 import {
-  SCHWELLE, schwellen, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung,
+  SCHWELLE, schwellen, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114j';
-import * as S from './speicher.js?v=20261114j';
+} from './regeln.js?v=20261114k';
+import * as S from './speicher.js?v=20261114k';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -431,6 +431,38 @@ function ringe(J) {
     }).join('') + '</div></div>';
 }
 
+// Feiertage im angezeigten Monat (Text unter dem Kalender, auf dem Handy gibt es kein Schweben mit dem Finger).
+function feiertageMonat(J, M, n) {
+  const von = iso(J, M, 1), bis = iso(J, M, n);
+  const l = feiertage(J).filter((f) => f.von <= bis && f.bis >= von);
+  if (!l.length) return '';
+  const tm = (d) => `${Number(d.slice(8))}.${Number(d.slice(5, 7))}.`;
+  return `<div class="fe-zeile">${l.map((f) => `<span><b>${h(f.name)}</b> ${f.von === f.bis ? tm(f.von) : tm(f.von) + '–' + tm(f.bis)}</span>`).join('')}</div>`;
+}
+// Fairness-Gedaechtnis: wer hatte wie oft welchen Feiertagsblock (aus allen Reservierungen berechnet, ueber alle Jahre).
+function feiertagKarte() {
+  const ids = idsGeordnet().filter((i) => D.personen[i]);
+  const st = feiertagStatistik(liste(), D.personen);
+  const nx = naechsterFeiertag(heute());
+  let nxZeile = '';
+  if (nx) {
+    const sb = seltenstBlock(st, nx.id, ids);
+    const wer = sb.ids.map((i) => h(D.personen[i].name)).join(' und ');
+    nxZeile = `<p class="info" style="margin:0 0 10px"><strong>Als Nächstes: ${h(nx.name)} ${nx.von.slice(0, 4)}</strong> (${fmt(nx.von)}${nx.von === nx.bis ? '' : ' bis ' + fmt(nx.bis)}).<br>${st.jahre.length === 0 ? 'Noch keine Reservierung erfasst.' : sb.alleGleich ? 'Bisher hatten alle diesen Feiertag gleich oft.' : `Bisher am seltensten: <strong>${wer}</strong>. Bei Gleichstand ist diese Person zuerst dran.`}</p>`;
+  }
+  const kopf = `<tr><th></th>${ids.map((i) => `<th><i class="punkt ${PERSON_FARBE[i] || ''}"></i>${h(D.personen[i].name)}</th>`).join('')}</tr>`;
+  const zeilen = FEIERTAGE.map((f) => {
+    const mal = ids.map((i) => st.je[i][f.id].mal), min = Math.min(...mal), gleich = mal.every((x) => x === min);
+    const istNx = !!nx && nx.id === f.id;
+    return `<tr${istNx ? ' class="nx"' : ''}><th>${h(f.name)}${istNx ? '<small class="nx-m">als Nächstes</small>' : ''}</th>${ids.map((i, k) => { const z = st.je[i][f.id]; return `<td class="${istNx && !gleich && mal[k] === min ? 'dran' : ''}"${z.jahre.length ? ` title="${h(f.name)}: ${z.jahre.join(', ')}"` : ''}><b>${z.mal}</b>${z.zuletzt ? `<small>${z.zuletzt}</small>` : ''}</td>`; }).join('')}</tr>`;
+  }).join('');
+  const sum = `<tr class="sum"><th>Feiertage zusammen</th>${ids.map((i) => `<td><b>${st.total[i].mal}</b></td>`).join('')}</tr><tr class="sum"><th>Feiertagstage</th>${ids.map((i) => `<td><b>${st.total[i].tage}</b></td>`).join('')}</tr>`;
+  const von = st.jahre.length ? (st.jahre[0] === st.jahre[st.jahre.length - 1] ? `Erfasst: ${st.jahre[0]}.` : `Erfasst: ${st.jahre[0]} bis ${st.jahre[st.jahre.length - 1]}.`) : '';
+  return `<details class="sek"><summary><span>Feiertage: wer hatte wie oft?</span></summary><div class="sek-in">${nxZeile}
+    <div class="ff-wrap"><table class="ff-tab">${kopf}${zeilen}${sum}</table></div>
+    <p class="info" style="margin:10px 0 0">Grosse Zahl = wie oft, kleine Zahl = zuletzt im Jahr. Grün hinterlegt = beim nächsten Feiertag bisher am seltensten. Es zählt, wer an mindestens einem Tag des Feiertags im Fahrzeug sass oder sitzen wird (Fahrer und Mitreisende), egal ob schon gefahren oder erst reserviert. ${von} Die App rechnet das aus allen Reservierungen und merkt es sich darum über alle Jahre, solange die Reservierungen bestehen. Reisen vor dem Start der App fehlen.</p></div></details>`;
+}
+
 function kalender() {
   const J = ansicht.getFullYear(), M = ansicht.getMonth();
   const erster = new Date(J, M, 1), n = new Date(J, M + 1, 0).getDate();
@@ -444,9 +476,10 @@ function kalender() {
   for (let t = 1; t <= n; t++) {
     const d = iso(J, M, t), hier = bs.filter((b) => b.von <= d && d <= b.bis);
     const wd = (versatz + t - 1) % 7;
-    const cls = ['tag', wd >= 5 ? 'we' : '', hier.length > 1 ? 'koll' : '',
+    const fe = feiertagAm(d);
+    const cls = ['tag', wd >= 5 ? 'we' : '', fe ? 'fei' : '', hier.length > 1 ? 'koll' : '',
       d === tT ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
@@ -457,9 +490,11 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}</div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="punkt fe"></i>Feiertag</span></div>
+    ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
+  ${feiertagKarte()}
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
   <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
   bindRahmen(); bindNeu(); bindTausch(J);
