@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115n';
-import * as S from './speicher.js?v=20261115n';
+} from './regeln.js?v=20261115o';
+import * as S from './speicher.js?v=20261115o';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -506,7 +506,7 @@ function minusZelle(d) {
   const ids = minusAmTag(minusListe(), d).filter((i) => D.personen[i]);
   if (!ids.length) return '';
   const eigen = ids.includes(ich), andere = ids.filter((i) => i !== ich);
-  const tip = 'Nicht verfügbar: ' + ids.map((i) => D.personen[i].name).join(', ');
+  const tip = 'Kein Bedarf: ' + ids.map((i) => D.personen[i].name).join(', ');
   const kl = andere.length ? `<span class="mn">${STOPP('grau')}${eigen ? andere.length : andere.length + '×'}</span>` : '';
   return `<span class="mi${eigen ? ' eigen' : ''}" title="${h(tip)}">${eigen ? STOPP('rot gross') : ''}${kl}</span>`;
 }
@@ -528,7 +528,7 @@ function minusForm(ex) {
   <label for="mi_grund">Grund (optional)</label><input id="mi_grund" maxlength="80" placeholder="z. B. Arbeit, Familienfest" value="${h(ex?.grund || '')}">
   <div id="msg"></div>
   <div class="aktion">${ex ? '<button id="mdel">Löschen</button>' : ''}<button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
-  const md = document.getElementById('mdel'); if (md) md.onclick = async () => { if (!eigener(ex)) return nurEigene(); if (confirm('Diesen Eintrag «nicht verfügbar» löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', ex.id); schliessen(); kalender(); hinweis('Eintrag gelöscht.'); }); };
+  const md = document.getElementById('mdel'); if (md) md.onclick = async () => { if (!eigener(ex)) return nurEigene(); if (confirm('Diesen Eintrag «kein Bedarf» löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', ex.id); schliessen(); kalender(); hinweis('Eintrag gelöscht.'); }); };
   const vonEl = document.getElementById('mi_von'), bisEl = document.getElementById('mi_bis');
   vonEl.onchange = () => { if (!bisEl.value || bisEl.value < vonEl.value) bisEl.value = vonEl.value; };
   document.getElementById('abb').onclick = schliessen;
@@ -537,7 +537,7 @@ function minusForm(ex) {
     const p = pruefeMinus(m, D.personen);
     if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => {
-      await S.speichern(D, 'termine', ex ? ex.id : null, { ...(ex || {}), art: 'Minus', titel: 'Nicht verfügbar', faelligAm: m.von, erledigtAm: '', ...m, erfasstVon: ex ? ex.erfasstVon : ich });
+      await S.speichern(D, 'termine', ex ? ex.id : null, { ...(ex || {}), art: 'Minus', titel: 'Kein Bedarf', faelligAm: m.von, erledigtAm: '', ...m, erfasstVon: ex ? ex.erfasstVon : ich });
       ansicht = new Date(m.von + 'T12:00:00'); schliessen(); kalender(); hinweis('Eintrag gespeichert.');
     });
   };
@@ -654,7 +654,7 @@ function formularZeigen(tag, ex) {
   };
   const minusZeigen = () => {
     const r = kbAus() ? { warnung: [], info: [] } : minusPruef();
-    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage kein Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Nicht verfügbar sind<br>${r.info.map(minusText).join('<br>')}</p>` : '');
+    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage kein Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Kein Bedarf haben<br>${r.info.map(minusText).join('<br>')}</p>` : '');
   };
   ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
   document.getElementById('mit').addEventListener('change', minusZeigen);
