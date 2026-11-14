@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115l';
-import * as S from './speicher.js?v=20261115l';
+} from './regeln.js?v=20261115m';
+import * as S from './speicher.js?v=20261115m';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -378,6 +378,9 @@ function themaSetzen(t) {
   try { if (t === 'auto') localStorage.removeItem('womo-theme'); else localStorage.setItem('womo-theme', t); } catch {}
   const r = document.documentElement; if (t === 'hell') r.setAttribute('data-theme', 'light'); else if (t === 'dunkel') r.setAttribute('data-theme', 'dark'); else r.removeAttribute('data-theme');
 }
+// ---------- Kalender-Zeichen (Kein Bedarf, Termin-Glocke) pro Geraet ausblenden ----------
+function kbAus() { try { return localStorage.getItem('womo-kal-zeichen-aus') === '1'; } catch { return false; } }
+function kbSetzen(aus) { try { if (aus) localStorage.setItem('womo-kal-zeichen-aus', '1'); else localStorage.removeItem('womo-kal-zeichen-aus'); } catch {} }
 // ---------- Abmeldung nach 30 Minuten ohne Benutzung ----------
 // Danach ist die Anmeldung nötig. Die Seite wird dabei neu geladen, so holt jede/r die aktuelle Version.
 const INAKTIV_MS = 30 * 60 * 1000;
@@ -399,10 +402,13 @@ function bindRahmen() {
     sheet(`<h3>${h(D.personen[ich].name)}</h3>
     <div class="t-akt2"><button class="gross-btn" id="m_thm" type="button">Darstellung: ${THEMA_NAME[themaLesen()]}</button>
     <p class="info" style="margin:0">Darstellung antippen: Auto, Hell, Dunkel.</p>
+    <button class="gross-btn" id="m_kz" type="button">Kalender-Zeichen: ${kbAus() ? 'aus' : 'an'}</button>
+    <p class="info" style="margin:0">Aus = im Kalender keine Zeichen für «Termin» und «kein Bedarf», keine Legende dazu, keine Karte «Kein Bedarf» und keine Hinweise beim Reservieren. Gilt nur auf diesem Gerät.</p>
     <button class="gross-btn" id="m_ich" type="button">Person wechseln</button>
     <button class="gross-btn" id="abb" type="button">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
     document.getElementById('m_thm').onclick = (ev) => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); ev.currentTarget.textContent = 'Darstellung: ' + THEMA_NAME[n]; };
+    document.getElementById('m_kz').onclick = (ev) => { kbSetzen(!kbAus()); ev.currentTarget.textContent = 'Kalender-Zeichen: ' + (kbAus() ? 'aus' : 'an'); if (tab === 'kalender') kalender(); };
     document.getElementById('m_ich').onclick = () => { schliessen(); besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
   };
   app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.t; schliessen(); zeige(); window.scrollTo(0, 0); });
@@ -496,6 +502,7 @@ function feiertagKarte() {
 // «Nicht verfuegbar»: Stoppsignal im Tag. Eigener Eintrag = grosses rotes Signal, Eintraege der anderen = kleines graues Signal mit Namen.
 const STOPP = (kl) => `<svg class="stopp ${kl}" viewBox="0 0 24 24" aria-hidden="true"><polygon points="8,1.500 16,1.500 22.500,8 22.500,16 16,22.500 8,22.500 1.500,16 1.500,8"/><rect x="6" y="10" width="12" height="4" rx="1"/></svg>`;
 function minusZelle(d) {
+  if (kbAus()) return '';
   const ids = minusAmTag(minusListe(), d).filter((i) => D.personen[i]);
   if (!ids.length) return '';
   const eigen = ids.includes(ich), andere = ids.filter((i) => i !== ich);
@@ -553,7 +560,7 @@ function kalender() {
     const fe = feiertagAm(d);
     const cls = ['tag', wd >= 5 ? 'we' : '', fe ? 'fei' : '', hier.length > 1 ? 'koll' : '',
       d === tT ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${minusZelle(d)}${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h('Termin: ' + terminTag[d].map((x) => x.titel).join(', '))}">${GLOCKE}</span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${minusZelle(d)}${terminTag[d] && !kbAus() ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h('Termin: ' + terminTag[d].map((x) => x.titel).join(', '))}">${GLOCKE}</span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
@@ -564,14 +571,14 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="leg-tm">${GLOCKE}</i>Termin</span><span>${STOPP("rot")}Ich habe kein Bedarf</span><span>${STOPP("grau")}Andere ohne Bedarf</span></div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}${kbAus() ? '' : `<span><i class="leg-tm">${GLOCKE}</i>Termin</span><span>${STOPP("rot")}Ich habe kein Bedarf</span><span>${STOPP("grau")}Andere ohne Bedarf</span>`}</div>
     ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0;cursor:pointer" data-tz="${h(x.id)}" role="button" tabindex="0"><span class="tm lt ${terminStufe(x, tT)}">${GLOCKE}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span> · von ${h(D.personen[x.erfasstVon]?.name || '?')}</div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>
   ${feiertagKarte()}
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
-  ${minusKarte(J, M, n)}
+  ${kbAus() ? '' : minusKarte(J, M, n)}
   ${tauschSek(J)}`);
   bindRahmen(); bindNeu(); bindTausch(J);
   const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
@@ -646,7 +653,7 @@ function formularZeigen(tag, ex) {
     return u.length ? `<div class="fehler"><strong>Womo ist besetzt.</strong><br>${u.map((x) => `${fmt(x.von)} bis ${fmt(x.bis)}: ${h(D.personen[x.fahrerId]?.name || x.ausnahmeFahrer?.name || '?')}`).join('<br>')}</div>` : '';
   };
   const minusZeigen = () => {
-    const r = minusPruef();
+    const r = kbAus() ? { warnung: [], info: [] } : minusPruef();
     document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast dich für diese Tage als nicht verfügbar eingetragen:<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Nicht verfügbar sind<br>${r.info.map(minusText).join('<br>')}</p>` : '');
   };
   ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
