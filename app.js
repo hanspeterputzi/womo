@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115k';
-import * as S from './speicher.js?v=20261115k';
+} from './regeln.js?v=20261115l';
+import * as S from './speicher.js?v=20261115l';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -568,13 +568,14 @@ function kalender() {
     ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
-  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm lt ${terminStufe(x, tT)}">${GLOCKE}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>
+  <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0;cursor:pointer" data-tz="${h(x.id)}" role="button" tabindex="0"><span class="tm lt ${terminStufe(x, tT)}">${GLOCKE}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span> · von ${h(D.personen[x.erfasstVon]?.name || '?')}</div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>
   ${feiertagKarte()}
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
   ${minusKarte(J, M, n)}
   ${tauschSek(J)}`);
   bindRahmen(); bindNeu(); bindTausch(J);
   const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
+  app.querySelectorAll('[data-tz]').forEach((el) => { const los = () => { terminOeffnen = el.dataset.tz; tab = 'termine'; schliessen(); zeige(); window.scrollTo(0, 0); }; el.onclick = los; el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); los(); } }; });
   app.querySelectorAll('[data-medit]').forEach((el) => el.onclick = () => { const x = D.termine[el.dataset.medit]; if (!eigener(x)) return nurEigene(); minusForm(x); });
   const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
@@ -1228,6 +1229,7 @@ const TERMIN_ICON = {
   Versicherung: '<path d="M12 3l8 3v6c0 5-3.500 8-8 9-4.500-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   Sonstiges: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
 };
+let terminOeffnen = null;
 function termine() {
   const t = heute();
   const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
@@ -1295,6 +1297,7 @@ function termine() {
       document.getElementById('t_loeschen').onclick = async () => { if (confirm('Termin löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); schliessen(); termine(); }); };
     }
   });
+  if (terminOeffnen) { const id = terminOeffnen; terminOeffnen = null; const b = [...app.querySelectorAll('[data-tid]')].find((e) => e.dataset.tid === id); if (b) b.click(); }
 }
 function terminForm() {
   sheet(`<h3>Neuer Termin</h3>
