@@ -25,6 +25,7 @@ main{max-width:620px;margin:0 auto;padding:14px 14px 0}
 .offline{background:var(--gelbbg);color:var(--gelb);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;margin-bottom:14px}
 .gross{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:64px;border:0;border-radius:16px;background:var(--rot);color:#fff;font:inherit;font-size:22px;font-weight:800;text-decoration:none;text-align:center}
 .gross:active{background:var(--rot2)}
+.gross.res{min-height:56px;background:var(--soft);color:var(--rt);border:2px solid var(--rot);font-size:20px}.gross.res small{color:var(--muted);opacity:1}
 .gross small{font-size:13px;font-weight:600;opacity:.9;display:block}
 .nr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
 .nr a,.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;border-radius:14px;background:var(--soft);color:var(--fg);text-decoration:none;font:inherit;font-weight:800;font-size:20px;border:0;padding:8px;text-align:center}
@@ -144,7 +145,7 @@ a.tcs b{font-size:14px;color:#1a1a1a;font-weight:700}a.tcs span{font-size:22px;f
       'Warnblinker einschalten, anhalten, Motor aus. <b>Warnweste anziehen, bevor du aussteigst.</b>',
       'Alle aussteigen lassen und hinter die Leitplanke oder weit weg von der Strasse bringen.',
       'Warndreieck aufstellen, weit genug hinter dem Fahrzeug (auf Autobahn und ausserorts weiter weg).',
-      '<b>Verletzte? Sofort 112 anrufen.</b> Standort sagen, wie viele Verletzte, was passiert ist. Erste Hilfe leisten, Verletzte nicht allein lassen.',
+      '<b>Verletzte? Sofort den Notruf anrufen</b> (Rettung, Nummern ganz oben). Standort sagen, wie viele Verletzte, was passiert ist. Erste Hilfe leisten, Verletzte nicht allein lassen.',
       'Fotos machen: alle Fahrzeuge, Kennzeichen, Schäden, Unfallstelle, Spuren.',
       'Namen, Adresse und Versicherung der anderen aufschreiben. Den Europäischen Unfallbericht ausfüllen. Nichts unterschreiben, was du nicht verstehst.',
       'Versicherung oder Schutzbrief anrufen (Nummer unter «Fahrzeug»). Danach die Familie informieren.'
@@ -161,12 +162,12 @@ a.tcs b{font-size:14px;color:#1a1a1a;font-weight:700}a.tcs span{font-size:22px;f
       '<b>Gasgeruch: kein Feuer, keine Zigarette, keinen Schalter bedienen.</b>',
       'Flaschenventil (Gashahn) schliessen, wenn es ohne Risiko geht.',
       'Türen und Fenster öffnen, alle sofort ins Freie, weg vom Fahrzeug.',
-      'Aus sicherer Entfernung 112 anrufen (Feuerwehr). Das Fahrzeug erst benützen, wenn die Gasanlage geprüft ist.',
-      '<b>Feuer: alle raus, Abstand halten.</b> 112 anrufen. Nur löschen, wenn das Feuer klein ist und es gefahrlos geht. Gasflasche kann explodieren.',
-      'Kopfschmerz, Schwindel, Übelkeit im Fahrzeug können Kohlenmonoxid sein: sofort lüften, ins Freie, 112.'
+      'Aus sicherer Entfernung die Feuerwehr anrufen (Nummer ganz oben). Das Fahrzeug erst benützen, wenn die Gasanlage geprüft ist.',
+      '<b>Feuer: alle raus, Abstand halten.</b> Feuerwehr anrufen. Nur löschen, wenn das Feuer klein ist und es gefahrlos geht. Gasflasche kann explodieren.',
+      'Kopfschmerz, Schwindel, Übelkeit im Fahrzeug können Kohlenmonoxid sein: sofort lüften, ins Freie, Rettung anrufen.'
     ]],
     ['🩺', 'Verletzt oder krank', [
-      '<b>112 anrufen</b>, Standort sagen, was passiert ist, wie viele Personen betroffen sind.',
+      '<b>Notruf anrufen</b> (Nummern ganz oben), Standort sagen, was passiert ist, wie viele Personen betroffen sind.',
       'Person nicht allein lassen. Bei Bewusstlosigkeit: Atmung prüfen, Hilfe von der Notrufzentrale am Telefon annehmen.',
       'Medizinische Hinweise der Familie siehe «Familie».',
       'Auslandkrankenversicherung oder Schutzbrief melden, wenn vorhanden. Belege und Arztberichte aufbewahren.'
@@ -186,10 +187,10 @@ a.tcs b{font-size:14px;color:#1a1a1a;font-weight:700}a.tcs span{font-size:22px;f
     if (!A) out += '<div class="leer" style="margin-bottom:14px">Noch keine Daten auf diesem Handy. Einmal die Womo-App mit Netz öffnen und anmelden, dann liegen Familie und Fahrzeug hier bereit. Die Notrufnummern gehen schon jetzt.</div>';
 
     // 1. Anrufen
-    out += '<div class="karte"><a class="gross" href="tel:112"><span>112 anrufen<small>Geht fast überall in Europa. Verbindet mit Polizei, Feuerwehr und Rettung.</small></span></a>';
-    out += '<h2 style="margin-top:16px">Land</h2><select id="land" aria-label="Land wählen">' + L.map(function (x) { return '<option' + (x[0] === land ? ' selected' : '') + '>' + h(x[0]) + '</option>'; }).join('') + '</select>';
+    out += '<div class="karte"><h2>Land</h2><select id="land" aria-label="Land wählen">' + L.map(function (x) { return '<option' + (x[0] === land ? ' selected' : '') + '>' + h(x[0]) + '</option>'; }).join('') + '</select>';
     out += '<div class="nr"><a href="tel:' + r[1] + '">' + r[1] + '<small>Polizei</small></a><a href="tel:' + r[3] + '">' + r[3] + '<small>Rettung</small></a><a href="tel:' + r[2] + '">' + r[2] + '<small>Feuerwehr</small></a></div>';
     if (r[4]) out += '<p class="info">' + h(r[4]) + '</p>';
+    out += '<h2 style="margin-top:18px">Reserve für Länder ausserhalb der EU</h2><a class="gross res" href="tel:112"><span>112 anrufen<small>Nur wenn die Landesnummer fehlt oder nicht geht. In der EU gilt die 112 überall.</small></span></a>';
     out += '</div>';
 
 
