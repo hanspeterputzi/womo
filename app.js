@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115a';
-import * as S from './speicher.js?v=20261115a';
+} from './regeln.js?v=20261115b';
+import * as S from './speicher.js?v=20261115b';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -585,7 +585,7 @@ function kalender() {
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
   document.getElementById('hj').onclick = () => { ansicht = new Date(); kalender(); };
   document.getElementById('resneu').onclick = () => formularZeigen('');
-  app.querySelectorAll('.tag[data-d]').forEach((el) => el.onclick = () => formularZeigen(el.dataset.d));
+  app.querySelectorAll('.tag[data-d]').forEach((el) => el.onclick = () => { if (besetztMeldung(el.dataset.d)) return; formularZeigen(el.dataset.d); });
   app.querySelectorAll('[data-edit]').forEach((el) => el.onclick = () => { const x = D.buchungen[el.dataset.edit]; if (!eigener(x)) return nurEigene(); formularZeigen('', x); });
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
     if (!eigener(D.buchungen[el.dataset.del])) return nurEigene();
@@ -607,6 +607,17 @@ function buchungHtml(b) {
     ${darf ? `<div style="display:flex;flex-direction:column;gap:10px;align-self:flex-start"><button class="kl" style="color:var(--acc)" data-edit="${h(b.id)}">Ändern</button><button class="kl" data-del="${h(b.id)}">Löschen</button></div>` : ''}</div>`;
 }
 
+// Ein Tag, der schon zu einer Reservierung gehoert, ist besetzt (Randtage zaehlen mit): sofort melden, kein Formular.
+function besetztMeldung(tag) {
+  const x = liste().find((b) => b.von <= tag && tag <= b.bis);
+  if (!x) return false;
+  const wer = D.personen[x.fahrerId]?.name || x.ausnahmeFahrer?.name || '?';
+  sheet(`<h3>Womo ist besetzt</h3>
+  <div class="fehler">Am ${fmt(tag)} ist das Womo schon für ${h(wer)} reserviert (${fmt(x.von)} bis ${fmt(x.bis)}). Ein Tag kann nur einmal vergeben werden.</div>
+  <div class="aktion"><button class="primaer" id="abb">OK</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  return true;
+}
 function formularZeigen(tag, ex) {
   if (ex && !eigener(ex)) return nurEigene();
   const ids = idsGeordnet();
@@ -631,9 +642,15 @@ function formularZeigen(tag, ex) {
     return minusFuerReservierung(minusListe().filter((m) => D.personen[m.personId]), bb);
   };
   const minusText = (m) => `${h(D.personen[m.personId].name)}: ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)}${m.grund ? ' (' + h(m.grund) + ')' : ''}`;
+  const besetztHtml = () => {
+    const bb = { id: ex?.id, von: val('von'), bis: val('bis') };
+    if (!bb.von || !bb.bis || bb.bis < bb.von) return '';
+    const u = ueberschneidungen(bb, liste());
+    return u.length ? `<div class="fehler"><strong>Womo ist besetzt.</strong><br>${u.map((x) => `${fmt(x.von)} bis ${fmt(x.bis)}: ${h(D.personen[x.fahrerId]?.name || x.ausnahmeFahrer?.name || '?')}`).join('<br>')}</div>` : '';
+  };
   const minusZeigen = () => {
     const r = minusPruef();
-    document.getElementById('mhinw').innerHTML = (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast dich für diese Tage als nicht verfügbar eingetragen:<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Nicht verfügbar sind<br>${r.info.map(minusText).join('<br>')}</p>` : '');
+    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast dich für diese Tage als nicht verfügbar eingetragen:<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Nicht verfügbar sind<br>${r.info.map(minusText).join('<br>')}</p>` : '');
   };
   ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
   document.getElementById('mit').addEventListener('change', minusZeigen);
