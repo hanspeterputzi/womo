@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114v';
-import * as S from './speicher.js?v=20261114v';
+} from './regeln.js?v=20261114w';
+import * as S from './speicher.js?v=20261114w';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -688,7 +688,6 @@ function fahrten() {
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Fahren unter Alkohol ist verboten</strong></div></div>
   <div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
   ${karte}
-  <div style="margin-top:8px">${freigabeVerweis()}</div>
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
     <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
@@ -699,7 +698,6 @@ function fahrten() {
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
-  bindNeu();
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
   app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
@@ -721,12 +719,6 @@ function freigabeListe() {
   const L = fahrFreigaben().map((f) => ({ f, s: fahrStandVon(f) })).sort((a, b) => (a.f.von < b.f.von ? 1 : a.f.von > b.f.von ? -1 : 0));
   const dein = (e) => e.s.status === 'offen' && e.f.erfasstVon !== ich && !e.s.antworten[ich];
   return { L, dein, wartet: L.filter(dein).length, aktiv: L.filter((e) => e.s.status !== 'vorbei').length };
-}
-// Auf der Seite «Fahrten»: nur ein Verweis, die Freigabe selbst liegt im Tab «Familienrat» (Umschalter «Fahrer»).
-function freigabeVerweis() {
-  const { wartet, aktiv } = freigabeListe();
-  const k = wartet ? 'gelb' : 'blau';
-  return `<button class="t-z ${k}" data-neu="wunschliste" data-fa="fahrer"><span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>Fahrerfreigabe (Drittperson)</strong><small>Im Tab «Familienrat» unter «Fahrer»</small></span><span class="t-pl ${k}">${wartet ? wartet + ' offen für dich' : aktiv ? aktiv + ' aktiv' : 'keine'}</span></button>`;
 }
 function fahrerSeite() {
   const { L, dein, wartet } = freigabeListe();
