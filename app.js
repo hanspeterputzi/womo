@@ -331,7 +331,7 @@ function vertrag() {
 function rahmen(inhalt) {
   const nz = neuZ().nach;
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
-    <div class="kopfr"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="thm" id="thm" title="Darstellung wechseln: Auto, Hell, Dunkel" aria-label="Darstellung wechseln">${THEMA_NAME[themaLesen()]}</button><button class="chip" id="aus" title="Person wechseln">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
+    <div class="kopfr"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="chip" id="aus" title="Menü: Darstellung, Person wechseln" aria-haspopup="dialog">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
   <main>${inhalt}</main>
   <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}${nz[k] ? `<i class="tb" aria-label="${nz[k]} neu">${nz[k]}</i>` : ''}</button>`).join('')}</nav>`;
 }
@@ -371,8 +371,17 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 addEventListener('pageshow', inaktivPruefen);
 setInterval(inaktivPruefen, 30000);
 function bindRahmen() {
-  document.getElementById('thm').onclick = (e) => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); e.currentTarget.textContent = THEMA_NAME[n]; hinweis('Darstellung: ' + THEMA_NAME[n]); };
-  document.getElementById('aus').onclick = (e) => { e.preventDefault(); besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
+  document.getElementById('aus').onclick = (e) => {
+    e.preventDefault();
+    sheet(`<h3>${h(D.personen[ich].name)}</h3>
+    <div class="t-akt2"><button class="gross-btn" id="m_thm" type="button">Darstellung: ${THEMA_NAME[themaLesen()]}</button>
+    <p class="info" style="margin:0">Darstellung antippen: Auto, Hell, Dunkel.</p>
+    <button class="gross-btn" id="m_ich" type="button">Person wechseln</button>
+    <button class="gross-btn" id="abb" type="button">Schliessen</button></div>`);
+    document.getElementById('abb').onclick = schliessen;
+    document.getElementById('m_thm').onclick = (ev) => { const f = ['auto', 'hell', 'dunkel']; const n = f[(f.indexOf(themaLesen()) + 1) % 3]; themaSetzen(n); ev.currentTarget.textContent = 'Darstellung: ' + THEMA_NAME[n]; };
+    document.getElementById('m_ich').onclick = () => { schliessen(); besuchMerken(); ich = null; seit = ''; try { sessionStorage.removeItem('womo-ich'); } catch {} zeige(); };
+  };
   app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { tab = b.dataset.t; schliessen(); zeige(); window.scrollTo(0, 0); });
 }
 
@@ -1356,12 +1365,17 @@ function fotoVerkleinern(file, gross, klein) {
   });
 }
 
+const waTextWunsch = (w) => `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.groesse ? ' Grösse: ' + w.groesse + '.' : ''}${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(wunschStandVon(w).frist)} antworten (Ja oder Nein).`;
+const waTextFrage = (f) => `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel}${f.groesse ? ' (Grösse: ' + f.groesse + ')' : ''} Bitte in der Womo-App bis ${fmt(frageStandVon(f).frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+// Nach dem Speichern WhatsApp mit fertigem Text öffnen; Gruppe oder Person wählt man dort selbst, gesendet wird erst dort.
+const waAuto = (text) => setTimeout(() => { try { location.href = waLink(text); } catch {} }, 900);
 function wunschForm() {
   sheet(`<h3>Neuer Wunsch</h3>
   <label for="w_titel">Was soll gekauft werden?</label><input id="w_titel" maxlength="100" placeholder="Konkretes Produkt, z. B. Leselampe mit Clip, weiss">
   <div class="zwei"><div><label for="w_preis">Preis pro Stück, CHF</label><input id="w_preis" inputmode="decimal" placeholder="z. B. 24.90"></div>
   <div><label for="w_menge">Stückzahl</label><input type="number" id="w_menge" min="1" max="99" value="1" inputmode="numeric"></div></div>
   <label for="w_link">Link zum Produkt</label><input id="w_link" type="url" inputmode="url" maxlength="300" autocapitalize="off" autocorrect="off" placeholder="https://… (empfohlen)">
+  <label for="w_groesse">Grösse (optional)</label><input id="w_groesse" maxlength="60" placeholder="z. B. 30 × 20 × 10 cm">
   <label for="w_notiz">Notiz</label><input id="w_notiz" maxlength="200" placeholder="optional, z. B. wofür, Farbe">
   <label>Foto (optional)</label><label class="foto-wahl" for="w_foto" id="w_fwahl">📷 Foto aufnehmen oder auswählen</label><input type="file" id="w_foto" accept="image/*" style="display:none">
   <div id="w_fprev"></div>
@@ -1377,10 +1391,10 @@ function wunschForm() {
     catch (x) { foto = ''; vorschau(); fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
   };
   document.getElementById('spei').onclick = async () => {
-    const w = { titel: val('w_titel').trim(), preis: rappen(val('w_preis')), menge: parseInt(val('w_menge') || '1', 10), link: val('w_link').trim(), notiz: val('w_notiz').trim(), foto: foto || undefined, datum: heute(), erfasstVon: ich };
+    const w = { titel: val('w_titel').trim(), preis: rappen(val('w_preis')), menge: parseInt(val('w_menge') || '1', 10), link: val('w_link').trim(), groesse: val('w_groesse').trim(), notiz: val('w_notiz').trim(), foto: foto || undefined, datum: heute(), erfasstVon: ich };
     const p = pruefeWunsch(w);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { const id = await S.speichern(D, 'wuensche', null, w); schliessen(); wunschliste(); hinweis(`Wunsch gespeichert. Die anderen haben bis ${fmt(addTage(w.datum, WUNSCH_FRIST_TAGE))} Zeit.`); wunschDetail(id); });
+    await sicher(async () => { const id = await S.speichern(D, 'wuensche', null, w); schliessen(); wunschliste(); hinweis(`Wunsch gespeichert. Die anderen haben bis ${fmt(addTage(w.datum, WUNSCH_FRIST_TAGE))} Zeit.`); wunschDetail(id); waAuto(waTextWunsch(D.wuensche[id] || { ...w, id })); });
   };
 }
 
@@ -1400,14 +1414,14 @@ function wunschDetail(id) {
     : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
     : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.nein.length === s.ja ? ' (Gleichstand gilt als abgelehnt, Ziffer 13)' : ''}. Nicht kaufen.`
     : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}${buchhalter() ? ` Buchhaltung: ${gb.kauf ? 'Kauf gebucht' : 'Kauf noch nicht gebucht'}${s.erstattet ? (gb.erstattung ? ', Erstattung gebucht' : ', Erstattung noch nicht gebucht') : ''}.` : ''}`;
-  const waText = `⭐ Womo-Wunsch von ${D.personen[w.erfasstVon]?.name || '?'}: ${w.titel}${w.menge > 1 ? ' (' + w.menge + ' Stück)' : ''}, ${wunschPreisText(w)}.${w.link ? ' ' + w.link : ''} Bitte in der Womo-App bis ${fmt(s.frist)} antworten (Ja oder Nein).`;
+  const waText = waTextWunsch(w);
   const meinAntwort = s.status === 'offen' && !mein;
   const kaufen = s.status === 'freigegeben' && mein;
   const erstatten = s.status === 'gekauft' && halter && !s.erstattet;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><div><h3 style="margin:0">${h(w.titel)}</h3><div class="info" style="margin:2px 0 0">${wunschPreisText(w)} · von ${h(D.personen[w.erfasstVon]?.name || '?')}, ${fmt(w.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     ${w.foto ? `<img class="w-foto" id="w_fbig" src="${h(w.foto)}" alt="Foto: ${h(w.titel)}">` : ''}
-    ${w.link ? `<p class="info" style="margin:0 0 6px"><a class="u-chip" href="${h(w.link)}" target="_blank" rel="noopener">Produkt ansehen<em>Link</em></a></p>` : ''}${w.notiz ? `<p class="info" style="margin:0 0 6px">${h(w.notiz)}</p>` : ''}
+    ${w.link ? `<p class="info" style="margin:0 0 6px"><a class="u-chip" href="${h(w.link)}" target="_blank" rel="noopener">Produkt ansehen<em>Link</em></a></p>` : ''}${w.groesse ? `<p class="info" style="margin:0 0 6px"><strong>Grösse:</strong> ${h(w.groesse)}</p>` : ''}${w.notiz ? `<p class="info" style="margin:0 0 6px">${h(w.notiz)}</p>` : ''}
     <div class="zeilen">${zeilen}</div>
     ${meinAntwort ? `<label for="w_grund">Nur bei Nein: Grund</label><input id="w_grund" maxlength="200" placeholder="Warum nicht?"><label for="w_alt">Nur bei Nein: Alternative (Produkt, Preis)</label><input id="w_alt" maxlength="200" placeholder="Was wäre besser?">` : ''}
     ${kaufen ? `<div class="zwei"><div><label for="w_betrag">Bezahlt, CHF</label><input id="w_betrag" inputmode="decimal" value="${chf(wunschTotal(w)).replace(/[’' ]/g, '')}"></div><div><label for="w_kdatum">Kaufdatum</label><input type="date" id="w_kdatum" value="${heute()}"></div></div>` : ''}
@@ -1496,6 +1510,7 @@ function frageForm() {
   <label for="f_titel">Die Frage</label><input id="f_titel" maxlength="${FRAGE_TITEL_MAX}" placeholder="z. B. Darf Marokko bereist werden?">
   <p class="info zusatz" style="margin:0 0 6px">${ZUSATZ_REGEL}</p>
   <label for="f_heute">Was gilt bisher? (optional)</label><input id="f_heute" maxlength="200" placeholder="z. B. Vertrag Ziffer 9: nur Länder in Europa">
+  <label for="f_groesse">Grösse (optional)</label><input id="f_groesse" maxlength="60" placeholder="z. B. 30 × 20 × 10 cm (bei Gegenstand)">
   <label for="f_text">Begründung: Warum fragst du? Was soll sich ändern?</label><textarea id="f_text" maxlength="${FRAGE_TEXT_MAX}" placeholder="z. B. Nene möchte im Frühling nach Marokko fahren (Fähre ab Spanien)."></textarea>
   <label>Bilder oder PDF (optional, bis ${FRAGE_ANHANG_MAX})</label><label class="foto-wahl" for="f_dat" id="f_dwahl">📎 Bild oder Datei auswählen</label><input type="file" id="f_dat" accept="image/*,application/pdf" multiple style="display:none">
   <div id="f_dprev"></div>
@@ -1524,11 +1539,11 @@ function frageForm() {
     aVorschau();
   };
   document.getElementById('spei').onclick = async () => {
-    const f = { art: 'Frage', titel: val('f_titel').trim(), text: val('f_text').trim(), bisher: val('f_heute').trim(), datum: heute(), faelligAm: heute(), erfasstVon: ich };
+    const f = { art: 'Frage', titel: val('f_titel').trim(), text: val('f_text').trim(), bisher: val('f_heute').trim(), groesse: val('f_groesse').trim(), datum: heute(), faelligAm: heute(), erfasstVon: ich };
     if (anhaenge.length) f.anhaenge = anhaenge;
     const p = pruefeFrage(f);
     if (!p.ok) { fehler(p.fehler); return; }
-    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fragenSeite(); hinweis('Frage gestellt. Alle müssen antworten.'); frageDetail(id); });
+    await sicher(async () => { const id = await S.speichern(D, 'termine', null, f); schliessen(); fragenSeite(); hinweis('Frage gestellt. Alle müssen antworten.'); frageDetail(id); waAuto(waTextFrage(D.termine[id] || { ...f, id })); });
   };
 }
 
@@ -1556,7 +1571,7 @@ function frageDetail(id) {
   const stand = s.status === 'offen' ? `Offen: ${s.ja} von ${s.gesamt} haben Ja gesagt. Es braucht alle. Noch keine Antwort: ${s.ohneAntwort.map((i) => h(D.personen[i].name)).join(', ')}. ${s.ueberfaellig ? 'Die Frist (' + fmt(s.frist) + ') ist abgelaufen. Die Frage bleibt offen, Schweigen ist kein Ja.' : 'Bitte antworten bis ' + fmt(s.frist) + '.'}`
     : s.status === 'angenommen' ? `Angenommen${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: alle ${s.gesamt} haben Ja gesagt.`
     : `Abgelehnt${s.entschiedenAm ? ' am ' + zeitText(s.entschiedenAm) : ''}: ${s.nein.map((i) => h(D.personen[i].name)).join(', ')} ${s.nein.length > 1 ? 'haben' : 'hat'} Nein gesagt. Es gilt weiter die bisherige Regel.`;
-  const waText = `❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel} Bitte in der Womo-App bis ${fmt(s.frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`;
+  const waText = waTextFrage(f);
   const waErinnerung = `⏰ Erinnerung Womo-Frage: «${f.titel}» von ${D.personen[f.erfasstVon]?.name || '?'}. Die Frist ist abgelaufen. Es fehlt noch die Antwort von ${s.ohneAntwort.map((i) => D.personen[i].name).join(', ')}. Bitte in der Womo-App mit Ja oder Nein antworten.`;
   const antwort = s.status === 'offen' && !mein && !s.antworten[ich];
   const loeschbar = mein && Object.keys(s.antworten).length === 0 && s.status === 'offen';
@@ -1564,6 +1579,7 @@ function frageDetail(id) {
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     ${s.status !== 'abgelehnt' ? `<p class="info zusatz" style="margin:0 0 10px">${ZUSATZ_REGEL}</p>` : ''}
     ${f.bisher ? `<p class="info" style="margin:0 0 6px"><strong>Bisher:</strong> ${h(f.bisher)}</p>` : ''}
+    ${f.groesse ? `<p class="info" style="margin:0 0 6px"><strong>Grösse:</strong> ${h(f.groesse)}</p>` : ''}
     <p class="info" style="margin:0 0 6px"><strong>Begründung:</strong> ${h(f.text || '')}</p>
     ${anhangHtml(f)}
     <div class="zeilen">${zeilen}</div>
