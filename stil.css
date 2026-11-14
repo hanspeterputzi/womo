@@ -201,3 +201,8 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tag .mi.eigen{flex-direction:row;justify-content:center;gap:3px;align-items:center}
 .tm.lt{display:inline-grid;place-items:center;border-radius:50%;color:#fff;width:22px;height:22px;flex:none;margin-top:1px}
 .tm.lt svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Hoehere Tage, damit unter dem Stoppsignal der Reservierungsstreifen Platz hat */
+.tag{aspect-ratio:1/1.45}
+.tag .mi{top:23px}
+.tag .mi .stopp.gross{width:17px;height:17px}
