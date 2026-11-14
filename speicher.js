@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261114e';
+import { tageListe } from './regeln.js?v=20261114g';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -47,7 +47,7 @@ const sauber = (o) => JSON.parse(JSON.stringify(o)); // entfernt undefined
 // ---------- lokal (Testmodus) ----------
 function lesen() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
 function schreiben(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch {} }
-function ergaenzen(d) { for (const s of SAMMLUNGEN) d[s] = d[s] || {}; d.start = d.start || ''; return d; }
+function ergaenzen(d) { for (const s of SAMMLUNGEN) d[s] = d[s] || {}; d.uebergabefotos = d.uebergabefotos || {}; d.start = d.start || ''; return d; }
 
 export async function laden() {
   if (!online && !lokalerTest) throw new Error('Bitte die Womo-App über den Link mit dem Code öffnen.');
@@ -195,16 +195,45 @@ export async function buchungSpeichern(d, b) {
   if (!online) schreiben(d);
   return id;
 }
+// Fotos der Uebergaben liegen in 'uebergabefotos' und werden nicht dauernd geladen (zu viele Daten), sondern nur beim Ansehen einer Uebergabe.
+const FOTOS = 'uebergabefotos';
+export async function fotosLaden(d, uebergabeId) {
+  if (!online) return Object.values(d.uebergabefotos || {}).filter((x) => x.uebergabeId === uebergabeId);
+  await fsInit();
+  const q = fs.query(fs.collection(db, 'familien', code, FOTOS), fs.where('uebergabeId', '==', uebergabeId));
+  return (await fs.getDocs(q)).docs.map((x) => ({ ...x.data(), id: x.id }));
+}
+// Uebergabe und alle Fotos in einem Schritt speichern (alles oder nichts).
+export async function uebergabeMitFotos(d, id, u, fotos) {
+  const jetzt = new Date().toISOString();
+  const voll = sauber({ ...u, id, erfasstAm: u.erfasstAm || jetzt });
+  const fdocs = Object.entries(fotos).map(([slot, foto]) => ({ id: id + '_' + slot, uebergabeId: id, buchungId: u.buchungId, phase: u.phase, slot, foto, erfasstVon: u.erfasstVon, erfasstAm: jetzt }));
+  if (online) {
+    await fsInit();
+    const batch = fs.writeBatch(db);
+    for (const f of fdocs) batch.set(fs.doc(db, 'familien', code, FOTOS, f.id), f);
+    batch.set(fs.doc(db, 'familien', code, 'uebergaben', id), voll);
+    await batch.commit();
+  } else {
+    for (const f of fdocs) d.uebergabefotos[f.id] = f;
+  }
+  d.uebergaben[id] = voll;
+  if (!online) schreiben(d);
+  return id;
+}
 export async function buchungLoeschen(d, id) {
   if (online) {
     await fsInit();
     const batch = fs.writeBatch(db);
+    const fq = await fs.getDocs(fs.query(fs.collection(db, 'familien', code, FOTOS), fs.where('buchungId', '==', id)));
+    fq.forEach((x) => batch.delete(x.ref));
     for (const t of tageVon(d.buchungen[id])) batch.delete(fs.doc(db, 'familien', code, 'tage', t));
     for (const ph of ['ab', 'rueck']) if (d.uebergaben[id + '_' + ph]) batch.delete(fs.doc(db, 'familien', code, 'uebergaben', id + '_' + ph));
     batch.delete(fs.doc(db, 'familien', code, 'buchungen', id));
     await batch.commit();
   }
   for (const ph of ['ab', 'rueck']) delete d.uebergaben[id + '_' + ph];   // Übernahme und Rückgabe gehören zur Reservierung
+  for (const k of Object.keys(d.uebergabefotos || {})) if (d.uebergabefotos[k].buchungId === id) delete d.uebergabefotos[k];
   delete d.buchungen[id];
   if (!online) schreiben(d);
 }

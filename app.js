@@ -4,11 +4,12 @@ import {
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
+  rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114e';
-import * as S from './speicher.js?v=20261114e';
+} from './regeln.js?v=20261114g';
+import * as S from './speicher.js?v=20261114g';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -570,7 +571,7 @@ function fahrten() {
   const kommend = alle.filter((b) => b.bis >= t), vorbei = alle.filter((b) => b.bis < t).reverse().slice(0, 40);
   const elternIch = D.personen[ich]?.konto === 'eltern';
   const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
-  const knopf = (f, b, id, text, pri) => `<button class="btn${f ? ' ok' : pri ? ' gelb' : ''}" data-u="${h(b.id)}|${id}">${f ? '✓ ' : ''}${text}</button>`;
+  const ueKnopf = (b, ph, ex) => `<button class="btn ue" data-u="${h(b.id)}|${ph}">${ph === 'ab' ? 'Übernahme' : 'Rückgabe'}<br>${ueZweit(b.id, ph, ex)}</button>`;
   const n = kommend[0];
   let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><span class="t-nd">Reservierungen machst du im Tab «Kalender».</span></div>`;
   if (n) {
@@ -579,7 +580,7 @@ function fahrten() {
       <span class="t-nd">${h(f.wer)}${n.ziel ? ' · ' + h(n.ziel) : ''}</span>
       <span class="t-pille ${laeuft ? 'gelb' : 'blau'}">${laeuft ? 'unterwegs' : `in ${nr(n.von) - nr(t)} ${nr(n.von) - nr(t) === 1 ? 'Tag' : 'Tagen'}`}</span>
       ${fahrtChips(f) ? `<span class="f-chips">${fahrtChips(f)}</span>` : ''}
-      <div class="btnzeile zk" style="margin:14px 0 0">${knopf(!!f.ab, n, 'ab', `Übernahme ${f.ab ? 'ansehen' : 'erfassen'}`)}${knopf(f.fertigR, n, 'rueck', `Rückgabe ${f.rk ? 'ansehen' : 'erfassen'}`, f.schlOffen)}</div></div>`;
+      <div class="btnzeile zk" style="margin:14px 0 0">${ueKnopf(n, 'ab', f.ab)}${ueKnopf(n, 'rueck', f.rk)}</div></div>`;
   }
   const pilleFuer = (b) => {
     const f = fahrtInfo(b, st);
@@ -608,7 +609,7 @@ function fahrten() {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
     sheet(`<div class="t-sk"><span class="t-sq blau gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${reiseText(b)}</h3><div class="info" style="margin:2px 0 0">${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</div></div></div>
       ${fahrtChips(f) ? `<p class="f-chips" style="margin:6px 0 0">${fahrtChips(f)}</p>` : ''}
-      <div class="t-akt2"><button class="gross-btn pri" id="f_ab">Übernahme ${f.ab ? 'ansehen' : 'erfassen'}</button><button class="gross-btn" id="f_rk">Rückgabe ${f.rk ? 'ansehen' : 'erfassen'}</button><button class="gross-btn" id="abb">Schliessen</button></div>`);
+      <div class="t-akt2"><button class="gross-btn ue" id="f_ab">Übernahme<br>${ueZweit(b.id, 'ab', f.ab)}</button><button class="gross-btn ue" id="f_rk">Rückgabe<br>${ueZweit(b.id, 'rueck', f.rk)}</button><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
     document.getElementById('f_ab').onclick = () => uebergabeForm(b.id, 'ab');
     document.getElementById('f_rk').onclick = () => uebergabeForm(b.id, 'rueck');
@@ -766,6 +767,7 @@ function alltagForm() {
 
 function uebergabeForm(bid, phase) {
   const b = D.buchungen[bid]; if (!b) return;
+  if (!D.uebergaben[bid + '_' + phase]) return rundgang(bid, phase);   // neue Uebernahme/Rueckgabe: gefuehrter Rundgang
   const id = bid + '_' + phase, ex = D.uebergaben[id], ab = D.uebergaben[bid + '_ab'];
   const darf = !ex || eigener(ex);
   const lokal = jetztLokal();
@@ -774,6 +776,7 @@ function uebergabeForm(bid, phase) {
   sheet(`<h3>${phase === 'ab' ? 'Übernahme' : 'Rückgabe'}</h3>
   ${phase === 'ab' ? `<div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Wer fährt, trinkt nicht: Fahren unter Alkohol ist verboten</strong></div></div><div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>` : ''}
   <p class="info" style="margin:0">${fmt(b.von)} – ${fmt(b.bis)} · ${h(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?')}${ex ? ` · erfasst von ${h(D.personen[ex.erfasstVon]?.name || '?')}` : ''}</p>
+  <div id="ufotos"></div>
   ${phase === 'rueck' && ab ? `<p class="info">Bei der Übernahme: ${zahl(ab.km)} km, Tank ${h(ab.tank)}.</p>` : ''}
   <label for="u_dt">Datum und Uhrzeit</label><input type="datetime-local" id="u_dt" value="${h(ex?.datumZeit || lokal)}" ${dis}>
   <label for="u_km">Kilometerstand</label><input id="u_km" inputmode="numeric" value="${ex ? ex.km : ''}" placeholder="z. B. 12450" ${dis}>
@@ -790,6 +793,7 @@ function uebergabeForm(bid, phase) {
   <div id="msg"></div>
   <div class="aktion"><button id="abb">${darf ? 'Abbrechen' : 'Schliessen'}</button>${darf ? '<button class="primaer" id="spei">Speichern</button>' : ''}</div>`);
   document.getElementById('abb').onclick = schliessen;
+  if (ex?.rundgang) fotosAnzeigen(id);
   const gauge = () => {
     const el = formEl.querySelector('input[name="u_tank"]:checked'), i = el ? +el.value : -1, g = document.getElementById('tankg');
     const a = document.getElementById('tankanz'); a.textContent = i < 0 ? 'Bitte den Tankstand wählen.' : i === TANK.length - 1 ? 'Tank voll ✓' : `Tank: ${TANK[i]}, nicht voll`;
@@ -1485,6 +1489,139 @@ function frageDetail(id) {
   });
   const del = document.getElementById('f_del');
   if (del) del.onclick = async () => { if (confirm('Frage zurückziehen und löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
+}
+
+// =====================================================================
+// Gefuehrter Rundgang fuer Uebernahme und Rueckgabe (streng, mit Fotos). Die Regeln stehen in regeln.js (rundgangSchritte).
+// Der Stand bleibt auf diesem Handy gespeichert, so kann man unterbrechen und am gleichen Schritt weitermachen.
+// =====================================================================
+const RG_KEY = (bid, ph) => `womo-rg-${bid}-${ph}-${ich}`;
+const rgLesen = (bid, ph) => { try { const j = JSON.parse(localStorage.getItem(RG_KEY(bid, ph))); return j && j.st ? j : null; } catch { return null; } };
+const rgLoeschen = (bid, ph) => { try { localStorage.removeItem(RG_KEY(bid, ph)); } catch {} };
+const ueZweit = (bid, ph, ex) => ex ? 'ansehen' : rgLesen(bid, ph) ? 'fortsetzen' : 'erfassen';
+function rundgang(bid, phase) {
+  const b = D.buchungen[bid]; if (!b || !ich) return;
+  if (phase === 'rueck' && !D.uebergaben[bid + '_ab']) { hinweis('Zuerst die Übernahme machen. Die Rückgabe kommt danach.'); return; }
+  if (zahlungsSperre(D.zahlstatus[ich], heute()).stufe === 'gesperrt') { hinweis('Du hast ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4).'); return; }
+  const L = rundgangSchritte(phase), name = phase === 'ab' ? 'Übernahme' : 'Rückgabe', wer = D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name || '?';
+  const ctxf = () => ({ bid, phase, ich, jetzt: jetztLokal(), uebergaben: Object.values(D.uebergaben), buchungen: D.buchungen });
+  const d0 = rgLesen(bid, phase);
+  const st = d0 ? d0.st : { fotos: {}, punkte: {}, mangel: {}, km: '', tank: '', tankGrund: '', schadenJa: null, schadenText: '', schluessel: false };
+  st.fotos = st.fotos || {}; st.punkte = st.punkte || {}; st.mangel = st.mangel || {};
+  const off = naechsterOffener(st, phase, ctxf());
+  let idx = off < 0 ? L.length - 1 : off;
+  let voll = false;
+  const merken = () => { try { localStorage.setItem(RG_KEY(bid, phase), JSON.stringify({ st, idx })); voll = false; } catch { voll = true; } };
+  const ok = () => pruefeSchritt(L[idx], st, ctxf());
+  const vor = () => { merken(); idx++; zeige(); };
+  const fotoBlock = (slot, hilfe, titel) => {
+    const f = st.fotos[slot];
+    return `${hilfe ? `<p class="info" style="margin:0 0 8px">${hilfe}</p>` : ''}<div>${f ? `<img class="rg-img" src="${h(f)}" alt="${h(titel || '')}">` : '<div class="rg-leer">Noch kein Foto</div>'}</div>
+      <label class="foto-wahl rg-kam" for="rg_in_${slot}">📷 ${f ? 'Neues Foto machen' : 'Foto aufnehmen'}</label><input type="file" id="rg_in_${slot}" accept="image/*" capture="environment" style="display:none">`;
+  };
+  const bindFoto = (slot, nachher) => {
+    const inp = document.getElementById('rg_in_' + slot); if (!inp) return;
+    inp.onchange = async (ev) => {
+      const f = ev.target.files && ev.target.files[0]; if (!f) return;
+      try { st.fotos[slot] = await fotoVerkleinern(f, 130000); merken(); if (voll) hinweis('Achtung: Der Speicher im Handy ist voll. Bitte die Übergabe jetzt ohne Pause fertig machen.'); nachher ? nachher() : zeige(); }
+      catch (x) { fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
+    };
+  };
+  const zeige = () => {
+    const sc = L[idx], pct = Math.round(idx / (L.length - 1) * 100);
+    let inner = '', weiter = 'Weiter', auto = false;
+    if (sc.typ === 'foto') inner = `<h3>${h(sc.titel)}</h3>${fotoBlock(sc.slot, h(sc.hilfe), sc.titel)}`;
+    else if (sc.typ === 'punkt') {
+      const a = st.punkte[sc.key];
+      inner = `<h3>${h(sc.titel)}</h3><div class="rg-jn"><button type="button" class="rg-ja${a === 'ja' ? ' an' : ''}" id="rg_ja">Ja</button><button type="button" class="rg-nein${a === 'nein' ? ' an' : ''}" id="rg_nein">Nein</button></div>`;
+      if (a === 'nein') inner += `<label for="rg_mangel">Was stimmt nicht? (Pflicht)</label><textarea id="rg_mangel" maxlength="${UE_MANGEL_MAX}" placeholder="Kurz und genau">${h(st.mangel[sc.key] || '')}</textarea><label>Foto vom Mangel (Pflicht)</label>${fotoBlock('p_' + sc.key, '', 'Mangel')}`;
+    } else if (sc.typ === 'km') {
+      const ab = D.uebergaben[bid + '_ab'];
+      inner = `<h3>Kilometerstand</h3><p class="info" style="margin:0 0 8px">Lies die Zahl vom Tacho ab (siehe dein Foto).${phase === 'rueck' && ab ? ` Bei der Übernahme waren es ${zahl(ab.km)} km.` : ''}</p><input id="rg_km" inputmode="numeric" class="rg-gross" placeholder="z. B. 12450" value="${h(st.km || '')}" autocomplete="off">`;
+    } else if (sc.typ === 'tank') {
+      inner = `<h3>Tankstand</h3><p class="info" style="margin:0 0 8px">Der Vertrag verlangt: immer voll tanken.</p><div class="rg-tank">${TANK.map((t) => `<button type="button" class="${st.tank === t ? 'an' : ''}${t === 'voll' ? ' voll' : ''}" data-tank="${h(t)}">${h(t)}</button>`).join('')}</div>`;
+      if (st.tank && st.tank !== 'voll') inner += `<div class="hinweiskarte rot" style="margin-top:12px">Der Tank ist nicht voll. Bitte erklären, warum. Die anderen werden gewarnt.</div><label for="rg_tg">Warum nicht voll? (Pflicht)</label><input id="rg_tg" maxlength="${UE_MANGEL_MAX}" value="${h(st.tankGrund || '')}">`;
+    } else if (sc.typ === 'schaden') {
+      inner = `<h3>Neue Schäden oder Mängel?</h3><p class="info" style="margin:0 0 4px">Kratzer, Dellen, kaputte Teile: alles, was vorher nicht da war.</p><div class="rg-jn"><button type="button" class="rg-ja${st.schadenJa === false ? ' an' : ''}" id="rg_sn">Nein, keine</button><button type="button" class="rg-nein${st.schadenJa === true ? ' an' : ''}" id="rg_sj">Ja</button></div>`;
+      if (st.schadenJa) {
+        const n = Object.keys(st.fotos).filter((k) => /^s\d$/.test(k)).length;
+        inner += `<label for="rg_st">Was ist passiert? (Pflicht)</label><textarea id="rg_st" maxlength="${UE_SCHADEN_MAX}" placeholder="Wo am Fahrzeug, was genau?">${h(st.schadenText || '')}</textarea><label>Fotos vom Schaden (mindestens 1, höchstens ${UE_SCHADEN_FOTOS})</label><div class="rg-gal">${[1, 2, 3].filter((i) => st.fotos['s' + i]).map((i) => `<figure><img src="${h(st.fotos['s' + i])}" alt=""><figcaption>Foto ${i}</figcaption></figure>`).join('')}</div>`;
+        if (n < UE_SCHADEN_FOTOS) inner += `<label class="foto-wahl rg-kam" for="rg_in_s${n + 1}">📷 ${n ? 'Weiteres Foto' : 'Foto aufnehmen'}</label><input type="file" id="rg_in_s${n + 1}" accept="image/*" capture="environment" style="display:none">`;
+        if (n) inner += `<button type="button" class="kl" id="rg_sweg" style="margin-top:8px">Letztes Foto entfernen</button>`;
+      }
+    } else if (sc.typ === 'schluessel') {
+      inner = `<h3>Schlüssel</h3><p class="info" style="margin:0 0 8px">Der Schlüssel hängt am Schlüsselbrett der Eltern. Ohne Bestätigung ist die Rückgabe nicht abgeschlossen.</p><button type="button" class="rg-schl${st.schluessel ? ' an' : ''}" id="rg_sc">${st.schluessel ? '✓ ' : ''}Schlüssel hängt am Schlüsselbrett der Eltern</button>`;
+    } else {
+      const r = pruefeRundgang(st, ctxf());
+      if (!r.ok) inner = `<h3>Noch nicht fertig</h3><div class="hinweiskarte rot">${r.fehler.map(h).join('<br>')}</div>`;
+      else {
+        const { u, fotos } = uebergabeAusRundgang(st, ctxf());
+        const nein = Object.values(u.punkte).filter((x) => x === 'nein').length;
+        inner = `<h3>Alles erfasst</h3><ul class="info rg-sum"><li>Kilometerstand: <strong>${zahl(u.km)}</strong></li><li>Tank: <strong>${h(u.tank)}</strong>${u.tank !== 'voll' ? ' (nicht voll)' : ''}</li><li>Mängel gemeldet: <strong>${nein}</strong></li><li>Neue Schäden: <strong>${u.schaeden ? 'ja' : 'keine'}</strong></li><li>Fotos: <strong>${Object.keys(fotos).length}</strong></li>${phase === 'rueck' ? '<li>Schlüssel am Brett: <strong>ja</strong></li>' : ''}</ul><p class="info">Datum und Uhrzeit setzt die App beim Abschliessen. Danach lässt sich der Rundgang nur noch ansehen.</p>`;
+        weiter = `${name} abschliessen`;
+      }
+    }
+    const letzter = sc.typ === 'ende';
+    sheet(`<div class="rg-kopf"><span>${name}</span><span>${idx + 1} von ${L.length}</span></div><div class="rg-bar"><i style="width:${pct}%"></i></div>
+      <p class="info" style="margin:0 0 8px">${fmt(b.von)} – ${fmt(b.bis)} · ${h(wer)}</p>${inner}<div id="msg"></div><p class="rg-hint" id="rg_hint"></p>
+      <div class="rg-nav">${idx > 0 ? '<button class="gross-btn" id="rg_zu">Zurück</button>' : '<span></span>'}<button class="gross-btn pri" id="rg_weiter">${weiter}</button></div>
+      <button type="button" class="rg-spaeter" id="rg_pause">Später weitermachen (Stand bleibt gespeichert)</button>`);
+    formEl.onclick = null;
+    const wb = document.getElementById('rg_weiter');
+    const aktual = () => {
+      if (letzter) { const r = pruefeRundgang(st, ctxf()); wb.disabled = !r.ok; return; }
+      const r = ok(); wb.disabled = !r.ok; document.getElementById('rg_hint').textContent = r.ok ? '' : r.fehler[0];
+    };
+    aktual();
+    document.getElementById('rg_pause').onclick = () => { merken(); schliessen(); fahrten(); };
+    const zu = document.getElementById('rg_zu'); if (zu) zu.onclick = () => { merken(); idx--; zeige(); };
+    if (sc.typ === 'foto') bindFoto(sc.slot);
+    if (sc.typ === 'punkt') {
+      document.getElementById('rg_ja').onclick = () => { st.punkte[sc.key] = 'ja'; delete st.mangel[sc.key]; delete st.fotos['p_' + sc.key]; vor(); };
+      document.getElementById('rg_nein').onclick = () => { st.punkte[sc.key] = 'nein'; merken(); zeige(); };
+      const m = document.getElementById('rg_mangel'); if (m) { m.oninput = () => { st.mangel[sc.key] = m.value; merken(); aktual(); }; bindFoto('p_' + sc.key); }
+    }
+    if (sc.typ === 'km') { const k = document.getElementById('rg_km'); k.oninput = () => { st.km = k.value; merken(); aktual(); }; }
+    if (sc.typ === 'tank') {
+      formEl.querySelectorAll('[data-tank]').forEach((x) => x.onclick = () => { st.tank = x.dataset.tank; if (st.tank === 'voll') st.tankGrund = ''; merken(); zeige(); });
+      const g = document.getElementById('rg_tg'); if (g) g.oninput = () => { st.tankGrund = g.value; merken(); aktual(); };
+    }
+    if (sc.typ === 'schaden') {
+      document.getElementById('rg_sn').onclick = () => { st.schadenJa = false; st.schadenText = ''; for (let i = 1; i <= UE_SCHADEN_FOTOS; i++) delete st.fotos['s' + i]; vor(); };
+      document.getElementById('rg_sj').onclick = () => { st.schadenJa = true; merken(); zeige(); };
+      const t = document.getElementById('rg_st'); if (t) { t.oninput = () => { st.schadenText = t.value; merken(); aktual(); }; }
+      const n = Object.keys(st.fotos).filter((k) => /^s\d$/.test(k)).length;
+      if (st.schadenJa && n < UE_SCHADEN_FOTOS) bindFoto('s' + (n + 1));
+      const w = document.getElementById('rg_sweg'); if (w) w.onclick = () => { delete st.fotos['s' + n]; merken(); zeige(); };
+    }
+    if (sc.typ === 'schluessel') document.getElementById('rg_sc').onclick = () => { st.schluessel = !st.schluessel; merken(); zeige(); };
+    wb.onclick = () => {
+      if (!letzter) { const r = ok(); if (!r.ok) { fehler(r.fehler); return; } vor(); return; }
+      const r = pruefeRundgang(st, ctxf()); if (!r.ok) { fehler(r.fehler); return; }
+      const { u, fotos } = uebergabeAusRundgang(st, ctxf());
+      const letzterKm = Math.max(0, ...Object.values(D.uebergaben).filter((x) => D.buchungen[x.buchungId] && x.km <= u.km).map((x) => x.km));
+      if (u.km - letzterKm > 3000 && !confirm(`Der Stand ${zahl(u.km)} km liegt ${zahl(u.km - letzterKm)} km über dem letzten Stand (${zahl(letzterKm)} km). Stimmt das?`)) return;
+      sicher(async () => {
+        await S.uebergabeMitFotos(D, bid + '_' + phase, u, fotos); rgLoeschen(bid, phase); schliessen(); fahrten();
+        hinweis(phase === 'ab' ? 'Übernahme gespeichert.' : 'Rückgabe abgeschlossen, Schlüssel quittiert.');
+        if (tankWarnung(u)) { sheet(`<h3>Tank nicht voll</h3><div class="hinweiskarte rot">Gespeichert. Der Tank ist nicht voll (${h(u.tank)}). Bitte die anderen warnen.</div><div class="aktion"><button id="abb">Schliessen</button><a class="primaer" style="text-decoration:none;text-align:center;display:block;padding:14px" href="${waLink(tankText(u.tank, u.datumZeit, D.personen[u.erfasstVon]?.name || '?'))}" target="_blank" rel="noopener">Familie per WhatsApp warnen</a></div>`); document.getElementById('abb').onclick = schliessen; }
+      });
+    };
+  };
+  zeige();
+}
+// Fotos einer gespeicherten Uebergabe ansehen (werden erst jetzt aus der Datenbank geholt).
+async function fotosAnzeigen(id) {
+  const box = document.getElementById('ufotos'); if (!box) return;
+  box.innerHTML = '<p class="info" style="margin:6px 0">Fotos werden geladen …</p>';
+  try {
+    const L = await S.fotosLaden(D, id);
+    if (!document.getElementById('ufotos')) return;
+    const ord = (s) => { const k = Object.keys(UE_FOTO_PFLICHT).indexOf(s); return k >= 0 ? k : 50 + s.charCodeAt(0) * 10 + (s.charCodeAt(1) || 0); };
+    L.sort((x, y) => ord(x.slot) - ord(y.slot));
+    box.innerHTML = L.length ? `<label>Fotos (${L.length}), Tipp: gross ansehen</label><div class="rg-gal">${L.map((f) => `<figure><img src="${h(f.foto)}" alt="" data-gross="1"><figcaption>${h(ueFotoName(f.slot))}</figcaption></figure>`).join('')}</div>` : '';
+    box.querySelectorAll('[data-gross]').forEach((i) => i.onclick = () => fotoGross(i.src));
+  } catch (e) { box.innerHTML = `<p class="info" style="margin:6px 0">Die Fotos konnten nicht geladen werden (${h(e.message || e)}).</p>`; }
 }
 
 // =====================================================================

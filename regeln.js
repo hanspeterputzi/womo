@@ -921,3 +921,102 @@ export function ortStand(o, stimmen) {
 export function ortReihenfolge(orte, stimmen) {
   return orte.map((o) => ({ o, s: ortStand(o, stimmen) })).sort((a, b) => (b.s.favorit - a.s.favorit) || (b.s.anzahl - a.s.anzahl) || ((b.o.erfasstAm || '') < (a.o.erfasstAm || '') ? -1 : 1));
 }
+
+// =====================================================================
+// Gefuehrter Rundgang fuer Uebernahme und Rueckgabe (14.11.2026, Entscheid HP77: streng, mit Fotos, in Reihenfolge eines Rundgangs).
+// Die App gibt immer den naechsten Schritt vor. Ohne den Schritt geht es nicht weiter. Pflichtfotos: vier Seiten, Innenraum, Tacho;
+// dazu ein Foto bei jedem «Nein» und bei jedem neuen Schaden. Fotos liegen in 'uebergabefotos' (id <Uebergabe>_<Platz>).
+// =====================================================================
+export const UE_FOTO_PFLICHT = { vorne: 'Vorne', links: 'Links (Fahrerseite)', hinten: 'Hinten', rechts: 'Rechts (Beifahrerseite)', innen: 'Innenraum', tacho: 'Tacho' };
+export const UE_FOTO_MAX = 250000, UE_SCHADEN_FOTOS = 3, UE_TEXT_MIN = 3, UE_MANGEL_MAX = 120, UE_SCHADEN_MAX = 400, UE_BEMERKUNG_MAX = 1000;
+const CP = Object.fromEntries(CHECKPUNKTE);
+const UE_KURZ = { innen: 'Innenraum', kuehlschrank: 'Kühlschrank', aussen: 'Aussen', wasser: 'Wassertanks', gas: 'Gas', toilette: 'Toilette', batterie: 'Batterie', dach: 'Dach', markise: 'Markise', traeger: 'Veloträger', reifen: 'Reifen', unterlagen: 'Unterlagen', zubehoer: 'Zubehör' };
+export const ueFotoName = (slot) => UE_FOTO_PFLICHT[slot] || (slot.startsWith('p_') ? 'Mangel: ' + (UE_KURZ[slot.slice(2)] || slot.slice(2)) : /^s\d$/.test(slot) ? 'Schaden ' + slot.slice(1) : slot);
+
+export function rundgangSchritte(phase) {
+  const f = (slot, titel, hilfe) => ({ id: 'f_' + slot, typ: 'foto', slot, titel, hilfe });
+  const p = (key) => ({ id: 'p_' + key, typ: 'punkt', key, titel: CP[key] });
+  const s = [
+    f('vorne', 'Fahrzeug vorne', 'Foto von vorn: die ganze Front mit Scheinwerfern und Stossstange.'),
+    f('links', 'Fahrzeug links', 'Foto der linken Seite (Fahrerseite), das ganze Fahrzeug.'),
+    f('hinten', 'Fahrzeug hinten', 'Foto von hinten: Heck, Türen, Stossstange.'),
+    f('rechts', 'Fahrzeug rechts', 'Foto der rechten Seite (Beifahrerseite), das ganze Fahrzeug.'),
+    p('aussen'), p('reifen'), p('dach'), p('markise'), p('traeger'),
+    p('gas'), p('wasser'), p('toilette'), p('batterie'),
+    f('innen', 'Innenraum', 'Foto vom Innenraum: Wohnbereich, Küche, Bett.'),
+    p('innen'), p('kuehlschrank'), p('zubehoer'), p('unterlagen'),
+    f('tacho', 'Tacho', 'Foto vom Armaturenbrett: Kilometerstand und Tankanzeige gut lesbar.'),
+    { id: 'km', typ: 'km', titel: 'Kilometerstand' },
+    { id: 'tank', typ: 'tank', titel: 'Tankstand' },
+    { id: 'schaden', typ: 'schaden', titel: 'Neue Schäden oder Mängel?' },
+  ];
+  if (phase === 'rueck') s.push({ id: 'schluessel', typ: 'schluessel', titel: 'Schlüssel' });
+  s.push({ id: 'ende', typ: 'ende', titel: 'Fertig' });
+  return s;
+}
+
+// Prueft einen Schritt. st = { fotos:{platz:dataUrl}, punkte:{}, mangel:{}, km:'', tank:'', tankGrund:'', schadenJa:null|bool, schadenText:'', schluessel:bool }
+export function pruefeSchritt(sc, st, ctx) {
+  const f = [], t = (x) => String(x || '').trim();
+  const foto = (slot) => /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test((st.fotos || {})[slot] || '') && st.fotos[slot].length <= UE_FOTO_MAX;
+  if (sc.typ === 'foto') { if (!foto(sc.slot)) f.push('Bitte das Foto machen. Ohne Foto geht es nicht weiter.'); }
+  else if (sc.typ === 'punkt') {
+    const a = (st.punkte || {})[sc.key];
+    if (a !== 'ja' && a !== 'nein') f.push('Bitte Ja oder Nein wählen.');
+    else if (a === 'nein') {
+      const m = t((st.mangel || {})[sc.key]);
+      if (m.length < UE_TEXT_MIN) f.push('Bei Nein bitte kurz beschreiben, was nicht stimmt.');
+      if (m.length > UE_MANGEL_MAX) f.push(`Die Beschreibung ist zu lang (höchstens ${UE_MANGEL_MAX} Zeichen).`);
+      if (!foto('p_' + sc.key)) f.push('Bei Nein ist ein Foto vom Mangel Pflicht.');
+    }
+  } else if (sc.typ === 'km') {
+    const km = kmZahl(st.km);
+    if (!Number.isInteger(km)) f.push('Bitte den Kilometerstand als ganze Zahl eingeben, ohne Punkt und Komma.');
+    else if (ctx) { const p = kmPlausibel({ buchungId: ctx.bid, phase: ctx.phase, km }, ctx.uebergaben || [], ctx.buchungen || {}); if (!p.ok) f.push(p.text); }
+  } else if (sc.typ === 'tank') {
+    if (!TANK.includes(st.tank)) f.push('Bitte den Tankstand wählen.');
+    else if (st.tank !== 'voll' && t(st.tankGrund).length < UE_TEXT_MIN) f.push('Der Tank ist nicht voll. Der Vertrag (Ziffer 10) verlangt immer einen vollen Tank. Bitte kurz erklären, warum nicht.');
+  } else if (sc.typ === 'schaden') {
+    if (st.schadenJa !== true && st.schadenJa !== false) f.push('Bitte Ja oder Nein wählen.');
+    else if (st.schadenJa) {
+      const m = t(st.schadenText);
+      if (m.length < UE_TEXT_MIN) f.push('Bitte den Schaden beschreiben.');
+      if (m.length > UE_SCHADEN_MAX) f.push(`Die Beschreibung ist zu lang (höchstens ${UE_SCHADEN_MAX} Zeichen).`);
+      if (!foto('s1')) f.push('Mindestens ein Foto vom Schaden ist Pflicht.');
+    }
+  } else if (sc.typ === 'schluessel') { if (st.schluessel !== true) f.push('Bitte den Schlüssel ans Schlüsselbrett der Eltern hängen und bestätigen.'); }
+  return { ok: f.length === 0, fehler: f };
+}
+// Erster Schritt, der noch nicht erfuellt ist (der «ende»-Schritt zaehlt nicht). -1 = alles erfuellt.
+export function naechsterOffener(st, phase, ctx) {
+  const L = rundgangSchritte(phase);
+  for (let i = 0; i < L.length; i++) if (L[i].typ !== 'ende' && !pruefeSchritt(L[i], st, ctx).ok) return i;
+  return -1;
+}
+// Baut Uebergabe und Fotoliste. jetzt = 'JJJJ-MM-TTThh:mm'.
+export function uebergabeAusRundgang(st, ctx) {
+  const t = (x) => String(x || '').trim();
+  const punkte = {}, zeilen = [];
+  for (const [k, text] of CHECKPUNKTE) {
+    punkte[k] = st.punkte[k];
+    if (st.punkte[k] === 'nein') zeilen.push(`${UE_KURZ[k] || text}: ${t(st.mangel[k])}`);
+  }
+  if (st.tank !== 'voll') zeilen.push(`Tank nicht voll: ${t(st.tankGrund)}`);
+  const u = { buchungId: ctx.bid, phase: ctx.phase, datumZeit: ctx.jetzt, km: kmZahl(st.km), tank: st.tank, punkte, bemerkung: zeilen.join('\n'), schaeden: st.schadenJa ? t(st.schadenText) : '', erfasstVon: ctx.ich, rundgang: 2 };
+  if (ctx.phase === 'rueck') { u.schluessel = 'ja'; u.schluesselAm = ctx.jetzt; u.schluesselVon = ctx.ich; }
+  const fotos = {};
+  for (const slot of Object.keys(UE_FOTO_PFLICHT)) fotos[slot] = st.fotos[slot];
+  for (const [k] of CHECKPUNKTE) if (st.punkte[k] === 'nein') fotos['p_' + k] = st.fotos['p_' + k];
+  if (st.schadenJa) for (let i = 1; i <= UE_SCHADEN_FOTOS; i++) if (st.fotos['s' + i]) fotos['s' + i] = st.fotos['s' + i];
+  return { u, fotos };
+}
+// Gesamtpruefung vor dem Abschluss: alle Schritte, dazu die bisherigen Regeln der Uebergabe.
+export function pruefeRundgang(st, ctx) {
+  const fe = [];
+  for (const sc of rundgangSchritte(ctx.phase)) if (sc.typ !== 'ende') { const r = pruefeSchritt(sc, st, ctx); if (!r.ok) fe.push(`${sc.titel}: ${r.fehler[0]}`); }
+  if (fe.length) return { ok: false, fehler: fe };
+  const { u } = uebergabeAusRundgang(st, ctx);
+  if (u.bemerkung.length > UE_BEMERKUNG_MAX) return { ok: false, fehler: ['Die Beschreibungen der Mängel sind zusammen zu lang. Bitte kürzer fassen.'] };
+  const p = pruefeUebergabe(u, ctx.uebergaben || [], ctx.buchungen || {});
+  return { ok: p.ok, fehler: p.fehler };
+}

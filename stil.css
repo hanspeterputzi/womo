@@ -111,3 +111,34 @@
 .ort-tor{background:rgba(245,158,11,.16);color:var(--gelb-t);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:600;margin:6px 0 0}
 .ort-chk{display:flex!important;align-items:flex-start;gap:10px;margin-top:16px!important;font-size:15px!important;font-weight:600!important;color:var(--fg)!important}
 .ort-chk input{width:24px!important;height:24px;flex:none;margin:0;padding:0}
+
+/* Uebernahme und Rueckgabe: beide Knoepfe gleich, Umbruch nach dem ersten Wort */
+.btnzeile.zk .btn.ue{background:var(--acc);color:#fff;font-size:17px;font-weight:800;line-height:1.25;min-height:68px;padding:10px 8px;white-space:normal;text-align:center}
+.gross-btn.ue{background:var(--acc);color:#fff;font-weight:800;line-height:1.25;min-height:64px;padding:8px}
+/* Gefuehrter Rundgang */
+.rg-kopf{display:flex;justify-content:space-between;font-size:13px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+.rg-bar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin:8px 0 10px}
+.rg-bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.rg-img{display:block;width:100%;max-height:300px;object-fit:cover;border-radius:14px}
+.rg-leer{display:grid;place-items:center;height:150px;border:2px dashed var(--line);border-radius:14px;color:var(--muted);font-weight:600}
+.sheet label.rg-kam{margin:10px 0 0;padding:18px;font-size:17px}
+.rg-jn{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.rg-jn button{min-height:84px;font:inherit;font-size:24px;font-weight:800;border:3px solid transparent;border-radius:18px;color:#fff}
+.rg-ja{background:var(--ok)}.rg-nein{background:var(--rot)}
+.rg-jn button:not(.an){opacity:.78}.rg-jn button.an{border-color:var(--fg);opacity:1}
+.rg-tank{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.rg-tank button{min-height:60px;font:inherit;font-size:17px;font-weight:800;border:2px solid var(--line);background:var(--soft);color:var(--fg);border-radius:14px}
+.rg-tank button.an{background:var(--acc);border-color:var(--acc);color:#fff}
+.rg-tank button.voll.an{background:var(--ok);border-color:var(--ok)}
+input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!important;text-align:center}
+.rg-schl{width:100%;min-height:80px;font:inherit;font-size:18px;font-weight:800;border:3px solid var(--line);background:var(--soft);color:var(--fg);border-radius:18px;padding:10px 14px}
+.rg-schl.an{background:var(--ok);border-color:var(--ok);color:#fff}
+.rg-nav{display:grid;grid-template-columns:1fr 2fr;gap:10px;margin-top:10px}
+.rg-nav .gross-btn:disabled{opacity:.4}
+.rg-hint{font-size:13px;color:var(--muted);margin:8px 0 0;min-height:18px}
+.rg-spaeter{display:block;width:100%;margin-top:10px;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:600;padding:10px;text-decoration:underline}
+.rg-gal{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rg-gal figure{margin:0}
+.rg-gal img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px}
+.rg-gal figcaption{font-size:12px;color:var(--muted);margin-top:2px}
+.rg-sum{padding-left:18px;margin:0 0 8px}.rg-sum li{margin-bottom:4px}
