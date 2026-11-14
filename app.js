@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115c';
-import * as S from './speicher.js?v=20261115c';
+} from './regeln.js?v=20261115d';
+import * as S from './speicher.js?v=20261115d';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -499,14 +499,12 @@ function feiertagKarte() {
 
 // «Nicht verfuegbar»: Stoppsignal im Tag. Eigener Eintrag = grosses rotes Signal, Eintraege der anderen = kleines graues Signal mit Namen.
 const STOPP = (kl) => `<svg class="stopp ${kl}" viewBox="0 0 24 24" aria-hidden="true"><polygon points="8,1.500 16,1.500 22.500,8 22.500,16 16,22.500 8,22.500 1.500,16 1.500,8"/><rect x="6" y="10" width="12" height="4" rx="1"/></svg>`;
-const KURZ = { hp: 'HP', fr: 'No', t: 'Na', s: 'Ne' };
-const KURZNAME = (i) => KURZ[i] || (D.personen[i]?.name || '?').slice(0, 2);
 function minusZelle(d) {
   const ids = minusAmTag(minusListe(), d).filter((i) => D.personen[i]);
   if (!ids.length) return '';
   const eigen = ids.includes(ich), andere = ids.filter((i) => i !== ich);
   const tip = 'Nicht verfügbar: ' + ids.map((i) => D.personen[i].name).join(', ');
-  const kl = eigen && andere.length ? `<span class="mn">${STOPP('grau')}${andere.length}</span>` : andere.length > 2 ? `<span class="mn">${STOPP('grau')}${andere.length}×</span>` : andere.map((i) => `<span class="mn">${STOPP('grau')}${h(KURZNAME(i))}</span>`).join('');
+  const kl = andere.length ? `<span class="mn">${STOPP('grau')}${eigen ? andere.length : andere.length + '×'}</span>` : '';
   return `<span class="mi${eigen ? ' eigen' : ''}" title="${h(tip)}">${eigen ? STOPP('rot gross') : ''}${kl}</span>`;
 }
 function minusKarte(J, M, n) {
