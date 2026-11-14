@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115f';
-import * as S from './speicher.js?v=20261115f';
+} from './regeln.js?v=20261115g';
+import * as S from './speicher.js?v=20261115g';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -514,11 +514,11 @@ function minusKarte(J, M, n) {
   return `<div class="karte"><p class="titel">Nicht verfügbar im ${MONATE[M]}</p>
   <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen nicht wegfahren kann. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
   ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><span style="flex:none;margin-top:1px">${STOPP(eigener(x) ? 'rot gross' : 'grau gross')}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
-  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich bin nicht verfügbar</button></div></div>`;
+  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Bin abwesend an diesem Datum</button></div></div>`;
 }
 function minusForm(ex) {
   const start = ex ? ex.von : heute();
-  sheet(`<h3>${ex ? 'Eintrag ändern' : 'Ich bin nicht verfügbar'}</h3>
+  sheet(`<h3>${ex ? 'Eintrag ändern' : 'Bin abwesend an diesem Datum'}</h3>
   <p class="info" style="margin:0 0 4px">Für ${h(D.personen[ich].name)}. Alle sehen den Eintrag. Wenn du an diesen Tagen reservieren willst, warnt dich die App.</p>
   <div class="zwei"><div><label for="mi_von">Von</label><input type="date" id="mi_von" value="${h(start)}"></div>
   <div><label for="mi_bis">Bis (einschliesslich)</label><input type="date" id="mi_bis" value="${h(ex ? ex.bis : start)}"></div></div>
@@ -568,7 +568,7 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="leg-fe"></i>Feiertag (Tag orange)</span><span><i class="leg-tm">${GLOCKE}</i>Termin</span><span>${STOPP("rot")}Ich nicht verfügbar</span><span>${STOPP("grau")}Andere nicht verfügbar</span></div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="leg-fe"></i>Feiertag (Tag orange)</span><span><i class="leg-tm">${GLOCKE}</i>Termin</span><span>${STOPP("rot")}Bin abwesend</span><span>${STOPP("grau")}Andere nicht verfügbar</span></div>
     ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
