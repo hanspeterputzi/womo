@@ -206,3 +206,8 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tag{aspect-ratio:1/1.45}
 .tag .mi{top:23px}
 .tag .mi .stopp.gross{width:17px;height:17px}
+
+/* Zahl links, Termin-Glocke rechts: die Glocke deckt zweistellige Zahlen nicht mehr zu */
+.tag .nr{align-self:flex-start;margin-left:6px}
+.tag.heute .nr{margin-left:3px}
+.tag .tm{top:4px;right:3px}
