@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114i';
-import * as S from './speicher.js?v=20261114i';
+} from './regeln.js?v=20261114j';
+import * as S from './speicher.js?v=20261114j';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1563,10 +1563,11 @@ function rundgang(bid, phase) {
       }
     }
     const letzter = sc.typ === 'ende';
-    sheet(`<div class="rg-kopf"><span>${name}</span><span>${idx + 1} von ${L.length}</span></div><div class="rg-bar"><i style="width:${pct}%"></i></div>
+    sheet(`<div class="rg-kopf"><span>${name}</span><span>${idx + 1} von ${L.length}</span><button type="button" class="rg-x" id="rg_x" aria-label="Schliessen, Stand bleibt gespeichert">✕</button></div><div class="rg-bar"><i style="width:${pct}%"></i></div>
       <p class="info" style="margin:0 0 8px">${fmt(b.von)} – ${fmt(b.bis)} · ${h(wer)}</p>${inner}<div id="msg"></div><p class="rg-hint" id="rg_hint"></p>
       <div class="rg-nav">${idx > 0 ? '<button class="gross-btn" id="rg_zu">Zurück</button>' : '<span></span>'}<button class="gross-btn pri" id="rg_weiter">${weiter}</button></div>
-      <button type="button" class="rg-spaeter" id="rg_pause">Später weitermachen (Stand bleibt gespeichert)</button>`);
+      <button type="button" class="rg-spaeter" id="rg_pause">Pause: später weitermachen (Stand bleibt gespeichert)</button>
+      <button type="button" class="rg-abbruch" id="rg_abbruch">Abbrechen und alles verwerfen</button>`);
     formEl.onclick = null;
     const wb = document.getElementById('rg_weiter');
     const aktual = () => {
@@ -1575,6 +1576,8 @@ function rundgang(bid, phase) {
     };
     aktual();
     document.getElementById('rg_pause').onclick = () => { merken(); schliessen(); fahrten(); };
+    document.getElementById('rg_x').onclick = () => { merken(); schliessen(); fahrten(); };
+    document.getElementById('rg_abbruch').onclick = () => { if (confirm(`${name} abbrechen? Alle Fotos und Eingaben dieses Rundgangs werden gelöscht. Es wird nichts gespeichert.`)) { rgLoeschen(bid, phase); schliessen(); fahrten(); hinweis(`${name} abgebrochen. Nichts wurde gespeichert.`); } };
     const zu = document.getElementById('rg_zu'); if (zu) zu.onclick = () => { merken(); idx--; zeige(); };
     if (sc.typ === 'foto') bindFoto(sc.slot);
     if (sc.typ === 'punkt') {
