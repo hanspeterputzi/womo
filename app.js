@@ -1,5 +1,5 @@
 import {
-  SCHWELLE, schwellen, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
+  SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261114k';
-import * as S from './speicher.js?v=20261114k';
+} from './regeln.js?v=20261114l';
+import * as S from './speicher.js?v=20261114l';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -64,7 +64,9 @@ const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1
 const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort' && x.art !== 'Frage' && x.art !== 'FrageAntwort');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort' && x.art !== 'Frage' && x.art !== 'FrageAntwort' && x.art !== 'Minus');
+// «Nicht verfuegbar» (Minus-Termin): art 'Minus' in 'termine', jede Person nur fuer sich, nur Warnung.
+const minusListe = () => Object.values(D.termine).filter((x) => x.art === 'Minus');
 // Tausch von Nutzungstagen (Vertrag Ziffer 7 a): Eintraege mit art 'Tausch' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
 const tauschListe = () => Object.values(D.termine).filter((x) => x.art === 'Tausch');
 const tauschMap = () => Object.fromEntries(tauschListe().map((x) => [x.id, x]));
@@ -463,6 +465,45 @@ function feiertagKarte() {
     <p class="info" style="margin:10px 0 0">Grosse Zahl = wie oft, kleine Zahl = zuletzt im Jahr. Grün hinterlegt = beim nächsten Feiertag bisher am seltensten. Es zählt, wer an mindestens einem Tag des Feiertags im Fahrzeug sass oder sitzen wird (Fahrer und Mitreisende), egal ob schon gefahren oder erst reserviert. ${von} Die App rechnet das aus allen Reservierungen und merkt es sich darum über alle Jahre, solange die Reservierungen bestehen. Reisen vor dem Start der App fehlen.</p></div></details>`;
 }
 
+// «Nicht verfuegbar»: kleine Minus-Punkte in der Farbe der Person, unter der Tageszahl.
+function minusZelle(d) {
+  const ids = minusAmTag(minusListe(), d).filter((i) => D.personen[i]);
+  if (!ids.length) return '';
+  return `<span class="mi" title="${h('Nicht verfügbar: ' + ids.map((i) => D.personen[i].name).join(', '))}">${ids.length > 2 ? `<i class="viele">${ids.length}</i>` : ids.map((i) => `<i class="${PERSON_FARBE[i] || ''}">−</i>`).join('')}</span>`;
+}
+function minusKarte(J, M, n) {
+  const von = iso(J, M, 1), bis = iso(J, M, n);
+  const L = minusListe().filter((x) => x.von <= bis && x.bis >= von).sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
+  const bereich = (x) => reiseText(x, true);
+  return `<div class="karte"><p class="titel">Nicht verfügbar im ${MONATE[M]}</p>
+  <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen nicht wegfahren kann. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
+  ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><i class="minus-p ${PERSON_FARBE[x.personId] || ''}" style="flex:none;margin-top:3px">−</i><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
+  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">− Ich bin nicht verfügbar</button></div></div>`;
+}
+function minusForm(ex) {
+  const start = ex ? ex.von : heute();
+  sheet(`<h3>${ex ? 'Eintrag ändern' : 'Ich bin nicht verfügbar'}</h3>
+  <p class="info" style="margin:0 0 4px">Für ${h(D.personen[ich].name)}. Alle sehen den Eintrag. Wenn du an diesen Tagen reservieren willst, warnt dich die App.</p>
+  <div class="zwei"><div><label for="mi_von">Von</label><input type="date" id="mi_von" value="${h(start)}"></div>
+  <div><label for="mi_bis">Bis (einschliesslich)</label><input type="date" id="mi_bis" value="${h(ex ? ex.bis : start)}"></div></div>
+  <label for="mi_grund">Grund (optional)</label><input id="mi_grund" maxlength="80" placeholder="z. B. Arbeit, Familienfest" value="${h(ex?.grund || '')}">
+  <div id="msg"></div>
+  <div class="aktion">${ex ? '<button id="mdel">Löschen</button>' : ''}<button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
+  const md = document.getElementById('mdel'); if (md) md.onclick = async () => { if (!eigener(ex)) return nurEigene(); if (confirm('Diesen Eintrag «nicht verfügbar» löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', ex.id); schliessen(); kalender(); hinweis('Eintrag gelöscht.'); }); };
+  const vonEl = document.getElementById('mi_von'), bisEl = document.getElementById('mi_bis');
+  vonEl.onchange = () => { if (!bisEl.value || bisEl.value < vonEl.value) bisEl.value = vonEl.value; };
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('spei').onclick = async () => {
+    const m = { von: val('mi_von'), bis: val('mi_bis') || val('mi_von'), grund: val('mi_grund').trim(), personId: ich };
+    const p = pruefeMinus(m, D.personen);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => {
+      await S.speichern(D, 'termine', ex ? ex.id : null, { ...(ex || {}), art: 'Minus', titel: 'Nicht verfügbar', faelligAm: m.von, erledigtAm: '', ...m, erfasstVon: ex ? ex.erfasstVon : ich });
+      ansicht = new Date(m.von + 'T12:00:00'); schliessen(); kalender(); hinweis('Eintrag gespeichert.');
+    });
+  };
+}
+
 function kalender() {
   const J = ansicht.getFullYear(), M = ansicht.getMonth();
   const erster = new Date(J, M, 1), n = new Date(J, M + 1, 0).getDate();
@@ -479,7 +520,7 @@ function kalender() {
     const fe = feiertagAm(d);
     const cls = ['tag', wd >= 5 ? 'we' : '', fe ? 'fei' : '', hier.length > 1 ? 'koll' : '',
       d === tT ? 'heute' : ''].join(' ');
-    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
+    zellen += `<div class="${cls}" data-d="${d}"${fe ? ` title="${h(fe.name)}"` : ''}><span class="nr">${t}</span>${minusZelle(d)}${terminTag[d] ? `<span class="tm ${['erledigt', 'offen', 'bald', 'ueberfaellig'][Math.max(...terminTag[d].map((x) => RANG[terminStufe(x, tT)]))]}" title="${h(terminTag[d].map((x) => x.titel).join(', '))}"></span>` : ''}${hier.length ? `<span class="streifen">${hier.map((b) => `<i class="${farbKonto(b)}">${initial(D.personen[b.fahrerId]?.name || b.ausnahmeFahrer?.name)}</i>`).join('')}</span>` : ''}</div>`;
   }
   const monatsB = bs.filter((b) => b.von <= iso(J, M, n) && b.bis >= iso(J, M, 1)).sort((a, b) => a.von < b.von ? -1 : 1);
   const kolls = monatsB.filter((a, i) => monatsB.some((b, j) => i !== j && kollision(a, b)));
@@ -490,14 +531,17 @@ function kalender() {
     <div class="monatskopf"><h2>${MONATE[M]} ${J}</h2><div class="nav"><button id="zu" aria-label="Voriger Monat">‹</button><button id="hj" class="heute-b">Heute</button><button id="vor" aria-label="Nächster Monat">›</button></div></div>
     <div class="woche">${['Mo','Di','Mi','Do','Fr','Sa','So'].map((x) => `<div>${x}</div>`).join('')}</div>
     <div class="monat">${zellen}</div>
-    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="punkt fe"></i>Feiertag</span></div>
+    <div class="legende">${[['hp', 'HP'], ['nora', 'Nora'], ['kind-1', 'Nanouk'], ['kind-2', 'Nene']].map(([k, n]) => `<span><i class="punkt ${k}"></i>${n}</span>`).join('')}<span><i class="punkt fe"></i>Feiertag</span><span><i class="minus-p">−</i>nicht verfügbar</span></div>
     ${feiertageMonat(J, M, n)}
     ${kolls.length ? `<div class="warn">Überschneidung im ${MONATE[M]}. Bitte im Gespräch lösen.</div>` : ''}
   </div>
   ${feiertagKarte()}
   <div class="karte"><p class="titel">Reservierungen im ${MONATE[M]}</p>${monatsB.length ? monatsB.map(buchungHtml).join('') : '<p class="leer-t">Keine Reservierungen.</p>'}</div>
+  ${minusKarte(J, M, n)}
   <div class="karte"><p class="titel">Termine im ${MONATE[M]}</p>${monatsT.length ? monatsT.map((x) => { const [c, txt] = TCHIP[terminStufe(x, tT)]; return `<div class="b" style="padding:8px 0"><span class="tm ${c || 'offen'}" style="position:static;flex:none;margin-top:6px"></span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(x.titel)}${neuPille(x)}</div><div class="meta">${fmt(x.faelligAm)} · <span class="chipk ${c}">${txt}</span></div></div></div>`; }).join('') : '<p class="leer-t">Keine Termine.</p>'}</div>`);
   bindRahmen(); bindNeu(); bindTausch(J);
+  const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
+  app.querySelectorAll('[data-medit]').forEach((el) => el.onclick = () => { const x = D.termine[el.dataset.medit]; if (!eigener(x)) return nurEigene(); minusForm(x); });
   const tv = document.getElementById('tankvoll'); if (tv) tv.onclick = async () => { if (confirm('Der Tank ist jetzt voll?')) await sicher(async () => { await S.speichern(D, 'termine', null, { art: 'Tank', titel: 'Tank gefüllt', faelligAm: heute(), datumZeit: jetztLokal(), erledigtAm: heute(), erfasstVon: ich }); kalender(); hinweis('Danke, Tank als voll gemeldet.'); }); };
   document.getElementById('zu').onclick = () => { ansicht = new Date(J, M - 1, 1); kalender(); };
   document.getElementById('vor').onclick = () => { ansicht = new Date(J, M + 1, 1); kalender(); };
@@ -538,9 +582,24 @@ function formularZeigen(tag, ex) {
   <label>Mitreisende Eigentümer/innen</label><div class="mitw" id="mit">${ids.map((i) => `<span class="chk"><input type="checkbox" value="${i}" id="m${i}"${ex?.mitreisende?.includes(i) ? ' checked' : ''}><label for="m${i}">${h(D.personen[i].name)}</label></span>`).join('')}</div>
   <div class="zwei"><div><label for="gaeste">Gäste (ohne Eigentum)</label><input type="number" id="gaeste" min="0" max="3" value="${ex ? ex.gaeste || 0 : 0}" inputmode="numeric"></div>
   <div><label for="ziel">Ziel</label><input id="ziel" maxlength="80" placeholder="optional" value="${h(ex?.ziel || '')}"></div></div>
+  <div id="mhinw"></div>
   <div id="msg"></div>
   <div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">${ex ? 'Änderung speichern' : 'Speichern'}</button></div>`);
   const f = document.getElementById('fahrer');
+  // Nicht verfuegbar (Minus-Termine): eigene = Warnung, die der anderen = nur Info.
+  const minusPruef = () => {
+    const bb = { von: val('von'), bis: val('bis'), fahrerId: f.value || null, mitreisende: ids.filter((i) => document.getElementById('m' + i).checked && i !== f.value) };
+    if (!bb.von || !bb.bis || bb.bis < bb.von) return { warnung: [], info: [] };
+    return minusFuerReservierung(minusListe().filter((m) => D.personen[m.personId]), bb);
+  };
+  const minusText = (m) => `${h(D.personen[m.personId].name)}: ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)}${m.grund ? ' (' + h(m.grund) + ')' : ''}`;
+  const minusZeigen = () => {
+    const r = minusPruef();
+    document.getElementById('mhinw').innerHTML = (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast dich für diese Tage als nicht verfügbar eingetragen:<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Nicht verfügbar sind<br>${r.info.map(minusText).join('<br>')}</p>` : '');
+  };
+  ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
+  document.getElementById('mit').addEventListener('change', minusZeigen);
+  minusZeigen();
   f.onchange = () => document.getElementById('ausn').classList.toggle('versteckt', f.value !== '');
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('spei').onclick = async () => {
@@ -567,6 +626,8 @@ function formularZeigen(tag, ex) {
     if (b.bis < heute() && !(ex && ex.von === b.von && ex.bis === b.bis) && !confirm('Diese Reservierung liegt in der Vergangenheit. Das verändert die Tageskonten rückwirkend. Trotzdem speichern?')) return;
     const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap(), tauschMap());
     const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
+    const mw = minusFuerReservierung(minusListe().filter((m) => D.personen[m.personId]), b).warnung;
+    if (mw.length) warn.push(...mw.map((m) => `${D.personen[m.personId].name} hat sich für ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)} als nicht verfügbar eingetragen.`));
     if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;
     await sicher(async () => {
       await S.buchungSpeichern(D, b);

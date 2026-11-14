@@ -166,3 +166,10 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .ff-tab tr.sum th{color:var(--muted);font-size:12px}
 .ff-tab tr.nx th{color:var(--fg)}
 .ff-tab .nx-m{display:block;font-size:10px;font-weight:700;color:var(--ok-t)}
+
+/* Nicht verfuegbar (Minus-Termine): kleiner Kreis mit Minus in der Farbe der Person */
+.minus-p{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--muted);color:#fff;font-size:12px;font-weight:800;font-style:normal;line-height:1}
+.minus-p.hp,.tag .mi i.hp{background:var(--hp)}.minus-p.nora,.tag .mi i.nora{background:var(--nora)}.minus-p.kind-1,.tag .mi i.kind-1{background:var(--kind-1)}.minus-p.kind-2,.tag .mi i.kind-2{background:var(--kind-2)}
+.tag .mi{position:absolute;left:3px;top:5px;display:flex;flex-direction:column;gap:1px;pointer-events:none;z-index:2}
+.tag .mi i{display:grid;place-items:center;width:10px;height:10px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-weight:800;font-style:normal;line-height:1;box-shadow:0 0 0 1px var(--soft)}
+.tag .mi i.viele{width:11px;height:11px;font-size:9px;background:var(--muted)}

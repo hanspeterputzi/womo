@@ -1108,3 +1108,29 @@ export function seltenstBlock(stat, blockId, ids) {
   const min = Math.min(...m.map((x) => x[1])), max = Math.max(...m.map((x) => x[1]));
   return { ids: m.filter((x) => x[1] === min).map((x) => x[0]), alleGleich: min === max, min };
 }
+
+// =====================================================================
+// «Nicht verfuegbar» (Minus-Termin, Entscheid HP77 14.11.2026)
+// Jede Person traegt nur fuer sich ein. Alle sehen es. Nur Warnung, keine Sperre, kein Einfluss aufs Tageskonto.
+// Eintraege: art 'Minus' in der Sammlung 'termine' (personId, von, bis, grund).
+// =====================================================================
+export const MINUS_MAX_TAGE = 366;
+export function pruefeMinus(m, personen) {
+  const fehler = [];
+  if (!personen[m.personId]) fehler.push('Die Person fehlt.');
+  if (!datumGueltig(m.von) || !datumGueltig(m.bis)) fehler.push('Datum fehlt oder ist kein gültiges Datum.');
+  else if (m.bis < m.von) fehler.push('Das Ende liegt vor dem Beginn.');
+  else if (dauer(m) > MINUS_MAX_TAGE) fehler.push(`Höchstens ${MINUS_MAX_TAGE} Tage am Stück.`);
+  if ((m.grund || '').length > 80) fehler.push('Der Grund darf höchstens 80 Zeichen haben.');
+  return { ok: fehler.length === 0, fehler };
+}
+// Alle Minus-Eintraege, die sich mit dem Zeitraum von..bis ueberschneiden (je Person getrennt nutzbar).
+export const minusImZeitraum = (minusListe, von, bis) => minusListe.filter((m) => m.von <= bis && m.bis >= von);
+// Fuer eine Reservierung: eigene (Fahrer/Mitreisende, die selbst eingetragen haben) = Warnung, uebrige = Info.
+export function minusFuerReservierung(minusListe, b) {
+  const teilnehmer = new Set([b.fahrerId, ...(b.mitreisende || [])].filter(Boolean));
+  const treffer = minusImZeitraum(minusListe, b.von, b.bis);
+  return { warnung: treffer.filter((m) => teilnehmer.has(m.personId)), info: treffer.filter((m) => !teilnehmer.has(m.personId)) };
+}
+// Wer ist an diesem Tag nicht verfuegbar? (Personen-IDs, ohne Doppelte)
+export const minusAmTag = (minusListe, tag) => [...new Set(minusListe.filter((m) => m.von <= tag && tag <= m.bis).map((m) => m.personId))];
