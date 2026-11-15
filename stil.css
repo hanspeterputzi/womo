@@ -272,3 +272,7 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .vb-l div{display:flex;align-items:center;gap:12px;padding:7px 0;font-weight:700;font-size:15px}
 .vb-l .u-bic{color:var(--rot-t);display:flex}.vb-l svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .vb-l .u-bic{background:none!important;box-shadow:none!important;width:auto!important;height:auto!important;min-width:0!important;border-radius:0!important;padding:0!important;flex:none}
+
+/* Ladebildschirm: Notfall-Knopf erst nach 2 s einblenden (kein Aufblitzen); bei Fehlern sofort sichtbar */
+.sos-spaet{opacity:0;animation:sosspaet .3s ease 2s forwards}
+@keyframes sosspaet{to{opacity:1}}
