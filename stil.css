@@ -255,6 +255,7 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .wirk-box h3{margin:10px 0 8px;font-size:22px;line-height:1.25}
 .wirk-box p{margin:0 0 8px;font-size:16px;line-height:1.4}
 .wirk-nb{color:var(--muted);font-size:14px!important}
-.wirk-akt{display:flex;gap:10px;margin-top:16px}
-.wirk-akt button{flex:1;min-height:52px;border:0;border-radius:14px;font:inherit;font-size:16px;font-weight:800;background:var(--soft);color:var(--fg)}
-.wirk-akt .wirk-ja{background:var(--rot);color:#fff}
+.wirk-akt{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+.wirk-akt button{min-height:56px;border-radius:14px;font:inherit;font-size:17px;font-weight:800}
+.wirk-akt .wirk-nein{border:0;background:var(--acc);color:#fff}
+.wirk-akt .wirk-ja{min-height:44px;font-size:15px;font-weight:700;background:none;border:2px solid var(--rot);color:var(--rot-t,var(--rot))}

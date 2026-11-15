@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115z';
-import * as S from './speicher.js?v=20261115z';
+} from './regeln.js?v=20261116a';
+import * as S from './speicher.js?v=20261116a';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -126,7 +126,7 @@ function wirklich(detail) {
   return new Promise((ok) => {
     const d = document.createElement('div');
     d.className = 'wirk'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
-    d.innerHTML = `<div class="wirk-box"><div class="wirk-ico" aria-hidden="true">⚠</div><h3>Willst du dies wirklich löschen?</h3>${detail ? `<p>${h(detail)}</p>` : ''}<p class="wirk-nb">Das lässt sich nicht rückgängig machen.</p><div class="wirk-akt"><button type="button" id="wirk-nein">Abbrechen</button><button type="button" class="wirk-ja" id="wirk-ja">Ja, löschen</button></div></div>`;
+    d.innerHTML = `<div class="wirk-box"><div class="wirk-ico" aria-hidden="true">⚠</div><h3>Willst du dies wirklich löschen?</h3>${detail ? `<p>${h(detail)}</p>` : ''}<p class="wirk-nb">Das lässt sich nicht rückgängig machen.</p><div class="wirk-akt"><button type="button" class="wirk-nein" id="wirk-nein">Abbrechen, nicht löschen</button><button type="button" class="wirk-ja" id="wirk-ja">Ja, löschen</button></div></div>`;
     const zu = (v) => { d.remove(); ok(v); };
     d.onclick = (e) => { if (e.target === d) zu(false); };
     document.body.appendChild(d);
@@ -1108,7 +1108,7 @@ function kosten() {
   const bi = bilanz(jn, D.personen, stichtag), er = erfolgsrechnung(jn, D.personen, von, `${J}-12-31`);
   const sal = kontoSalden(jn, D.personen, '', stichtag);
   const jahrBuch = Object.values(jn).filter((b) => b.datum.slice(0, 4) === String(J)).sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : (a.erfasstAm || '') < (b.erfasstAm || '') ? 1 : -1));
-  const kz = (k) => `<button class="z bz" data-kb="${k.nr}"><span class="l"><strong>${h(k.name)}</strong><span class="meta"> ${k.nr}</span></span><span class="r">${chf(k.saldo)}</span></button>`;
+  const kz = (k) => `<button class="z bz" data-kb="${k.nr}"><span class="l"><strong>${h(k.name)}</strong><span class="meta"> ${k.nr}</span>${k.nr === '1021' ? '<span class="meta" style="display:block">Umrechnungskurs: 1 Euro = CHF 0.93</span>' : ''}</span><span class="r">${chf(k.saldo)}</span></button>`;
   const total = (titel, rp) => `<div class="z" style="border-top:2px solid var(--line)"><div class="l"><strong>${titel}</strong></div><div class="r"><strong>${chf(rp)}</strong></div></div>`;
   const kopf = (titel) => `<div class="z" style="padding-bottom:2px"><div class="l"><span class="meta" style="font-weight:700;letter-spacing:.04em;text-transform:uppercase">${titel}</span></div></div>`;
   const leerZ = (txt) => `<div class="z"><div class="l"><span class="meta">${txt}</span></div></div>`;
@@ -1155,14 +1155,14 @@ function kosten() {
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button>${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}</div>`);
     document.getElementById('abb').onclick = schliessen;
-    if (darf) document.getElementById('e_del').onclick = () => alsStv(async () => { if (await wirklich('Eintrag')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); });
+    if (darf) document.getElementById('e_del').onclick = () => alsStv(async () => { if (await wirklich('Buchung ' + titel)) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); });
   };
   app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchenStarten(() => buchungForm(z)); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.${j.stellvertretung ? `<br><strong>Gebucht als Stellvertretung</strong> am ${fmt((j.stellvertretungAm || j.erfasstAm || '').slice(0, 10))}.` : ''}`, j, () => S.journalLoeschen(D, j.id, ich)); });
   app.querySelectorAll('[data-kb]').forEach((b) => b.onclick = () => {
     const kb = kontoblatt(jn, D.personen, b.dataset.kb, stichtag); if (!kb.konto) return;
     const vz = (rp) => (rp < 0 ? '−' : '') + chf(Math.abs(rp));
-    sheet(`<h3 style="margin:0 0 4px">${h(kb.konto.name)}</h3><p class="info" style="margin:0 0 8px">Konto ${kb.konto.nr} · Stand ${fmt(stichtag)}: <strong>CHF ${chf(kb.saldo)}</strong></p>
+    sheet(`<h3 style="margin:0 0 4px">${h(kb.konto.name)}</h3><p class="info" style="margin:0 0 8px">Konto ${kb.konto.nr} · Stand ${fmt(stichtag)}: <strong>CHF ${chf(kb.saldo)}</strong></p>${kb.konto.nr === '1021' ? '<p class="info" style="margin:0 0 8px">Umrechnungskurs: 1 Euro = CHF 0.93. Alle Euro-Beträge werden zu diesem Kurs in Franken gebucht.</p>' : ''}
       <div class="zeilen">${kb.zeilen.length ? kb.zeilen.slice().reverse().map((z) => `<div class="z"><div class="l"><strong>${h(z.b.text)}</strong><div class="meta">${fmt(z.b.datum)} · Gegenkonto: ${h(kname[z.b.soll === kb.konto.nr ? z.b.haben : z.b.soll] || '?')}</div></div><div class="r">${vz(z.betrag)}<div class="meta">Saldo ${vz(z.saldo)}</div></div></div>`).join('') : '<p class="leer-t">Noch keine Buchungen auf diesem Konto.</p>'}</div>
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button></div>`);
     document.getElementById('abb').onclick = schliessen;
