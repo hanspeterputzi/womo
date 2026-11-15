@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116c';
-import * as S from './speicher.js?v=20261116c';
+} from './regeln.js?v=20261116d';
+import * as S from './speicher.js?v=20261116d';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -723,15 +723,16 @@ function formularZeigen(tag, ex) {
 // =====================================================================
 // Fahrten: Uebergabe-Checkliste und Kilometerstand (Version 2)
 // =====================================================================
-const ICON_ALK = '<circle cx="12" cy="12" r="10"/><path d="M8.500 6.500h7l-.6 4a2.900 2.900 0 0 1-5.800 0zM12 13.300V17.500M9.500 17.500h5"/><path d="M4.900 4.900l14.200 14.200"/>';
-const ICON_RAUCH = '<circle cx="12" cy="12" r="10"/><path d="M5.500 14.500h9v3h-9zM12.500 14.500v3M16.500 14.500c0-1.500 1.500-1.500 1.500-3.200S16.500 9.700 16.500 8"/><path d="M4.900 4.900l14.200 14.200"/>';
+const ICON_ALK = "<circle cx='12' cy='12' r='10' stroke-width='2.1'/><g style='stroke:var(--fg)'><path d='M8.500 6.500h7l-.6 4a2.900 2.900 0 0 1-5.800 0zM12 13.300V17.500M9.500 17.500h5'/></g><path d='M4.900 4.900l14.200 14.200' stroke-width='2.1'/>";
+const ICON_RAUCH = "<circle cx='12' cy='12' r='10' stroke-width='2.1'/><g style='stroke:var(--fg)'><path d='M5.500 14.500h9v3h-9zM12.500 14.500v3M16.500 14.500c0-1.500 1.500-1.500 1.500-3.200S16.500 9.700 16.500 8'/></g><path d='M4.900 4.900l14.200 14.200' stroke-width='2.1'/>";
 const FAHRT_ICON = '<path d="M3 17V8a2 2 0 0 1 2-2h9l5 5v6M3 17h2M9 17h6M19 17h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
 const KOSTEN_ICON = '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/>';
-const ICON_RAST = '<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>';
-// Ein Kasten mit den drei Verboten (Entscheid HP77, 16.11.2026), oben in Fahrten und Reisen. Zu: drei Symbole und «Verboten!», Tipp klappt auf.
+const ICON_RAST = "<circle cx='12' cy='12' r='10' stroke-width='2.1'/><g style='stroke:var(--fg)'><path d='M6.500 15.500V9M6.500 13h11v2.500M17.500 15.500v-2a2 2 0 0 0-2-2H11v2'/><circle cx='9' cy='11' r='.6'/></g><path d='M5 5l14 14' stroke-width='2.1'/>";
+const ICON_TIER = "<circle cx='12' cy='12' r='10' stroke-width='2.1'/><g transform='translate(12 11.7) scale(.93) translate(-12 -12)' style='fill:var(--fg);stroke:none'><g transform='rotate(-6 9.4 8.9)'><ellipse cx='9.4' cy='8.9' rx='1.75' ry='2.6'/><path d='M8.50 6.80Q8.40 5.40 8.80 4.60Q9.80 5.80 10.30 6.80Z'/></g><g transform='rotate(6 14.6 8.9)'><ellipse cx='14.6' cy='8.9' rx='1.75' ry='2.6'/><path d='M13.70 6.80Q14.00 5.40 15.20 4.60Q15.20 5.80 15.50 6.80Z'/></g><g transform='rotate(-22 5.6 12.6)'><ellipse cx='5.6' cy='12.6' rx='1.5' ry='2.2'/><path d='M4.70 10.90Q4.60 9.50 5.00 8.70Q6.00 9.90 6.50 10.90Z'/></g><g transform='rotate(22 18.4 12.6)'><ellipse cx='18.4' cy='12.6' rx='1.5' ry='2.2'/><path d='M17.50 10.90Q17.80 9.50 19.00 8.70Q19.00 9.90 19.30 10.90Z'/></g><path d='M12 11.6C13.800 11.600 14.800 12.600 15.900 13.800C17 15 18.200 16 18.200 17.400C18.200 18.800 17 19.500 15.600 19.500C14.300 19.500 13.300 19 12 19C10.700 19 9.700 19.500 8.400 19.500C7 19.500 5.800 18.800 5.800 17.400C5.800 16 7 15 8.100 13.800C9.200 12.600 10.200 11.600 12 11.600Z'/></g><path d='M4.900 4.900l14.200 14.200' stroke-width='2.1'/>";
+// Ein Kasten mit den vier Verboten (Entscheid HP77, 16.11.2026), oben in Fahrten und Reisen. Zu: drei Symbole und «Verboten!», Tipp klappt auf.
 function verboteBox() {
   const z = (ic, t) => `<div><span class="u-bic">${SVG(ic)}</span>${t}</div>`;
-  return `<details class="vb"><summary><span class="vb-ic">${SVG(ICON_ALK)}${SVG(ICON_RAUCH)}${SVG(ICON_RAST)}</span><span class="vb-t">Verboten!</span><i aria-hidden="true">›</i></summary><div class="vb-l">${z(ICON_ALK, 'Fahren unter Alkohol')}${z(ICON_RAUCH, 'Rauchen')}${z(ICON_RAST, 'Übernachtung auf Autobahnraststätten')}</div></details>`;
+  return `<details class="vb"><summary><span class="vb-ic">${SVG(ICON_ALK)}${SVG(ICON_RAUCH)}${SVG(ICON_RAST)}${SVG(ICON_TIER)}</span><span class="vb-t">Verboten!</span><i aria-hidden="true">›</i></summary><div class="vb-l">${z(ICON_ALK, 'Fahren unter Alkohol')}${z(ICON_RAUCH, 'Rauchen')}${z(ICON_RAST, 'Übernachtung auf Autobahnraststätten')}${z(ICON_TIER, 'Tiere')}</div></details>`;
 }
 function reiseText(b, kurz) {
   const [j1, m1, d1] = b.von.split('-').map(Number), [j2, m2, d2] = b.bis.split('-').map(Number);
