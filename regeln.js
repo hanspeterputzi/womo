@@ -191,7 +191,7 @@ export const KOSTENARTEN = {
   praemie: 'Bonusverlust und höhere Prämie nach Schaden',
 };
 export const ZWECKE = { betrieb: 'Laufende Kosten', ruecklage: 'Rücklage', darlehen: 'Darlehensrate', anschaffung: 'Anschaffung', sonst: 'Anderes' };
-export const TERMINARTEN = ['MFK', 'Service', 'Reifenwechsel', 'Winterlager', 'Vignette', 'Versicherung', 'Sonstiges'];
+export const TERMINARTEN = ['MFK', 'Service', 'Gasprüfung', 'Reifenwechsel', 'Winterlager', 'Vignette', 'Versicherung', 'Sonstiges'];
 
 const dNr = (iso) => { const [j, m, t] = iso.split('-').map(Number); return Date.UTC(j, m - 1, t) / MS_TAG; };
 const nrIso = (n) => new Date(n * MS_TAG).toISOString().slice(0, 10);
