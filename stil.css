@@ -228,3 +228,19 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .grosszahl small.offen{font-size:15px;font-weight:700;color:var(--muted)}
 /* «So funktioniert's» allein in einer Karte (Wünsche, Idee, Fahrer): ohne Trennlinie und Abstand */
 .karte>.rg-auf:only-child{margin-top:0;border-top:0}
+
+/* Tageskonto: schmale Zeile mit farbigen Feldern (Variante C), Tipp auf den Titel zeigt die grossen Ringe (15.11.2026) */
+.tk{padding-top:4px}
+.tk-kopf{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;border:0;background:none;color:inherit;font:inherit;padding:0;text-align:left}
+.tk-kopf .titel{margin:0}
+.tk-kopf i{font-style:normal;font-size:22px;color:var(--muted);transform:rotate(90deg);transition:transform .15s;line-height:1}
+.tk.offen .tk-kopf i{transform:rotate(-90deg)}
+.tk-zeile{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-bottom:4px}
+.tkf{border-radius:12px;padding:8px 4px 7px;text-align:center;background:color-mix(in srgb,var(--tint) 16%,transparent);position:relative;overflow:hidden}
+.tkf::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--akz)}
+.tkn{display:block;font-weight:700;font-size:14px}
+.tkf b{display:block;font-size:22px;line-height:1.2}
+.tkf small{font-size:13px;color:var(--muted);font-weight:600}
+.tkw{display:block;font-size:11px;font-weight:700;margin-top:1px}
+.tkf.gelb .tkw{color:var(--gelb-t)}.tkf.rot .tkw{color:var(--rot-t)}
+.tk-ringe{display:none}.tk.offen .tk-ringe{display:grid}.tk.offen .tk-zeile{display:none}

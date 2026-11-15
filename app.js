@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115w';
-import * as S from './speicher.js?v=20261115w';
+} from './regeln.js?v=20261115x';
+import * as S from './speicher.js?v=20261115x';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -452,20 +452,26 @@ function hinweiseHtml() {
 // =====================================================================
 // Kalender (Version 1)
 // =====================================================================
+let ringeOffen = false; // Tageskonto: schmale Zeile (zu) oder grosse Ringe (offen), bleibt beim Neuzeichnen erhalten
 function ringe(J) {
+  const felder = [];
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const sw = schwellen(tauschMap(), J);
   const U = 2 * Math.PI * 32;
-  return `<div class="karte"><p class="titel">Tageskonto ${J}</p><div class="ringe">` +
-    Object.keys(SCHWELLE).map((k) => {
+  const ringeHtml = Object.keys(SCHWELLE).map((k) => {
       const t = st[k], s = stufe(t, k, sw[k]), pr = Math.min(1, t / sw[k]);
       const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
       const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${zahl(sw[k])} Tagen`;
+      const akz = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'linear-gradient(90deg,#f97316,#7dd3fc)' : FARBE[k];
+      const tint = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? '#f97316' : FARBE[k];
+      felder.push(`<div class="tkf ${s}" style="--akz:${akz};--tint:${tint}"><span class="tkn">${KONTO_NAME[k]}</span><b>${t} <small>/${zahl(sw[k])}</small></b>${s === 'rot' || s === 'gelb' ? `<span class="tkw">${sub}</span>` : ''}</div>`);
       const sub2 = k === 'eltern' && st.alltag ? `<div class="sub">davon Alltag ${st.alltag}</div>` : '';
       const dl = sw[k] - SCHWELLE[k], sub3 = dl ? `<div class="sub">${dl > 0 ? '+' : '−'}${zahl(Math.abs(dl))} abgetreten</div>` : '';
       return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
       <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}${sub3}</div>`;
-    }).join('') + '</div></div>';
+    }).join('');
+  return `<div class="karte tk${ringeOffen ? ' offen' : ''}"><button class="tk-kopf" id="tkt" aria-expanded="${ringeOffen}"><span class="titel">Tageskonto ${J}</span><i aria-hidden="true">›</i></button>
+    <div class="tk-zeile">${felder.join('')}</div><div class="ringe tk-ringe">${ringeHtml}</div></div>`;
 }
 
 // Feiertage im angezeigten Monat (Text unter dem Kalender, auf dem Handy gibt es kein Schweben mit dem Finger).
@@ -582,6 +588,7 @@ function kalender() {
   ${kbAus() ? '' : minusKarte(J, M, n)}
   ${tauschSek(J)}`);
   bindRahmen(); bindNeu(); bindTausch(J);
+  const tkt = document.getElementById('tkt'); if (tkt) tkt.onclick = () => { ringeOffen = !ringeOffen; tkt.parentElement.classList.toggle('offen', ringeOffen); tkt.setAttribute('aria-expanded', String(ringeOffen)); };
   const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
   app.querySelectorAll('[data-tz]').forEach((el) => { const los = () => { terminOeffnen = el.dataset.tz; tab = 'termine'; schliessen(); zeige(); window.scrollTo(0, 0); }; el.onclick = los; el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); los(); } }; });
   app.querySelectorAll('[data-medit]').forEach((el) => el.onclick = () => { const x = D.termine[el.dataset.medit]; if (!eigener(x)) return nurEigene(); minusForm(x); });
