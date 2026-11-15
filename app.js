@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116a';
-import * as S from './speicher.js?v=20261116a';
+} from './regeln.js?v=20261116b';
+import * as S from './speicher.js?v=20261116b';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -752,7 +752,7 @@ function fahrten() {
   const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
   const ueKnopf = (b, ph, ex) => `<button class="btn ue" data-u="${h(b.id)}|${ph}">${ph === 'ab' ? 'Übernahme' : 'Rückgabe'}<br>${ueZweit(b.id, ph, ex)}</button>`;
   const n = kommend[0];
-  let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><button class="gross-btn pri" id="f_reserv" style="margin-top:10px">＋ Reise reservieren</button></div>`;
+  let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><span class="t-nd">Reservierungen machst du im Tab «Kalender».</span></div>`;
   if (n) {
     const f = fahrtInfo(n, st), laeuft = n.von <= t;
     karte = `<div class="f-next"><span class="t-lab">${laeuft ? 'Laufende Reise' : 'Nächste Reise'}</span><span class="f-nt">${reiseText(n)}</span>
@@ -781,7 +781,6 @@ function fahrten() {
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
-  const fr = document.getElementById('f_reserv'); if (fr) fr.onclick = () => formularZeigen('');
   app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (await wirklich('Alltagsfahrt')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
   app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
