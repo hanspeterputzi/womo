@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115v';
-import * as S from './speicher.js?v=20261115v';
+} from './regeln.js?v=20261115w';
+import * as S from './speicher.js?v=20261115w';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -788,8 +788,8 @@ function fahrerSeite() {
   const dn = L.filter(dein), lauf = L.filter((e) => e.s.status === 'offen' && !dein(e));
   const frei = L.filter((e) => e.s.status === 'freigegeben'), abg = L.filter((e) => e.s.status === 'abgelehnt'), vor = L.filter((e) => e.s.status === 'vorbei');
   app.innerHTML = rahmen(`${seitenkopf('Fahrerfreigabe', 'ffneu', '＋ Freigabe')}${famSeg()}
-    <div class="karte"><p class="info" style="margin:0">Es fahren nur die Eigentümer/innen (Ziffer 8). Soll im Einzelfall eine andere Person fahren, schlägt ein/e Eigentümer/in sie <strong>vor der Reise</strong> hier vor. Am besten, bevor du den Termin einträgst: Dann weisst du vorher, ob die Freigabe kommt.</p>
-      <p class="info" style="margin:8px 0 0"><strong>Nötig sind 3 von 4 Stimmen.</strong> Wer vorschlägt, zählt als Ja. Schweigen gilt nicht als Ja. Bei 2 zu 2 ist die Freigabe abgelehnt. Sie gilt nur für die genannte Reise. Ein/e Eigentümer/in reist immer mit. Wer die Person fahren lässt, trägt im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.</p></div>
+    <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Es fahren nur die Eigentümer/innen (Ziffer 8). Soll im Einzelfall eine andere Person fahren, schlägt ein/e Eigentümer/in sie <strong>vor der Reise</strong> hier vor. Am besten, bevor du den Termin einträgst: Dann weisst du vorher, ob die Freigabe kommt.</p>
+      <p class="info" style="margin:8px 0 0"><strong>Nötig sind 3 von 4 Stimmen.</strong> Wer vorschlägt, zählt als Ja. Schweigen gilt nicht als Ja. Bei 2 zu 2 ist die Freigabe abgelehnt. Sie gilt nur für die genannte Reise. Ein/e Eigentümer/in reist immer mit. Wer die Person fahren lässt, trägt im Schadenfall den Selbstbehalt und alle nicht versicherten Kosten.</p></details></div>
     ${L.length ? '' : '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Freigaben. Mit «＋ Freigabe» schlägst du eine Person als Fahrer/in vor.</p></div>'}${gruppe('Wartet auf deine Antwort', dn)}${gruppe('Antworten laufen', lauf)}${gruppe('Freigegeben', frei)}${gruppe('Abgelehnt', abg)}${gruppe('Reise vorbei', vor)}`);
   bindRahmen(); bindNeu(); bindSeg(); bindFreigabe();
 }
@@ -1369,8 +1369,8 @@ function wunschliste() {
   };
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Wünsche', 'wneu', '＋ Wunsch')}${famSeg()}
-    <details class="sek"><summary><span>So funktioniert's</span></summary><div class="sek-in"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
-      <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div></details>
+    <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
+      <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></details></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
     ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
@@ -1548,9 +1548,9 @@ function fragenSeite() {
   const fertig = alle.filter((e) => e.s.status !== 'offen');
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Fragen. Mit «＋ Frage» legst du der Familie etwas zum Entscheid vor.</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Fragen', 'fneu', '＋ Frage')}${famSeg()}
-    <div class="karte"><p class="info" style="margin:0">Hier stellst du der Familie eine Frage, wenn etwas entschieden werden soll, das der Vertrag heute nicht erlaubt oder nicht regelt (zum Beispiel ein Reiseland ausserhalb Europas).</p>
+    <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Hier stellst du der Familie eine Frage, wenn etwas entschieden werden soll, das der Vertrag heute nicht erlaubt oder nicht regelt (zum Beispiel ein Reiseland ausserhalb Europas).</p>
       <p class="info" style="margin:8px 0 0"><strong>Alle vier müssen Ja sagen.</strong> Ein einziges Nein genügt zur Ablehnung. Schweigen zählt nicht als Ja, die Frage bleibt offen, bis alle geantwortet haben. Antwortfrist wie bei Wünschen: ${WUNSCH_FRIST_TAGE} Tage. Danach wird die Frage als «überfällig» markiert und du kannst per WhatsApp erinnern. Wer fragt, zählt als Ja. Jede Antwort wird mit Datum und Uhrzeit festgehalten und kann danach nicht mehr geändert werden.</p>
-      <p class="info zusatz" style="margin:8px 0 0">${ZUSATZ_REGEL}</p></div>
+      <p class="info zusatz" style="margin:8px 0 0">${ZUSATZ_REGEL}</p></details></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Antworten laufen', laufend)}
     ${fertig.length ? `<details class="sek" style="margin-top:20px"${dein.length || laufend.length ? '' : ' open'}><summary><span>Entschieden (Dokumentation)</span><b>${fertig.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle entschiedenen Fragen bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wann wie geantwortet hat.</p>${fertig.map((e) => zeile(e, true)).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu(); bindSeg();

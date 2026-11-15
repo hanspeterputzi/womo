@@ -226,3 +226,5 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .rg-auf summary::after{content:'›';font-size:20px;color:var(--muted);transform:rotate(90deg);transition:transform .15s;line-height:1}
 .rg-auf[open] summary::after{transform:rotate(-90deg)}
 .grosszahl small.offen{font-size:15px;font-weight:700;color:var(--muted)}
+/* «So funktioniert's» allein in einer Karte (Wünsche, Idee, Fahrer): ohne Trennlinie und Abstand */
+.karte>.rg-auf:only-child{margin-top:0;border-top:0}
