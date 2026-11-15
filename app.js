@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115r';
-import * as S from './speicher.js?v=20261115r';
+} from './regeln.js?v=20261115t';
+import * as S from './speicher.js?v=20261115t';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -208,8 +208,8 @@ const ICON = {
   vertrag: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
   wunschliste: '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12 16.600 6.600 19.500l1.200-6L3.300 9.300l6.100-.700z"/>',
 };
-// Der Tab «Wunschliste» heisst in der Leiste «Familienrat» (7 Tabs, sonst ist die Beschriftung zu breit). Die Seite heisst «Wunschliste».
-const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['wunschliste', 'Familienrat'], ['unterwegs', 'Unterwegs'], ['vertrag', 'Vertrag']];
+// Tab und Seite heissen beide «Wünsche» (kurz genug für 7 Tabs in lesbarer Schrift).
+const TABS = [['kalender', 'Kalender'], ['termine', 'Termine'], ['fahrten', 'Fahrten'], ['kosten', 'Kosten'], ['wunschliste', 'Wünsche'], ['unterwegs', 'Reisen'], ['vertrag', 'Vertrag']];
 const SVG = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ORTE = [
   ['u1', '<path d="M3 20 12 5l9 15zM12 5v15M9 20l3-6 3 6"/>', 'Campingplätze', 'Organisierte Campingplätze mit Strom und Sanitär', 'Sicher, Strom und Sanitär vorhanden', [
@@ -310,7 +310,7 @@ function unterwegs() {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
-  app.innerHTML = rahmen(`${seitenkopf('Unterwegs')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
+  app.innerHTML = rahmen(`${seitenkopf('Reisen')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
     <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
   ${orteKarte()}
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
@@ -516,13 +516,13 @@ function minusKarte(J, M, n) {
   const L = minusListe().filter((x) => x.von <= bis && x.bis >= von).sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
   const bereich = (x) => reiseText(x, true);
   return `<div class="karte"><p class="titel">Kein Bedarf am Wohnmobil</p>
-  <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen kein Bedarf am Wohnmobil hat. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
+  <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen keinen Bedarf am Wohnmobil hat. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
   ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><span style="flex:none;margin-top:1px">${STOPP(eigener(x) ? 'rot gross' : 'grau gross')}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
-  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich habe kein Bedarf an diesem Datum</button></div></div>`;
+  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich habe keinen Bedarf an diesem Datum</button></div></div>`;
 }
 function minusForm(ex) {
   const start = ex ? ex.von : heute();
-  sheet(`<h3>${ex ? 'Eintrag ändern' : 'Ich habe kein Bedarf an diesem Datum'}</h3>
+  sheet(`<h3>${ex ? 'Eintrag ändern' : 'Ich habe keinen Bedarf an diesem Datum'}</h3>
   <p class="info" style="margin:0 0 4px">Für ${h(D.personen[ich].name)}. Alle sehen den Eintrag. Wenn du an diesen Tagen reservieren willst, warnt dich die App.</p>
   <div class="zwei"><div><label for="mi_von">Von</label><input type="date" id="mi_von" value="${h(start)}"></div>
   <div><label for="mi_bis">Bis (einschliesslich)</label><input type="date" id="mi_bis" value="${h(ex ? ex.bis : start)}"></div></div>
@@ -655,7 +655,7 @@ function formularZeigen(tag, ex) {
   };
   const minusZeigen = () => {
     const r = kbAus() ? { warnung: [], info: [] } : minusPruef();
-    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage kein Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Kein Bedarf haben<br>${r.info.map(minusText).join('<br>')}</p>` : '');
+    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage keinen Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Kein Bedarf haben<br>${r.info.map(minusText).join('<br>')}</p>` : '');
   };
   ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
   document.getElementById('mit').addEventListener('change', minusZeigen);
@@ -687,7 +687,7 @@ function formularZeigen(tag, ex) {
     const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap(), tauschMap());
     const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
     const mw = minusFuerReservierung(minusListe().filter((m) => D.personen[m.personId]), b).warnung;
-    if (mw.length && !kbAus()) warn.push(...mw.map((m) => `${D.personen[m.personId].name} hat für ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)} kein Bedarf am Wohnmobil.`));
+    if (mw.length && !kbAus()) warn.push(...mw.map((m) => `${D.personen[m.personId].name} hat für ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)} keinen Bedarf am Wohnmobil.`));
     if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;
     await sicher(async () => {
       await S.buchungSpeichern(D, b);
@@ -833,7 +833,7 @@ function freigabeDetail(id) {
     : `Die Reise ist vorbei. Die Freigabe gilt nicht mehr.`;
   const mitName = D.personen[f.mitEig]?.name || '?';
   const meinAntwort = s.status === 'offen' && !mein;
-  const waText = mitLink(`🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Familienrat, Umschalter Fahrer) mit Ja oder Nein antworten.`, 'a', f.id);
+  const waText = mitLink(`🚐 Womo: ${D.personen[f.erfasstVon]?.name || '?'} möchte ${f.person} (${f.bez}) vom ${fmt(f.von)} bis ${fmt(f.bis)} fahren lassen. Bitte in der Womo-App (Tab Wünsche, Umschalter Fahrer) mit Ja oder Nein antworten.`, 'a', f.id);
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${h(f.person)} soll fahren</h3><div class="info" style="margin:2px 0 0">${h(f.bez)} · von ${h(D.personen[f.erfasstVon]?.name || '?')}, ${fmt(f.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
     <p class="info" style="margin:0 0 6px"><strong>Reise:</strong> ${fmt(f.von)} bis ${fmt(f.bis)}<br><strong>Grund:</strong> ${h(f.grund)}<br><strong>Im Fahrzeug mit:</strong> ${h(mitName)}<br><strong>Person:</strong> ${f.jahrgang ? 'Jahrgang ' + f.jahrgang : f.alter + ' Jahre'}, Führerprüfung am ${fmt(f.pruefung)} (vor ${jahreSeit(f.pruefung, f.datum)} Jahren)<br><strong>Geklärt:</strong> Führerausweis geprüft. Haftpflicht der Person deckt das Fahren fremder Fahrzeuge. Haftung: ${h(D.personen[f.erfasstVon]?.name || '?')} trägt den Selbstbehalt und die nicht versicherten Kosten.</p>
@@ -1368,7 +1368,7 @@ function wunschliste() {
     return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
   };
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
-  app.innerHTML = rahmen(`${seitenkopf('Wunschliste', 'wneu', '＋ Wunsch')}${famSeg()}
+  app.innerHTML = rahmen(`${seitenkopf('Wünsche', 'wneu', '＋ Wunsch')}${famSeg()}
     <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
       <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
@@ -1529,7 +1529,7 @@ function famSeg() {
   const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
   const nFa = freigabeListe().wartet;
   const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
-  return `<div class="seg" role="tablist">${b('wunsch', 'Wunsch Anschaffung', nW)}${b('fragen', 'Idee kostenlos', nF)}${b('fahrer', 'Fahrer', nFa)}</div>`;
+  return `<div class="seg" role="tablist">${b('wunsch', 'Anschaffung', nW)}${b('fragen', 'Idee', nF)}${b('fahrer', 'Fahrer', nFa)}</div>`;
 }
 function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
 
@@ -1801,7 +1801,7 @@ async function fotosAnzeigen(id) {
 }
 
 // =====================================================================
-// Notfallkarte: Angaben erfassen (Tab «Unterwegs») und Auszug fuer die Offline-Seite notfall.html im Handy ablegen
+// Notfallkarte: Angaben erfassen (Tab «Reisen») und Auszug fuer die Offline-Seite notfall.html im Handy ablegen
 // =====================================================================
 let auszugLetzter = '', auszugTimer = 0;
 function notfallMerken() {

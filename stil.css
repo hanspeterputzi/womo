@@ -213,3 +213,8 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tag .nr{align-self:flex-start;margin-left:6px}
 .tag.heute .nr{margin-left:3px}
 .tag .tm{top:4px;right:3px}
+
+/* UX-Überarbeitung 15.11.2026: lesbare Tab-Schrift (11 px) und Tippflächen von mindestens 44 px */
+.tabs button{font-size:11px;letter-spacing:0}
+.sos{min-height:44px;padding:0 16px}
+.ich{height:44px;min-width:44px}
