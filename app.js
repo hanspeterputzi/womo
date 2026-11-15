@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115y';
-import * as S from './speicher.js?v=20261115y';
+} from './regeln.js?v=20261115z';
+import * as S from './speicher.js?v=20261115z';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -120,6 +120,20 @@ function schliessen() { formEl.innerHTML = ''; }
 function sheet(inhalt) {
   formEl.innerHTML = `<div class="sheet" role="dialog"><div class="griff"></div>${inhalt}</div>`;
   formEl.onclick = (e) => { if (e.target === formEl) schliessen(); };
+}
+// Grosse Warnung vor jedem Loeschen (Entscheid HP77, 15.11.2026). Gibt true zurueck, wenn die Person wirklich loeschen will.
+function wirklich(detail) {
+  return new Promise((ok) => {
+    const d = document.createElement('div');
+    d.className = 'wirk'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="wirk-box"><div class="wirk-ico" aria-hidden="true">⚠</div><h3>Willst du dies wirklich löschen?</h3>${detail ? `<p>${h(detail)}</p>` : ''}<p class="wirk-nb">Das lässt sich nicht rückgängig machen.</p><div class="wirk-akt"><button type="button" id="wirk-nein">Abbrechen</button><button type="button" class="wirk-ja" id="wirk-ja">Ja, löschen</button></div></div>`;
+    const zu = (v) => { d.remove(); ok(v); };
+    d.onclick = (e) => { if (e.target === d) zu(false); };
+    document.body.appendChild(d);
+    d.querySelector('#wirk-nein').onclick = () => zu(false);
+    d.querySelector('#wirk-ja').onclick = () => zu(true);
+    d.querySelector('#wirk-nein').focus();
+  });
 }
 function fehler(texte) { const m = document.getElementById('msg'); if (m) m.innerHTML = `<div class="fehler">${[].concat(texte).map(h).join('<br>')}</div>`; }
 // Läuft schon ein Speichern, wird ein zweiter Tipp ignoriert (kein doppelter Eintrag).
@@ -452,26 +466,18 @@ function hinweiseHtml() {
 // =====================================================================
 // Kalender (Version 1)
 // =====================================================================
-let ringeOffen = false; // Tageskonto: schmale Zeile (zu) oder grosse Ringe (offen), bleibt beim Neuzeichnen erhalten
 function ringe(J) {
   const felder = [];
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const sw = schwellen(tauschMap(), J);
-  const U = 2 * Math.PI * 32;   // Keine Vorwarnung mehr: ein volles Konto ist gesperrt (Entscheid HP77, 15.11.2026)
-  const ringeHtml = Object.keys(SCHWELLE).map((k) => {
-      const t = st[k], s = t >= sw[k] ? 'rot' : 'ok', pr = Math.min(1, t / sw[k]);
-      const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
-      const sub = s === 'rot' ? 'voll, gesperrt' : `von ${zahl(sw[k])} Tagen`;
-      const akz = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'linear-gradient(90deg,#f97316,#7dd3fc)' : FARBE[k];
-      const tint = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? '#f97316' : FARBE[k];
-      felder.push(`<div class="tkf ${s}" style="--akz:${akz};--tint:${tint}"><span class="tkn">${KONTO_NAME[k]}</span><b>${t} <small>/${zahl(sw[k])}</small></b>${s === 'rot' || s === 'gelb' ? `<span class="tkw">${sub}</span>` : ''}</div>`);
-      const sub2 = k === 'eltern' && st.alltag ? `<div class="sub">davon Alltag ${st.alltag}</div>` : '';
-      const dl = sw[k] - SCHWELLE[k], sub3 = dl ? `<div class="sub">${dl > 0 ? '+' : '−'}${zahl(Math.abs(dl))} abgetreten</div>` : '';
-      return `<div class="ring ${s}"><svg viewBox="0 0 76 76">${k === 'eltern' ? '<defs><linearGradient id="gEltern" gradientUnits="userSpaceOnUse" x1="70" y1="38" x2="6" y2="38"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#7dd3fc"/></linearGradient></defs>' : ''}<circle class="bg" cx="38" cy="38" r="32"${k === 'eltern' ? ' style="stroke:url(#gEltern);opacity:.4"' : ''}/><circle class="fg" cx="38" cy="38" r="32" stroke="${farbe}" stroke-dasharray="${(pr * U).toFixed(1)} ${U.toFixed(1)}"/></svg>
-      <div class="zahl">${t}</div><div class="name">${KONTO_NAME[k]}</div><div class="sub">${sub}</div>${sub2}${sub3}</div>`;
-    }).join('');
-  return `<div class="karte tk${ringeOffen ? ' offen' : ''}"><button class="tk-kopf" id="tkt" aria-expanded="${ringeOffen}"><span class="titel">Tageskonto ${J}</span><i aria-hidden="true">›</i></button>
-    <div class="tk-zeile">${felder.join('')}</div><div class="ringe tk-ringe">${ringeHtml}</div></div>`;
+  // Keine Vorwarnung, keine grossen Ringe: ein volles Konto ist gesperrt (Entscheid HP77, 15.11.2026)
+  for (const k of Object.keys(SCHWELLE)) {
+    const t = st[k], s = t >= sw[k] ? 'rot' : 'ok';
+    const akz = s === 'rot' ? 'var(--rot)' : k === 'eltern' ? 'linear-gradient(90deg,#f97316,#7dd3fc)' : FARBE[k];
+    const tint = s === 'rot' ? 'var(--rot)' : k === 'eltern' ? '#f97316' : FARBE[k];
+    felder.push(`<div class="tkf ${s}" style="--akz:${akz};--tint:${tint}"><span class="tkn">${KONTO_NAME[k]}</span><b>${t} <small>/${zahl(sw[k])}</small></b>${s === 'rot' ? '<span class="tkw">voll, gesperrt</span>' : ''}</div>`);
+  }
+  return `<div class="karte tk"><div class="tk-kopf"><span class="titel">Tageskonto ${J}</span></div><div class="tk-zeile">${felder.join('')}</div></div>`;
 }
 
 // Feiertage im angezeigten Monat (Text unter dem Kalender, auf dem Handy gibt es kein Schweben mit dem Finger).
@@ -535,7 +541,7 @@ function minusForm(ex) {
   <label for="mi_grund">Grund (optional)</label><input id="mi_grund" maxlength="80" placeholder="z. B. Arbeit, Familienfest" value="${h(ex?.grund || '')}">
   <div id="msg"></div>
   <div class="aktion">${ex ? '<button id="mdel">Löschen</button>' : ''}<button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>`);
-  const md = document.getElementById('mdel'); if (md) md.onclick = async () => { if (!eigener(ex)) return nurEigene(); if (confirm('Diesen Eintrag «kein Bedarf» löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', ex.id); schliessen(); kalender(); hinweis('Eintrag gelöscht.'); }); };
+  const md = document.getElementById('mdel'); if (md) md.onclick = async () => { if (!eigener(ex)) return nurEigene(); if (await wirklich('Eintrag «kein Bedarf»')) await sicher(async () => { await S.loeschen(D, 'termine', ex.id); schliessen(); kalender(); hinweis('Eintrag gelöscht.'); }); };
   const vonEl = document.getElementById('mi_von'), bisEl = document.getElementById('mi_bis');
   vonEl.onchange = () => { if (!bisEl.value || bisEl.value < vonEl.value) bisEl.value = vonEl.value; };
   document.getElementById('abb').onclick = schliessen;
@@ -588,7 +594,6 @@ function kalender() {
   ${kbAus() ? '' : minusKarte(J, M, n)}
   ${tauschSek(J)}`);
   bindRahmen(); bindNeu(); bindTausch(J);
-  const tkt = document.getElementById('tkt'); if (tkt) tkt.onclick = () => { ringeOffen = !ringeOffen; tkt.parentElement.classList.toggle('offen', ringeOffen); tkt.setAttribute('aria-expanded', String(ringeOffen)); };
   const mn = document.getElementById('minusneu'); if (mn) mn.onclick = () => minusForm();
   app.querySelectorAll('[data-tz]').forEach((el) => { const los = () => { terminOeffnen = el.dataset.tz; tab = 'termine'; schliessen(); zeige(); window.scrollTo(0, 0); }; el.onclick = los; el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); los(); } }; });
   app.querySelectorAll('[data-medit]').forEach((el) => el.onclick = () => { const x = D.termine[el.dataset.medit]; if (!eigener(x)) return nurEigene(); minusForm(x); });
@@ -602,7 +607,7 @@ function kalender() {
   app.querySelectorAll('[data-del]').forEach((el) => el.onclick = async () => {
     if (!eigener(D.buchungen[el.dataset.del])) return nurEigene();
     const ue = ['ab', 'rueck'].filter((ph) => D.uebergaben[el.dataset.del + '_' + ph]).length;
-    if (confirm(ue ? 'Reservierung löschen? Die erfasste Übernahme/Rückgabe (Checkliste, Kilometer) wird ebenfalls gelöscht.' : 'Reservierung löschen?')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
+    if (await wirklich(ue ? 'Reservierung. Die erfasste Übernahme/Rückgabe (Checkliste, Kilometer) wird ebenfalls gelöscht.' : 'Reservierung')) { await sicher(async () => { await S.buchungLoeschen(D, el.dataset.del); kalender(); }); }
   });
 }
 
@@ -747,7 +752,7 @@ function fahrten() {
   const nr = (iso) => { const [j, m, d] = iso.split('-').map(Number); return Date.UTC(j, m - 1, d) / 86400000; };
   const ueKnopf = (b, ph, ex) => `<button class="btn ue" data-u="${h(b.id)}|${ph}">${ph === 'ab' ? 'Übernahme' : 'Rückgabe'}<br>${ueZweit(b.id, ph, ex)}</button>`;
   const n = kommend[0];
-  let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><span class="t-nd">Reservierungen machst du im Tab «Kalender».</span></div>`;
+  let karte = `<div class="f-next"><span class="t-lab">Nächste Reise</span><span class="f-nt">Keine Reise geplant</span><button class="gross-btn pri" id="f_reserv" style="margin-top:10px">＋ Reise reservieren</button></div>`;
   if (n) {
     const f = fahrtInfo(n, st), laeuft = n.von <= t;
     karte = `<div class="f-next"><span class="t-lab">${laeuft ? 'Laufende Reise' : 'Nächste Reise'}</span><span class="f-nt">${reiseText(n)}</span>
@@ -776,7 +781,8 @@ function fahrten() {
   bindRahmen();
   app.querySelectorAll('[data-u]').forEach((el) => el.onclick = () => { const [bid, phase] = el.dataset.u.split('|'); uebergabeForm(bid, phase); });
   const an = document.getElementById('aneu'); if (an) an.onclick = () => alltagForm();
-  app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (confirm('Alltagsfahrt löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
+  const fr = document.getElementById('f_reserv'); if (fr) fr.onclick = () => formularZeigen('');
+  app.querySelectorAll('[data-ad]').forEach((b) => b.onclick = async () => { const x = D.termine[b.dataset.ad]; if (!eigener(x)) return nurEigene(); if (await wirklich('Alltagsfahrt')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); fahrten(); }); });
   app.querySelectorAll('[data-reise]').forEach((el) => el.onclick = () => {
     const b = D.buchungen[el.dataset.reise]; if (!b) return; const f = fahrtInfo(b, st);
     sheet(`<div class="t-sk"><span class="t-sq blau gross"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><div><h3 style="margin:0">${reiseText(b)}</h3><div class="info" style="margin:2px 0 0">${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</div></div></div>
@@ -868,7 +874,7 @@ function freigabeDetail(id) {
     document.getElementById('ff_nein').onclick = () => { const g = val('ff_grund').trim(); if (!g) { fehler('Bei Nein bitte einen Grund angeben.'); return; } antw('nein', g); };
   }
   const del = document.getElementById('ff_del');
-  if (del) del.onclick = async () => { if (confirm('Vorschlag löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of fahrAntworten().filter((x) => x.freigabeId === f.id)) await S.loeschen(D, 'termine', a.id); await S.loeschen(D, 'termine', f.id); schliessen(); wunschliste(); }); };
+  if (del) del.onclick = async () => { if (await wirklich('Vorschlag. Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of fahrAntworten().filter((x) => x.freigabeId === f.id)) await S.loeschen(D, 'termine', a.id); await S.loeschen(D, 'termine', f.id); schliessen(); wunschliste(); }); };
 }
 
 // Abtretung von Nutzungstagen: Eltern treten ungenutzte Tage an beide Kinder zugleich ab (Vertrag Ziffer 7 a).
@@ -881,7 +887,7 @@ function tauschSek(J) {
 }
 function bindTausch(J) {
   const b = document.getElementById('tneu'); if (b) b.onclick = () => tauschForm(J);
-  app.querySelectorAll('[data-td]').forEach((el) => el.onclick = async () => { const x = D.termine[el.dataset.td]; if (!eigener(x)) return nurEigene(); if (confirm('Diese Abtretung löschen? Die Tage gehen an die Eltern zurück.')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); kalender(); }); });
+  app.querySelectorAll('[data-td]').forEach((el) => el.onclick = async () => { const x = D.termine[el.dataset.td]; if (!eigener(x)) return nurEigene(); if (await wirklich('Abtretung. Die Tage gehen an die Eltern zurück.')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); kalender(); }); });
 }
 function tauschForm(J) {
   const meins = D.personen[ich].konto, jetztJ = +heute().slice(0, 4);
@@ -1039,7 +1045,7 @@ function kosten() {
   // ---- Offene Zahlungen (immer sichtbar) und Zahlungen der Kinder ueber 8 Jahre ----
   const plaene = Object.fromEntries(ids.map((i) => [i, D.start && D.personen[i] ? achtJahrePlan(D.start, t, el, D.personen[i], i) : null]));
   const offenKarte = !D.start
-    ? `<div class="karte" style="${artStil(buch ? 'aktiv' : 'info')}"><h3 style="margin:0 0 6px;font-size:17px">Offene Zahlungen ${artChip(buch ? 'aktiv' : 'info')}</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
+    ? `<div class="karte"><h3 style="margin:0 0 6px;font-size:17px">Noch zu tun</h3><p class="info" style="margin:0">Das Übernahmedatum des Fahrzeugs fehlt. Ohne dieses Datum kann die App nicht berechnen, welche Zahlungen wann fällig sind.</p>${buchhalter() ? startFeld('') : '<p class="info">HP trägt das Datum ein.</p>'}</div>`
     : (() => {
       const zeilen = ids.map((i) => {
         const fz = faelligkeiten(D.start, t, el, D.personen[i], i), pl = plaene[i];
@@ -1149,7 +1155,7 @@ function kosten() {
     sheet(`<h3 style="margin:0 0 6px">${titel}</h3><p class="info" style="margin:0 0 6px">${info}</p>${darf ? '' : '<p class="info">Nur die Person, die den Eintrag erfasst hat, kann ihn löschen.</p>'}<div id="msg"></div>
       <div class="t-akt2"><button class="gross-btn" id="abb">Schliessen</button>${darf ? '<button class="gross-btn rot" id="e_del">Löschen</button>' : ''}</div>`);
     document.getElementById('abb').onclick = schliessen;
-    if (darf) document.getElementById('e_del').onclick = () => alsStv(async () => { if (confirm('Eintrag löschen?')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); });
+    if (darf) document.getElementById('e_del').onclick = () => alsStv(async () => { if (await wirklich('Eintrag')) await sicher(async () => { await loeschen(); schliessen(); kosten(); }); });
   };
   app.querySelectorAll('[data-zb]').forEach((b) => b.onclick = () => { const z = zb[parseInt(b.dataset.zb, 10)]; if (z) buchenStarten(() => buchungForm(z)); });
   app.querySelectorAll('[data-dj]').forEach((b) => b.onclick = () => { const j = D.journal[b.dataset.dj]; if (j) eintragSheet('CHF ' + chf(j.betrag), `${fmt(j.datum)} · ${h(j.text)}<br>Soll: ${h(kname[j.soll] || j.soll)}<br>Haben: ${h(kname[j.haben] || j.haben)}<br>Erfasst von ${name(j.erfasstVon)}.${j.stellvertretung ? `<br><strong>Gebucht als Stellvertretung</strong> am ${fmt((j.stellvertretungAm || j.erfasstAm || '').slice(0, 10))}.` : ''}`, j, () => S.journalLoeschen(D, j.id, ich)); });
@@ -1320,7 +1326,7 @@ function termine() {
       const e = document.getElementById('t_erledigt'), w = document.getElementById('t_wieder');
       if (e) e.onclick = () => upd(x.id, { erledigtAm: heute() });
       if (w) w.onclick = () => upd(x.id, { erledigtAm: '' });
-      document.getElementById('t_loeschen').onclick = async () => { if (confirm('Termin löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); schliessen(); termine(); }); };
+      document.getElementById('t_loeschen').onclick = async () => { if (await wirklich('Termin')) await sicher(async () => { await S.loeschen(D, 'termine', x.id); schliessen(); termine(); }); };
     }
   });
   if (terminOeffnen) { const id = terminOeffnen; terminOeffnen = null; const b = [...app.querySelectorAll('[data-tid]')].find((e) => e.dataset.tid === id); if (b) b.click(); }
@@ -1524,7 +1530,7 @@ function wunschDetail(id) {
   };
   if (erstatten) document.getElementById('w_erst').onclick = () => alsStv(() => { if (confirm(`Hast du CHF ${chf(w.gekauftBetrag)} an ${D.personen[w.erfasstVon]?.name || '?'} erstattet?`)) aktion(`${w.id}_erstattet`, { art: 'erstattet', datum: heute() }, 'Erstattung eingetragen.'); });
   const del = document.getElementById('w_del');
-  if (del) del.onclick = async () => { if (confirm('Wunsch löschen? Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of Object.values(D.wunschaktionen).filter((x) => x.wunschId === w.id)) await S.loeschen(D, 'wunschaktionen', a.id); await S.loeschen(D, 'wuensche', w.id); schliessen(); wunschliste(); }); };
+  if (del) del.onclick = async () => { if (await wirklich('Wunsch. Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { for (const a of Object.values(D.wunschaktionen).filter((x) => x.wunschId === w.id)) await S.loeschen(D, 'wunschaktionen', a.id); await S.loeschen(D, 'wuensche', w.id); schliessen(); wunschliste(); }); };
 }
 
 // =====================================================================
@@ -1679,7 +1685,7 @@ function frageDetail(id) {
     catch { hinweis('Die Datei kann nicht geöffnet werden.'); }
   });
   const del = document.getElementById('f_del');
-  if (del) del.onclick = async () => { if (confirm('Frage zurückziehen und löschen?')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
+  if (del) del.onclick = async () => { if (await wirklich('Frage. Alle Antworten dazu werden ebenfalls gelöscht.')) await sicher(async () => { await S.loeschen(D, 'termine', f.id); schliessen(); fragenSeite(); }); };
 }
 
 // =====================================================================
@@ -1985,7 +1991,7 @@ function ortDetail(id) {
   if (ja) ja.onclick = () => sicher(async () => { await S.speichern(D, 'ortstimmen', stimmeId, { ortId: id, personId: ich, erfasstVon: ich }); ortDetail(id); unterwegs(); hinweis('Danke, bestätigt.'); });
   if (weg) weg.onclick = () => sicher(async () => { await S.loeschen(D, 'ortstimmen', stimmeId); ortDetail(id); unterwegs(); });
   if (ed) ed.onclick = () => ortForm(id);
-  if (del) del.onclick = () => { if (confirm('Ort löschen? Das Foto und alle Bestätigungen gehen verloren.')) sicher(async () => { for (const v of Object.values(D.ortstimmen).filter((x) => x.ortId === id)) await S.loeschen(D, 'ortstimmen', v.id); await S.loeschen(D, 'orte', id); schliessen(); unterwegs(); }); };
+  if (del) del.onclick = async () => { if (await wirklich('Ort. Das Foto und alle Bestätigungen gehen verloren.')) await sicher(async () => { for (const v of Object.values(D.ortstimmen).filter((x) => x.ortId === id)) await S.loeschen(D, 'ortstimmen', v.id); await S.loeschen(D, 'orte', id); schliessen(); unterwegs(); }); };
 }
 
 start();

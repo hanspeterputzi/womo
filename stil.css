@@ -243,4 +243,18 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tkf small{font-size:13px;color:var(--muted);font-weight:600}
 .tkw{display:block;font-size:11px;font-weight:700;margin-top:1px}
 .tkf.gelb .tkw{color:var(--gelb-t)}.tkf.rot .tkw{color:var(--rot-t)}
-.tk-ringe{display:none}.tk.offen .tk-ringe{display:grid}.tk.offen .tk-zeile{display:none}
+
+
+/* 15.11.2026: Formular - Haekchen bei gewaehlten Mitreisenden, Pfeil bei Auswahllisten; Tageskonto ohne Ringe; grosse Loeschwarnung */
+.mitw .chk input:checked+label::before{content:'✓ ';font-weight:800}
+.sheet select{padding-right:42px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.tk-kopf{cursor:default}
+.wirk{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px}
+.wirk-box{background:var(--card);color:var(--fg);border-radius:22px;padding:24px 20px 20px;max-width:360px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.4);text-align:center}
+.wirk-ico{font-size:44px;line-height:1;color:var(--rot)}
+.wirk-box h3{margin:10px 0 8px;font-size:22px;line-height:1.25}
+.wirk-box p{margin:0 0 8px;font-size:16px;line-height:1.4}
+.wirk-nb{color:var(--muted);font-size:14px!important}
+.wirk-akt{display:flex;gap:10px;margin-top:16px}
+.wirk-akt button{flex:1;min-height:52px;border:0;border-radius:14px;font:inherit;font-size:16px;font-weight:800;background:var(--soft);color:var(--fg)}
+.wirk-akt .wirk-ja{background:var(--rot);color:#fff}
