@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115p';
-import * as S from './speicher.js?v=20261115p';
+} from './regeln.js?v=20261115q';
+import * as S from './speicher.js?v=20261115q';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -355,7 +355,7 @@ function vertrag() {
 function rahmen(inhalt) {
   const nz = neuZ().nach;
   return `<div class="kopf"><div class="marke"><span class="keil"></span>PÖSSL</div>
-    <div class="kopfr"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="chip" id="aus" title="Menü: Darstellung, Person wechseln" aria-haspopup="dialog">${avatar(ich)}${h(D.personen[ich].name)}</button></div></div>
+    <div class="kopfr"><a class="sos" href="notfall.html?v=${VER}" aria-label="Notfall: Notfallkarte öffnen">SOS</a><button class="ich" id="aus" style="background:${FARBE[PERSON_FARBE[ich] || D.personen[ich]?.konto] || 'var(--muted)'}" title="Menü: Darstellung, Person wechseln" aria-label="Persönliche Einstellungen: ${h(D.personen[ich].name)}" aria-haspopup="dialog">${ich === 'hp' ? 'H' : initial(D.personen[ich].name)}</button></div></div>
   <main>${inhalt}</main>
   <nav class="tabs">${TABS.map(([k, n]) => `<button data-t="${k}" class="${k === tab ? 'aktiv' : ''}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${n}${nz[k] ? `<i class="tb" aria-label="${nz[k]} neu">${nz[k]}</i>` : ''}</button>`).join('')}</nav>`;
 }

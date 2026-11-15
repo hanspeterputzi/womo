@@ -11,6 +11,8 @@
 .kopfr{display:flex;align-items:center;gap:8px}
 .thm{background:var(--chipbg);border:0;color:var(--chipfg);padding:8px 12px;min-height:38px;border-radius:999px;font:inherit;font-size:13px;font-weight:700}
 .chip{background:var(--chipbg);color:var(--chipfg)}
+/* Knopf oben rechts: farbiges Feld mit Anfangsbuchstabe, Farben wie die Kalender-Legende */
+.ich{border:0;color:#fff;font:inherit;font-weight:800;font-size:15px;min-width:42px;height:38px;padding:0 12px;border-radius:12px;display:grid;place-items:center;letter-spacing:.3px}
 .hero-l{line-height:1.3;min-height:2.6em}
 
 /* Unterwegs: Stellplätze in Orange, damit sie sich von den blauen Campingplätzen abheben. Symbol als gefüllte Silhouette wie das Wohnmobil-Zeichen. */
