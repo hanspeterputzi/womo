@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115t';
-import * as S from './speicher.js?v=20261115t';
+} from './regeln.js?v=20261115v';
+import * as S from './speicher.js?v=20261115v';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -516,9 +516,9 @@ function minusKarte(J, M, n) {
   const L = minusListe().filter((x) => x.von <= bis && x.bis >= von).sort((a, b) => (a.von < b.von ? -1 : a.von > b.von ? 1 : 0));
   const bereich = (x) => reiseText(x, true);
   return `<div class="karte"><p class="titel">Kein Bedarf am Wohnmobil</p>
-  <p class="info" style="margin:0 0 8px">Hier siehst du, wer an welchen Tagen keinen Bedarf am Wohnmobil hat. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p>
   ${L.length ? L.map((x) => `<div class="b" style="padding:8px 0"><span style="flex:none;margin-top:1px">${STOPP(eigener(x) ? 'rot gross' : 'grau gross')}</span><div class="inhalt"><div class="zeit" style="font-size:15px">${h(D.personen[x.personId]?.name || '?')}: ${bereich(x)}${neuPille(x)}</div>${x.grund ? `<div class="meta">${h(x.grund)}</div>` : ''}</div>${eigener(x) ? `<button class="kl" data-medit="${h(x.id)}">Ändern</button>` : ''}</div>`).join('') : '<p class="leer-t">Niemand hat sich für diesen Monat eingetragen.</p>'}
-  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich habe keinen Bedarf an diesem Datum</button></div></div>`;
+  <div class="aktion" style="margin-top:10px"><button class="primaer" id="minusneu">Ich habe keinen Bedarf an diesem Datum</button></div>
+  <details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:6px 0 0">Hier siehst du, wer an welchen Tagen keinen Bedarf am Wohnmobil hat. Jede Person trägt nur für sich selbst ein. Es ist nur ein Hinweis, die Tage zählen nicht im Tageskonto.</p></details></div>`;
 }
 function minusForm(ex) {
   const start = ex ? ex.von : heute();
@@ -750,8 +750,8 @@ function fahrten() {
   ${karte}
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
-    <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Noch kein Stand erfasst.'}</p></div>
-    <p class="grosszahl">${st.stand ? zahl(st.stand) : '–'} <small>km</small></p></div>
+    <p class="info" style="margin:0">${st.stand ? `Gefahren ${J}: ${zahl(st.jahr)} km` : 'Wird bei der Übernahme eingetragen.'}</p></div>
+    <p class="grosszahl">${st.stand ? `${zahl(st.stand)} <small>km</small>` : '<small class="offen">noch offen</small>'}</p></div>
   ${alltagSek(J)}
   ${vorbei.length ? `<details class="sek"><summary><span>Vergangene Reisen</span><b>${vorbei.length}</b></summary><div class="sek-in">${vorbei.map(zeile).join('')}</div></details>` : ''}
   <p class="info" style="margin:14px 6px 0">Übernahme und Rückgabe finden zu Hause in Chur statt, mit der Checkliste.</p>`);
@@ -1369,8 +1369,8 @@ function wunschliste() {
   };
   const leer = alle.length === 0 ? '<div class="karte"><p class="leer-t" style="margin:6px 0">Noch keine Wünsche. Mit «＋ Wunsch» schlägst du etwas für das Womo vor (Leuchte, Überzüge, Geschirr usw.).</p></div>' : '';
   app.innerHTML = rahmen(`${seitenkopf('Wünsche', 'wneu', '＋ Wunsch')}${famSeg()}
-    <div class="karte"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
-      <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div>
+    <details class="sek"><summary><span>So funktioniert's</span></summary><div class="sek-in"><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
+      <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></div></details>
     ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
     ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
@@ -1880,9 +1880,9 @@ function orteKarte() {
   const kachel = ({ o, s }) => `<button class="ort" data-ort="${h(o.id)}"><span class="ort-bild"><img src="${h(o.foto)}" alt="" loading="lazy">${s.favorit ? `<span class="ort-fav"><svg viewBox="0 0 24 24" aria-hidden="true">${ORT_STERN}</svg> Familien-Favorit</span>` : ''}</span>
     <span class="ort-tx"><strong>${h(o.titel)}${neuPille(o)}</strong><small>${h(o.land)} · ${h(o.ort)} · ${h(o.art)}</small><span class="ort-bes">${h(o.text)}</span><small>${s.anzahl ? `✓ bestätigt von ${s.bestaetigt.map((i) => h(D.personen[i]?.name || '?')).join(', ')}` : `von ${h(D.personen[o.erfasstVon]?.name || '?')}`}</small></span></button>`;
   return `<div class="karte ort-karte"><div class="ort-kopf"><p class="titel" style="margin:0">Unsere besten Orte</p><button class="t-plus lang" id="ort_neu">＋ Ort</button></div>
-    <p class="info" style="margin:6px 0 10px">Nur Orte, an die wir wieder hinfahren würden. Foto und Begründung sind Pflicht, höchstens ${ORT_PRO_JAHR} Orte pro Person und Jahr. Andere bestätigen mit «war auch dort». Ab ${ORT_FAVORIT_AB} Bestätigungen wird ein Ort Familien-Favorit.</p>
     ${reihe.length ? `<div class="ort-liste">${reihe.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Ort. Nach einer Reise, wenn ein Platz wirklich begeistert hat: hier eintragen.</p>'}
-    <p class="info" style="margin:10px 0 0">Du hast dieses Jahr noch <strong>${frei} von ${ORT_PRO_JAHR}</strong> Plätzen frei.</p></div>`;
+    <p class="info" style="margin:10px 0 0">Du hast dieses Jahr noch <strong>${frei} von ${ORT_PRO_JAHR}</strong> Plätzen frei.</p>
+    <details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:6px 0 0">Nur Orte, an die wir wieder hinfahren würden. Foto und Begründung sind Pflicht, höchstens ${ORT_PRO_JAHR} Orte pro Person und Jahr. Andere bestätigen mit «war auch dort». Ab ${ORT_FAVORIT_AB} Bestätigungen wird ein Ort Familien-Favorit.</p></details></div>`;
 }
 function bindNotfallOrte() {
   const e = document.getElementById('nf_edit'); if (e) e.onclick = notfallForm;

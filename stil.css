@@ -218,3 +218,11 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .tabs button{font-size:11px;letter-spacing:0}
 .sos{min-height:44px;padding:0 16px}
 .ich{height:44px;min-width:44px}
+
+/* Regeln aufklappbar («So funktioniert's»), Kilometerstand «noch offen» (15.11.2026) */
+.rg-auf{margin-top:12px;border-top:1px solid var(--line)}
+.rg-auf summary{list-style:none;display:flex;align-items:center;justify-content:space-between;min-height:44px;font-size:14px;font-weight:700;color:var(--acc);cursor:pointer}
+.rg-auf summary::-webkit-details-marker{display:none}
+.rg-auf summary::after{content:'›';font-size:20px;color:var(--muted);transform:rotate(90deg);transition:transform .15s;line-height:1}
+.rg-auf[open] summary::after{transform:rotate(-90deg)}
+.grosszahl small.offen{font-size:15px;font-weight:700;color:var(--muted)}
