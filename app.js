@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116g';
-import * as S from './speicher.js?v=20261116g';
+} from './regeln.js?v=20261116h';
+import * as S from './speicher.js?v=20261116h';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -156,6 +156,25 @@ function codeFeld(meldung) {
   document.getElementById('cd').onkeydown = (e) => { if (e.key === 'Enter') los(); };
 }
 
+// Streifen «Kein Netz»: zeigt den Stand der gespeicherten Daten. Eintragen geht nur mit Netz (speicher.js).
+let netzEl = null, netzAn = false;
+function netzStreifen() {
+  if (netzEl || !S.online) return;
+  netzEl = document.createElement('div'); netzEl.className = 'offl'; netzEl.setAttribute('role', 'status'); netzEl.hidden = true;
+  document.body.appendChild(netzEl);
+  const zeitText = () => { const z = S.standGet(); if (!z) return ''; const t = new Date(z); const p = (n) => String(n).padStart(2, '0'); return ` Stand: ${p(t.getDate())}.${p(t.getMonth() + 1)}. ${p(t.getHours())}:${p(t.getMinutes())}.`; };
+  const aktual = async (frisch) => {
+    const ok = await S.netzPruefen(frisch);
+    netzAn = !ok; netzEl.hidden = ok;
+    if (!ok) netzEl.innerHTML = `<strong>Kein Netz.</strong>${h(zeitText())} Du siehst den zuletzt gespeicherten Stand. Eintragen geht nur mit Netz.`;
+  };
+  window.addEventListener('offline', () => aktual(true));
+  window.addEventListener('online', () => aktual(true));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) aktual(true); });
+  setInterval(() => { if (!document.hidden) aktual(true); }, 20000);
+  aktual(true);
+}
+
 async function start() {
   app.innerHTML = `<div class="login"><p class="gross">Womo</p><p class="sub">Daten werden geladen …</p><div class="sos-spaet">${SOS_GROSS}</div></div>`;
   try { D = await S.laden(); }
@@ -167,6 +186,7 @@ async function start() {
   catch (e) { app.innerHTML = `<div class="login"><p class="gross" style="font-size:24px;font-weight:800">Womo</p><div class="fehler">${h('Daten konnten nicht geladen werden: ' + (e.message || e))}</div>${SOS_GROSS}<button id="nochmal">Nochmals versuchen</button></div>`; document.getElementById('nochmal').onclick = () => location.reload(); return; }
   try { const id = sessionStorage.getItem('womo-ich'); if (id && D.personen[id] && !abgelaufen()) { ich = id; besuchStart(); aktivMerken(); } } catch {}
   zeige();
+  netzStreifen();
   zielOeffnen();
 }
 

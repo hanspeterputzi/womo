@@ -1,11 +1,14 @@
 // Womo: Offline-Speicher. Die Notfallkarte (notfall.html) kommt immer sofort aus dem Speicher und wird im Hintergrund aufgefrischt.
 // Alles andere: zuerst das Netz (Updates erscheinen wie bisher sofort), nur wenn kein Netz da ist, die zuletzt gespeicherte Kopie.
-const NAME = 'womo-offline-1';
+const NAME = 'womo-offline-2';
+// Firebase-Bibliothek (Version wie in speicher.js): wird mitgespeichert, damit die App auch ohne Netz startet.
+const FB = 'https://www.gstatic.com/firebasejs/11.0.2/';
+const FB_DATEIEN = [FB + 'firebase-app.js', FB + 'firebase-firestore.js'];
 const NOTFALL = 'notfall.html';
 const schluessel = (url) => { const u = new URL(url); return u.pathname.endsWith('/' + NOTFALL) ? u.origin + u.pathname : url; };
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(NAME).then((c) => c.add(new Request(NOTFALL, { cache: 'reload' }))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(NAME).then(async (c) => { await c.add(new Request(NOTFALL, { cache: 'reload' })); await Promise.all(FB_DATEIEN.map((u) => c.add(new Request(u, { mode: 'cors' })).catch(() => {}))); }).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== NAME).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -14,7 +17,18 @@ self.addEventListener('fetch', (e) => {
   const r = e.request;
   if (r.method !== 'GET') return;
   const u = new URL(r.url);
-  if (u.origin !== location.origin) return;            // Firebase und Co. nie anfassen
+  if (u.origin !== location.origin) {
+    // Nur die Firebase-Bibliothek (feste Version, aendert sich nie): zuerst aus dem Speicher, sonst Netz und merken.
+    if (r.url.startsWith(FB)) e.respondWith((async () => {
+      const c = await caches.open(NAME);
+      const alt = await c.match(r.url);
+      if (alt) return alt;
+      const neu = await fetch(r);
+      if (neu && neu.ok) c.put(r.url, neu.clone());
+      return neu;
+    })());
+    return;                                            // alles andere (Datenbank-Verkehr) nie anfassen
+  }
   const k = schluessel(r.url);
   if (k !== r.url || u.pathname.endsWith('/' + NOTFALL)) {
     e.respondWith((async () => {

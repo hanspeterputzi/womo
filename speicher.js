@@ -1,7 +1,7 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261116g';
+import { tageListe } from './regeln.js?v=20261116h';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
@@ -39,10 +39,31 @@ async function fsInit() {
   if (db) return;
   const app = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
   fs = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`);
-  db = fs.getFirestore(app.initializeApp(firebaseConfig));
+  const fa = app.initializeApp(firebaseConfig);
+  // Zwischenspeicher im Handy: Ohne Netz zeigt die App den zuletzt gesehenen Stand. Nicht im Emulator (Tests).
+  try { if (!emulator) db = fs.initializeFirestore(fa, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); } catch { db = null; }
+  if (!db) db = fs.getFirestore(fa);
   if (emulator) fs.connectFirestoreEmulator(db, '127.0.0.1', 8080);
 }
 const sauber = (o) => JSON.parse(JSON.stringify(o)); // entfernt undefined
+
+// ---------- Netz ----------
+// navigator.onLine allein genuegt nicht (WLAN ohne Internet). Darum eine kurze echte Pruefung gegen die eigene Seite.
+// Schreiben geht nur mit Netz: Ohne diese Sperre wuerden Eintraege unbemerkt im Handy warten und erst spaeter ankommen.
+const KEY_STAND = 'womo-stand';
+let netzLetzte = { t: 0, ok: true };
+export async function netzPruefen(frisch = false) {
+  if (!online) return true;
+  if (!navigator.onLine) { netzLetzte = { t: Date.now(), ok: false }; return false; }
+  if (!frisch && Date.now() - netzLetzte.t < 4000) return netzLetzte.ok;
+  let ok = false;
+  try { const c = new AbortController(), t = setTimeout(() => c.abort(), 4000); const r = await fetch('version.json?n=' + Date.now(), { cache: 'no-store', signal: c.signal }); clearTimeout(t); ok = r.ok; } catch { ok = false; }
+  netzLetzte = { t: Date.now(), ok }; return ok;
+}
+const NETZ_FEHLT = 'Kein Netz: Eintragen geht nur mit Netz. Es wurde nichts gespeichert. Bitte später nochmals versuchen.';
+async function nurMitNetz() { if (online && !(await netzPruefen())) throw new Error(NETZ_FEHLT); }
+export const standGet = () => { try { return localStorage.getItem(KEY_STAND) || ''; } catch { return ''; } };
+const standSetzen = () => { try { localStorage.setItem(KEY_STAND, new Date().toISOString()); } catch {} };
 
 // ---------- lokal (Testmodus) ----------
 function lesen() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } }
@@ -53,10 +74,17 @@ export async function laden() {
   if (!online && !lokalerTest) throw new Error('Bitte die Womo-App über den Link mit dem Code öffnen.');
   if (online) {
     await fsInit();
-    const fam = await fs.getDoc(fs.doc(db, 'familien', code));
+    const ohne = !navigator.onLine;   // ohne Netz sofort aus dem Zwischenspeicher lesen (kein Warten)
+    const KEIN = 'Kein Netz, und auf diesem Handy sind noch keine Daten gespeichert. Bitte die App einmal mit Netz öffnen.';
+    let fam;
+    try { fam = await (ohne ? fs.getDocFromCache : fs.getDoc)(fs.doc(db, 'familien', code)); }
+    catch (e) { if (/offline|unavailable|cache/i.test(String(e && (e.message || e.code)))) throw new Error(KEIN); throw e; }
     if (!fam.exists()) throw new Error('Dieser Link ist ungültig.');
     const d = ergaenzen({ personen: {}, adminId: fam.data().adminId, start: fam.data().start || '' });
-    (await fs.getDocs(fs.collection(db, 'familien', code, 'personen'))).forEach((x) => { d.personen[x.id] = x.data(); });
+    let ps;
+    try { ps = await (ohne ? fs.getDocsFromCache : fs.getDocs)(fs.collection(db, 'familien', code, 'personen')); }
+    catch (e) { if (/offline|unavailable|cache/i.test(String(e && (e.message || e.code)))) throw new Error(KEIN); throw e; }
+    ps.forEach((x) => { d.personen[x.id] = x.data(); });
     return d;   // Sammlungen füllt abonnieren() mit dem ersten Snapshot (kein doppeltes Lesen)
   }
   let d = lesen();
@@ -82,6 +110,7 @@ export async function abonnieren(d, cb) {
       let first = true;
       fs.onSnapshot(fs.collection(db, 'familien', code, s), (snap) => {
         const neu = {}; snap.forEach((x) => { neu[x.id] = { ...x.data(), id: x.id }; }); d[s] = neu;
+        if (!snap.metadata.fromCache) standSetzen();
         if (first) { first = false; ok(); } else cb();
       }, nein);
     }));
@@ -92,6 +121,7 @@ export async function abonnieren(d, cb) {
 
 // Allgemein: Dokument in einer Sammlung speichern / loeschen.
 export async function speichern(d, sammlung, id, daten) {
+  await nurMitNetz();
   const neuId = id || sammlung.slice(0, 1) + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const voll = sauber({ ...daten, id: neuId, erfasstAm: daten.erfasstAm || new Date().toISOString() });
   if (online) await fs.setDoc(fs.doc(db, 'familien', code, sammlung, neuId), voll);
@@ -100,6 +130,7 @@ export async function speichern(d, sammlung, id, daten) {
   return neuId;
 }
 export async function loeschen(d, sammlung, id) {
+  await nurMitNetz();
   if (online) await fs.deleteDoc(fs.doc(db, 'familien', code, sammlung, id));
   delete d[sammlung][id];
   if (!online) schreiben(d);
@@ -117,6 +148,7 @@ const abgelehnt = (e, personId) => {
   return e;
 };
 export async function journalSpeichern(d, daten, personId) {
+  await nurMitNetz();
   const neuId = daten.id || 'j' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const voll = sauber({ ...daten, id: neuId, erfasstAm: daten.erfasstAm || new Date().toISOString() });
   if (online) {
@@ -135,6 +167,7 @@ export async function journalSpeichern(d, daten, personId) {
 // HP erzeugt den Schluessel der Stellvertretung in der App (nur mit seinem Buchungsschluessel). Der neue Schluessel wird nur
 // einmal zurueckgegeben (zum Anzeigen), nirgends sonst gespeichert. Ein bisheriger Schluessel gilt danach nicht mehr.
 export async function stvSchluesselErzeugen(personId, ziel = 'stellvertretung') {
+  await nurMitNetz();
   if (!online) throw new Error('Das geht nur mit dem echten Link.');
   await fsInit();
   const s = schluesselGet(personId);
@@ -147,6 +180,7 @@ export async function stvSchluesselErzeugen(personId, ziel = 'stellvertretung') 
   return neu;
 }
 export async function journalLoeschen(d, id, personId) {
+  await nurMitNetz();
   if (online) {
     await fsInit();
     const s = schluesselGet(personId);
@@ -162,6 +196,7 @@ export async function journalLoeschen(d, id, personId) {
 
 // Uebergabedatum des Fahrzeugs (Beginn Vertragsjahr 1)
 export async function startSetzen(d, iso) {
+  await nurMitNetz();
   if (online) await fs.updateDoc(fs.doc(db, 'familien', code), { start: iso });
   d.start = iso;
   if (!online) schreiben(d);
@@ -173,6 +208,7 @@ export async function startSetzen(d, iso) {
 function tageVon(b) { return b ? tageListe(b.von, b.bis) : []; }
 
 export async function buchungSpeichern(d, b) {
+  await nurMitNetz();
   const id = b.id || 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const voll = sauber({ ...b, id, erfasstAm: b.erfasstAm || new Date().toISOString() });
   const neu = tageVon(voll), alt = tageVon(d.buchungen[id]);
@@ -201,10 +237,11 @@ export async function fotosLaden(d, uebergabeId) {
   if (!online) return Object.values(d.uebergabefotos || {}).filter((x) => x.uebergabeId === uebergabeId);
   await fsInit();
   const q = fs.query(fs.collection(db, 'familien', code, FOTOS), fs.where('uebergabeId', '==', uebergabeId));
-  return (await fs.getDocs(q)).docs.map((x) => ({ ...x.data(), id: x.id }));
+  try { return (await (navigator.onLine ? fs.getDocs : fs.getDocsFromCache)(q)).docs.map((x) => ({ ...x.data(), id: x.id })); } catch { return []; }   // ohne Netz: nur schon gesehene Fotos
 }
 // Uebergabe und alle Fotos in einem Schritt speichern (alles oder nichts).
 export async function uebergabeMitFotos(d, id, u, fotos) {
+  await nurMitNetz();
   const jetzt = new Date().toISOString();
   const voll = sauber({ ...u, id, erfasstAm: u.erfasstAm || jetzt });
   const fdocs = Object.entries(fotos).map(([slot, foto]) => ({ id: id + '_' + slot, uebergabeId: id, buchungId: u.buchungId, phase: u.phase, slot, foto, erfasstVon: u.erfasstVon, erfasstAm: jetzt }));
@@ -222,6 +259,7 @@ export async function uebergabeMitFotos(d, id, u, fotos) {
   return id;
 }
 export async function buchungLoeschen(d, id) {
+  await nurMitNetz();
   if (online) {
     await fsInit();
     const batch = fs.writeBatch(db);

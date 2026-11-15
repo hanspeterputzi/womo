@@ -276,3 +276,6 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 /* Ladebildschirm: Notfall-Knopf erst nach 2 s einblenden (kein Aufblitzen); bei Fehlern sofort sichtbar */
 .sos-spaet{opacity:0;animation:sosspaet .3s ease 2s forwards}
 @keyframes sosspaet{to{opacity:1}}
+/* Kein Netz: Streifen ueber der Tab-Leiste */
+.offl{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:596px;margin:0 auto;z-index:35;background:#b45309;color:#fff;border-radius:14px;padding:10px 14px;font-size:13.5px;line-height:1.35;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.offl[hidden]{display:none}
