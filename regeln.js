@@ -518,7 +518,7 @@ export function pruefeKauf(w, betrag, datum) {
 export const KONTO_TYPEN = { aktiv: 'Aktiven', passiv: 'Passiven', ertrag: 'Ertrag', aufwand: 'Aufwand' };
 const K = (nr, name, typ, extra = {}) => ({ nr, name, typ, ...extra });
 export const KONTEN_BASIS = [
-  K('1000', 'Kasse', 'aktiv'), K('1020', 'Reise CHF bei Migros Bank', 'aktiv'),
+  K('1000', 'Kasse', 'aktiv'), K('1020', 'Reise CHF M Bank', 'aktiv'), K('1021', 'Reise Euro M Bank (in CHF)', 'aktiv'),
   K('1300', 'TA (Transitorische Aktiven)', 'aktiv'),
   K('1500', 'Darlehen an Kind 1', 'aktiv', { kind: 'kind-1', vorsilbe: 'Darlehen an ' }), K('1501', 'Darlehen an Kind 2', 'aktiv', { kind: 'kind-2', vorsilbe: 'Darlehen an ' }),
   K('1530', 'Fahrzeug', 'aktiv'), K('1531', 'Zubehör Fahrzeug', 'aktiv'),
@@ -556,7 +556,7 @@ export function kontenListe(personen) {
   const rl = [0, 1, 2, 3].map((i) => ({ nr: String(RUECKLAGE_BASIS + i), name: 'Rücklage ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'passiv' }));
   const deb = [...[0, 1, 2, 3].map((i) => ({ nr: String(DEBITOR_BASIS + i), name: 'Debitor ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'aktiv' })), { ...DEBITOR_FIRMA, typ: 'aktiv' }];
   const kre = [0, 1, 2, 3].map((i) => ({ nr: String(KREDITOR_BASIS + i), name: 'Kreditor ' + (ids[i] ? personen[ids[i]].name : (i + 1)), typ: 'passiv' }));
-  const i = liste.findIndex((k) => k.nr === '2400') + 1, d = liste.findIndex((k) => k.nr === '1000') + 2, kk = liste.findIndex((k) => k.nr === '2000') + 1;
+  const i = liste.findIndex((k) => k.nr === '2400') + 1, d = liste.findIndex((k) => k.nr === '1021') + 1, kk = liste.findIndex((k) => k.nr === '2000') + 1;
   return [...liste.slice(0, d), ...deb, ...liste.slice(d, kk), ...kre, ...liste.slice(kk, i), ...rl, ...ek, ...liste.slice(i)];
 }
 export function buchVorlagen(personen) {
@@ -577,7 +577,7 @@ export function buchVorlagen(personen) {
 //   - «Darlehen an <Kind>»  = Darlehensrate des Kindes,
 //   - «Ruecklage <Eigentuemer>» = Ruecklage dieses Eigentuemers.
 // Liefert Eintraege im Format des Zahlplans: { personId, zweck: 'darlehen' | 'ruecklage', betrag, datum }.
-export const GELDKONTEN = ['1000', '1020'];
+export const GELDKONTEN = ['1000', '1020', '1021'];
 export function zahlungenAusJournal(journal, personen) {
   const ids = eigentuemerGeordnet(personen), darlehen = {}, ruecklage = {};
   for (const k of KONTEN_BASIS) if (k.kind) { const e = Object.entries(personen || {}).find(([, p]) => p.konto === k.kind); if (e) darlehen[k.nr] = e[0]; }
