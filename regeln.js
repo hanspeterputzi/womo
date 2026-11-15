@@ -451,6 +451,25 @@ export function vorschauBuchung(b, buchungen, personen, alltag, tausch) {
   return { ueber, entfallen: [...new Set(entfallen)].sort() };
 }
 
+// Tagessperre (Entscheid HP77, 15.11.2026): Ist das Tageskonto eines Kontos voll, sind keine weiteren Tage mehr reservierbar.
+// Genau die Schwelle ist noch erlaubt, ein Tag darueber nicht. Eine bestehende Reservierung darf geaendert werden,
+// solange sie das Konto nicht weiter belastet (zum Beispiel kuerzen oder Ziel aendern).
+// alt: die bisherige Fassung derselben Reservierung (oder null). Rueckgabe: Liste der gesperrten Konten je Jahr.
+export function tagesSperre(b, alt, buchungen, personen, alltag, tausch) {
+  const ohne = Object.values(buchungen).filter((x) => x.id !== b.id);
+  const neu = [...ohne, b], vorher = alt ? [...ohne, alt] : ohne;
+  const bm = (liste) => Object.fromEntries(liste.map((x) => [x.id || '_neu', x]));
+  const von = alt && alt.von < b.von ? alt.von : b.von, bis = alt && alt.bis > b.bis ? alt.bis : b.bis;
+  const out = [];
+  for (let J = +von.slice(0, 4); J <= +bis.slice(0, 4); J++) {
+    const sw = schwellen(tausch, J);
+    const nach = kontostaendeMitAlltag(neu, personen, J, alltag, bm(neu));
+    const vor = kontostaendeMitAlltag(vorher, personen, J, alltag, bm(vorher));
+    for (const k of Object.keys(sw)) if (nach[k] > sw[k] && nach[k] > vor[k]) out.push({ konto: k, jahr: J, tage: nach[k], schwelle: sw[k], frei: Math.max(0, sw[k] - vor[k]), neu: nach[k] - vor[k] });
+  }
+  return out;
+}
+
 // =====================================================================
 // Wunschliste (Vertrag Ziffer 5, Absatz «Einrichtung»). Betraege in Rappen.
 // Einrichtungsgegenstaende bis CHF 200 pro Stueck: vorher in der Wunschliste vorschlagen, 5 Tage Frist,

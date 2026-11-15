@@ -1,5 +1,5 @@
 import {
-  SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
+  SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, tagesSperre, datumGueltig, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261115x';
-import * as S from './speicher.js?v=20261115x';
+} from './regeln.js?v=20261115y';
+import * as S from './speicher.js?v=20261115y';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -457,11 +457,11 @@ function ringe(J) {
   const felder = [];
   const st = kontostaendeMitAlltag(liste(), D.personen, J, alltagMap(), D.buchungen);
   const sw = schwellen(tauschMap(), J);
-  const U = 2 * Math.PI * 32;
+  const U = 2 * Math.PI * 32;   // Keine Vorwarnung mehr: ein volles Konto ist gesperrt (Entscheid HP77, 15.11.2026)
   const ringeHtml = Object.keys(SCHWELLE).map((k) => {
-      const t = st[k], s = stufe(t, k, sw[k]), pr = Math.min(1, t / sw[k]);
+      const t = st[k], s = t >= sw[k] ? 'rot' : 'ok', pr = Math.min(1, t / sw[k]);
       const farbe = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'url(#gEltern)' : FARBE[k];
-      const sub = s === 'rot' ? 'überschritten' : s === 'gelb' ? 'bald erreicht' : `von ${zahl(sw[k])} Tagen`;
+      const sub = s === 'rot' ? 'voll, gesperrt' : `von ${zahl(sw[k])} Tagen`;
       const akz = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? 'linear-gradient(90deg,#f97316,#7dd3fc)' : FARBE[k];
       const tint = s === 'rot' ? 'var(--rot)' : s === 'gelb' ? 'var(--gelb)' : k === 'eltern' ? '#f97316' : FARBE[k];
       felder.push(`<div class="tkf ${s}" style="--akz:${akz};--tint:${tint}"><span class="tkn">${KONTO_NAME[k]}</span><b>${t} <small>/${zahl(sw[k])}</small></b>${s === 'rot' || s === 'gelb' ? `<span class="tkw">${sub}</span>` : ''}</div>`);
@@ -660,9 +660,18 @@ function formularZeigen(tag, ex) {
     const u = ueberschneidungen(bb, liste());
     return u.length ? `<div class="fehler"><strong>Womo ist besetzt.</strong><br>${u.map((x) => `${fmt(x.von)} bis ${fmt(x.bis)}: ${h(D.personen[x.fahrerId]?.name || x.ausnahmeFahrer?.name || '?')}`).join('<br>')}</div>` : '';
   };
+  const sperreTexte = (bb) => {
+    if (!bb.von || !bb.bis || bb.bis < bb.von || !datumGueltig(bb.von) || !datumGueltig(bb.bis)) return [];
+    if (bb.fahrerId == null && !(bb.mitreisende || []).length) return [];
+    return tagesSperre(bb, ex || null, D.buchungen, D.personen, alltagMap(), tauschMap()).map((u) => `Tageskonto ${KONTO_NAME[u.konto]} ${u.jahr}: ${u.frei === 0 ? 'Das Konto ist voll (' + zahl(u.schwelle) + ' von ' + zahl(u.schwelle) + ' Tagen). Es lassen sich keine Tage mehr reservieren.' : 'Diese Reservierung braucht ' + zahl(u.neu) + ' Tage, frei sind nur noch ' + zahl(u.frei) + '. Bitte kürzer wählen.'}`);
+  };
+  const sperreHtml = () => {
+    const t = sperreTexte({ id: ex?.id, von: val('von'), bis: val('bis'), fahrerId: f.value || null, mitreisende: ids.filter((i) => document.getElementById('m' + i).checked && i !== f.value), gaeste: 0 });
+    return t.length ? `<div class="fehler"><strong>Gesperrt: zu viele Tage.</strong><br>${t.map(h).join('<br>')}</div>` : '';
+  };
   const minusZeigen = () => {
     const r = kbAus() ? { warnung: [], info: [] } : minusPruef();
-    document.getElementById('mhinw').innerHTML = besetztHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage keinen Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Kein Bedarf haben<br>${r.info.map(minusText).join('<br>')}</p>` : '');
+    document.getElementById('mhinw').innerHTML = besetztHtml() + sperreHtml() + (r.warnung.length ? `<div class="hinweiskarte gelb">⚠ Du hast für diese Tage keinen Bedarf am Wohnmobil.<br>${r.warnung.map(minusText).join('<br>')}</div>` : '') + (r.info.length ? `<p class="info" style="margin:8px 0 0">Info: Kein Bedarf haben<br>${r.info.map(minusText).join('<br>')}</p>` : '');
   };
   ['von', 'bis', 'fahrer'].forEach((k) => { document.getElementById(k).addEventListener('change', minusZeigen); });
   document.getElementById('mit').addEventListener('change', minusZeigen);
@@ -689,10 +698,12 @@ function formularZeigen(tag, ex) {
       const sp = zahlungsSperre(D.zahlstatus[id], heute());
       if (sp.stufe === 'gesperrt') fehlerListe.push(`${D.personen[id]?.name} hat ein Nutzungsverbot wegen Zahlungsverzug (Vertrag Ziffer 4). Bitte zuerst die Zahlung klären.`);
     }
+    const sperre = p.ok ? sperreTexte(b) : [];
     if (fehlerListe.length) { fehler(fehlerListe); return; }
+    if (sperre.length) { minusZeigen(); hinweis('Gesperrt: Das Tageskonto reicht nicht.'); document.getElementById('mhinw').scrollIntoView({ block: 'center' }); return; }
     if (b.bis < heute() && !(ex && ex.von === b.von && ex.bis === b.bis) && !confirm('Diese Reservierung liegt in der Vergangenheit. Das verändert die Tageskonten rückwirkend. Trotzdem speichern?')) return;
     const vs = vorschauBuchung(b, D.buchungen, D.personen, alltagMap(), tauschMap());
-    const warn = [...vs.ueber.map((u) => `${KONTO_NAME[u.konto]} ${u.jahr}: ${u.tage} Tage, Schwelle ${u.schwelle}.`), ...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
+    const warn = [...(vs.entfallen.length ? [`Alltagsfahrten am ${vs.entfallen.map(fmt).join(', ')} zählen nicht mehr (Reisen gehen vor).`] : [])];
     const mw = minusFuerReservierung(minusListe().filter((m) => D.personen[m.personId]), b).warnung;
     if (mw.length && !kbAus()) warn.push(...mw.map((m) => `${D.personen[m.personId].name} hat für ${m.von === m.bis ? fmt(m.von) : fmt(m.von) + ' bis ' + fmt(m.bis)} keinen Bedarf am Wohnmobil.`));
     if (warn.length && !confirm('Achtung:\n' + warn.join('\n') + '\nTrotzdem speichern?')) return;
