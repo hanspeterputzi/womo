@@ -718,7 +718,7 @@ export function neuZaehlen(d, seit, ich) {
   Object.values(d.buchungen || {}).forEach((x) => { if (n(x)) z.kalender++; });
   Object.values(d.uebergaben || {}).forEach((x) => { if (n(x)) z.fahrten++; });
   const frageIds = new Set();
-  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch') return; if (x.art === 'Frage') { frageIds.add(x.id); return; } if (x.art === 'FrageAntwort') { if (d.termine && d.termine[x.frageId]) frageIds.add(x.frageId); return; } if (x.art === 'Fahrfreigabe') { frageIds.add(x.id); return; } if (x.art === 'FahrAntwort') { if (d.termine && d.termine[x.freigabeId]) frageIds.add(x.freigabeId); return; } if (x.art === 'Minus') { z.kalender++; return; } if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
+  Object.values(d.termine || {}).forEach((x) => { if (!n(x) || x.art === 'Tank' || x.art === 'Tausch' || x.art === 'Zubehoer') return; if (x.art === 'Frage') { frageIds.add(x.id); return; } if (x.art === 'FrageAntwort') { if (d.termine && d.termine[x.frageId]) frageIds.add(x.frageId); return; } if (x.art === 'Fahrfreigabe') { frageIds.add(x.id); return; } if (x.art === 'FahrAntwort') { if (d.termine && d.termine[x.freigabeId]) frageIds.add(x.freigabeId); return; } if (x.art === 'Minus') { z.kalender++; return; } if (x.art === 'Alltag') z.fahrten++; else z.termine++; });
   Object.values(d.kosten || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.einzahlungen || {}).forEach((x) => { if (n(x)) z.kosten++; });
   Object.values(d.journal || {}).forEach((x) => { if (n(x)) z.kosten++; });
@@ -1152,3 +1152,108 @@ export function minusFuerReservierung(minusListe, b) {
 }
 // Wer ist an diesem Tag nicht verfuegbar? (Personen-IDs, ohne Doppelte)
 export const minusAmTag = (minusListe, tag) => [...new Set(minusListe.filter((m) => m.von <= tag && tag <= m.bis).map((m) => m.personId))];
+
+// Zubehoer-Katalog (Tab Wuensche, Ansicht «Zubehoer»): Auswahlliste, Rang A = fast immer, B = je nach Reise, C = Luxus.
+// Nur allgemeine Namen, keine Preise (das Repository ist oeffentlich). Was das Fahrzeug schon hat, steht nicht drin.
+export const ZUBEHOER_RAENGE = ['A', 'B', 'C'];
+export const ZUBEHOER_KATALOG = [
+  ['z001', 'Strom und Licht', 'A', 'Phasenprüfer / Steckdosentester', 'Prüft Campingplatz-Steckdose vor dem Anschliessen'],
+  ['z002', 'Strom und Licht', 'A', 'Verlängerungskabel CEE, 25 m', '3×2,5 mm², immer ganz abrollen (Überhitzung)'],
+  ['z003', 'Strom und Licht', 'A', 'Adapter Ausland (Steckdosen Süd- und Osteuropa)', 'Schuko/CEE-Adapter ist im Starter-Kit'],
+  ['z004', 'Strom und Licht', 'A', 'Stirnlampe je Person', ''],
+  ['z005', 'Strom und Licht', 'A', 'Campinglaterne, wiederaufladbar', ''],
+  ['z006', 'Strom und Licht', 'B', 'Solarmodul, tragbar (mobil)', 'Faltbar, per Kabel ans Bordnetz oder an eine Powerbank'],
+  ['z007', 'Strom und Licht', 'B', 'Spannungsmesser 12 V / Batteriecheck', ''],
+  ['z008', 'Strom und Licht', 'B', 'Mehrfachsteckdose mit Überspannungsschutz, spritzwassergeschützt', ''],
+  ['z009', 'Strom und Licht', 'C', 'Powerstation (für Kaffeemaschine, Laptop)', 'Gewicht beachten'],
+  ['z010', 'Wasser und Entsorgung', 'A', 'Frischwasserschlauch, lebensmittelecht, 10 m', 'Mit Adaptern (Gardena und Camping)'],
+  ['z011', 'Wasser und Entsorgung', 'A', 'Wasserkanister, 10 bis 20 l', ''],
+  ['z012', 'Wasser und Entsorgung', 'A', 'Trichter und Einfüllhilfe', ''],
+  ['z013', 'Wasser und Entsorgung', 'A', 'Toilettenzusatz und Toilettenpapier (Vorrat)', 'Starter-Kit enthält erste Tabs und 4er-Pack'],
+  ['z014', 'Wasser und Entsorgung', 'A', 'Abwasserschlauch und Auffangbehälter', 'Nur wo erlaubt'],
+  ['z015', 'Wasser und Entsorgung', 'B', 'Wasserfilter / Ersatzfilter', ''],
+  ['z016', 'Wasser und Entsorgung', 'B', 'Tankreiniger / Desinfektion (Frischwassertank)', 'Vor Saisonstart'],
+  ['z017', 'Wasser und Entsorgung', 'C', 'Aussendusche, solarbeheizt', ''],
+  ['z018', 'Gas und Heizung', 'A', 'Gaswarner (Propan/Butan und CO)', ''],
+  ['z019', 'Gas und Heizung', 'A', 'Feuerlöscher und Löschdecke', 'Griffbereit, Ablaufdatum prüfen'],
+  ['z020', 'Gas und Heizung', 'A', 'Rauchmelder', ''],
+  ['z021', 'Gas und Heizung', 'A', 'Gasflaschen-Adapter für Ausland', 'Gasflaschen sind von Land zu Land verschieden'],
+  ['z022', 'Gas und Heizung', 'B', 'Gasdruckregler mit Schlauchbruchsicherung (Ersatz)', ''],
+  ['z023', 'Gas und Heizung', 'B', 'Zusatzheizung / Heizlüfter für Stellplatz mit Strom', ''],
+  ['z024', 'Gas und Heizung', 'C', 'Gasgrill für draussen', ''],
+  ['z025', 'Stellplatz und Aussen', 'A', 'Campingstühle (leicht, mit Armlehnen), 4 Stück', ''],
+  ['z026', 'Stellplatz und Aussen', 'A', 'Klapptisch', ''],
+  ['z027', 'Stellplatz und Aussen', 'A', 'Hering-Set (Hartboden und Sand) und Gummihammer', 'Für die Markise und Sturmabspannung'],
+  ['z028', 'Stellplatz und Aussen', 'A', 'Eingangsmatte / Outdoor-Teppich', 'Hält Dreck aus dem Fahrzeug'],
+  ['z029', 'Stellplatz und Aussen', 'B', 'Windschutz / Sichtschutz', ''],
+  ['z030', 'Stellplatz und Aussen', 'B', 'Pavillon / Sonnensegel', ''],
+  ['z031', 'Stellplatz und Aussen', 'B', 'Unterlegplatten für die Stützen / weichen Boden', ''],
+  ['z032', 'Stellplatz und Aussen', 'B', 'Fahrradschlösser und Abdeckung für den Träger', ''],
+  ['z033', 'Stellplatz und Aussen', 'C', 'Feuerschale / Campingofen', ''],
+  ['z034', 'Küche und Essen', 'A', 'Pfanne und Topf mit Deckel', ''],
+  ['z035', 'Küche und Essen', 'A', 'Wasserkocher (Gas oder 230 V)', ''],
+  ['z036', 'Küche und Essen', 'A', 'Thermoskanne', ''],
+  ['z037', 'Küche und Essen', 'A', 'Geschirr, Becher und Besteck (bruchsicher)', '4 Personen'],
+  ['z038', 'Küche und Essen', 'A', 'Schneidebrett, scharfes Messer, Dosenöffner', ''],
+  ['z039', 'Küche und Essen', 'A', 'Abwaschschüssel, Geschirrtuch, Abtropfgitter', ''],
+  ['z040', 'Küche und Essen', 'B', 'Kaffeezubereitung (Espressokanne, Handfilter)', ''],
+  ['z041', 'Küche und Essen', 'B', 'Kühlbox für Ausflüge', ''],
+  ['z042', 'Küche und Essen', 'B', 'Vorratsboxen und Gewürzdosen (rutschfest)', ''],
+  ['z043', 'Küche und Essen', 'C', 'Backaufsatz für den Gasherd', ''],
+  ['z044', 'Schlafen und Wohnen', 'A', 'Isoliermatten für Fahrerhaus und Fenster', 'Hitze, Kälte, Sichtschutz'],
+  ['z045', 'Schlafen und Wohnen', 'A', 'Bettwäsche, Spannleintuch, Kissen (je Person ein Wechselset)', ''],
+  ['z046', 'Schlafen und Wohnen', 'A', 'Decken und Schlafsäcke für kalte Nächte', ''],
+  ['z047', 'Schlafen und Wohnen', 'A', 'Moskitonetz für Schiebetür und Aufstelldach', 'Im Süden wichtig'],
+  ['z048', 'Schlafen und Wohnen', 'A', 'Kleiderbügel, Haken, Wäscheleine, Klammern', ''],
+  ['z049', 'Schlafen und Wohnen', 'B', 'Matratzenauflage fürs Aufstelldach-Bett', 'Komfort oben'],
+  ['z050', 'Schlafen und Wohnen', 'B', 'Netze und Taschen zum Verstauen', ''],
+  ['z051', 'Schlafen und Wohnen', 'C', 'Teppich oder Bodenmatte innen', ''],
+  ['z052', 'Sicherheit und Panne', 'A', 'Taschenlampe im Fahrerhaus', ''],
+  ['z053', 'Sicherheit und Panne', 'A', 'Starthilfegerät oder Starthilfekabel', ''],
+  ['z054', 'Sicherheit und Panne', 'A', 'Werkzeugset, Radschlüssel, Wagenheber', 'Mit dem Fahrzeug abgleichen'],
+  ['z055', 'Sicherheit und Panne', 'A', 'Reifendruckprüfer und 12-V-Kompressor', ''],
+  ['z056', 'Sicherheit und Panne', 'A', 'Kabelbinder, Panzerband, Dichtband', ''],
+  ['z057', 'Sicherheit und Panne', 'B', 'Schneeketten (je nach Reiseland und Saison)', 'In manchen Ländern Pflicht'],
+  ['z058', 'Sicherheit und Panne', 'B', 'Ersatzsicherungen und Ersatzlampen', ''],
+  ['z059', 'Sicherheit und Panne', 'B', 'Zusatz-Verbandskasten, Rettungsdecken', ''],
+  ['z060', 'Sicherheit und Panne', 'C', 'Dashcam', ''],
+  ['z061', 'Navigation und Technik', 'A', 'Handyhalterung und 12-V-USB-Ladekabel', ''],
+  ['z062', 'Navigation und Technik', 'A', 'Powerbank', ''],
+  ['z063', 'Navigation und Technik', 'B', 'Offline-Karten (Download vor der Reise)', 'Zum Beispiel Stellplatz- und Kartenapps'],
+  ['z064', 'Navigation und Technik', 'B', 'Mobiler Router oder Datentarif fürs Ausland', 'eSIM oder Roaming vorher klären'],
+  ['z065', 'Navigation und Technik', 'C', 'Satelliten-Messenger für abgelegene Gegenden', ''],
+  ['z066', 'Navigation und Technik', 'C', 'Beamer oder kleiner Fernseher', ''],
+  ['z067', 'Sauberkeit und Hygiene', 'A', 'Handfeger und Schaufel', ''],
+  ['z068', 'Sauberkeit und Hygiene', 'A', 'Putzlappen, Allzweckreiniger, Müllsäcke', ''],
+  ['z069', 'Sauberkeit und Hygiene', 'A', 'Duschmatte und Toilettenreiniger', ''],
+  ['z070', 'Sauberkeit und Hygiene', 'B', 'Staubsauger, 12 V oder Akku', ''],
+  ['z071', 'Sauberkeit und Hygiene', 'B', 'Wäschesack / Wäschekorb', ''],
+  ['z072', 'Sauberkeit und Hygiene', 'C', 'Dampfreiniger', ''],
+  ['z073', 'Familie und Freizeit', 'A', 'Spielkarten, Bücher, Brettspiele', ''],
+  ['z074', 'Familie und Freizeit', 'A', 'Regenjacken und Wanderschuhe', ''],
+  ['z075', 'Familie und Freizeit', 'B', 'Haustier-Zubehör (falls je erlaubt, siehe Vertrag)', ''],
+  ['z076', 'Familie und Freizeit', 'B', 'Grill und Grillbesteck', ''],
+  ['z077', 'Familie und Freizeit', 'C', 'Kajak oder Stand-up-Paddle (Zuladung beachten)', ''],
+];
+export const ZUBEHOER_GRUPPEN = [...new Set(ZUBEHOER_KATALOG.map((x) => x[1]))];
+// Eintraege liegen in der Sammlung 'termine' (art 'Zubehoer'), damit keine neue Datenbankregel noetig ist.
+// typ 'haben': Markierung zu einem Katalogeintrag (id zb_<katalogId>), gemeinsam fuer alle. typ 'eigen': von Hand ergaenzter Eintrag.
+export function pruefeZubehoer(z) {
+  const fehler = [];
+  if (!z || typeof z.titel !== 'string' || !z.titel.trim()) fehler.push('Bitte einen Namen eingeben.');
+  else if (z.titel.trim().length > 80) fehler.push('Der Name darf höchstens 80 Zeichen haben.');
+  if (!ZUBEHOER_RAENGE.includes(z && z.rang)) fehler.push('Bitte den Rang A, B oder C wählen.');
+  if (!z || typeof z.gruppe !== 'string' || !z.gruppe.trim()) fehler.push('Bitte eine Gruppe wählen.');
+  else if (z.gruppe.trim().length > 40) fehler.push('Die Gruppe darf höchstens 40 Zeichen haben.');
+  if (z && z.notiz && String(z.notiz).length > 200) fehler.push('Die Notiz darf höchstens 200 Zeichen haben.');
+  return { ok: fehler.length === 0, fehler };
+}
+// Liste fuer die Anzeige: Katalog plus eigene Eintraege, mit Haben-Markierung. termine = Sammlung 'termine'.
+export function zubehoerListe(termine) {
+  const alle = Object.values(termine || {}).filter((x) => x && x.art === 'Zubehoer');
+  const haben = new Set(alle.filter((x) => x.typ === 'haben' && x.haben).map((x) => x.katId));
+  const eigene = alle.filter((x) => x.typ === 'eigen');
+  const katalog = ZUBEHOER_KATALOG.map(([id, gruppe, rang, titel, hinweis]) => ({ id, gruppe, rang, titel, hinweis, eigen: false, haben: haben.has(id) }));
+  const eig = eigene.map((x) => ({ id: x.id, gruppe: x.gruppe, rang: x.rang, titel: x.titel, hinweis: x.notiz || '', eigen: true, haben: haben.has(x.id), erfasstVon: x.erfasstVon }));
+  return [...katalog, ...eig];
+}

@@ -1,15 +1,15 @@
 import {
   SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, tagesSperre, datumGueltig, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
-  KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
+  ZUBEHOER_GRUPPEN, ZUBEHOER_RAENGE, pruefeZubehoer, zubehoerListe, KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116h';
-import * as S from './speicher.js?v=20261116h';
+} from './regeln.js?v=20261116i';
+import * as S from './speicher.js?v=20261116i';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -65,7 +65,7 @@ const rolle = () => !ich ? null : ich === D.adminId ? 'hp' : ich === 't' ? 'stv1
 const buchhalter = () => rolle() !== null;
 const liste = () => Object.values(D.buchungen);
 // Alltagsfahrten liegen als Eintraege mit art 'Alltag' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
-const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort' && x.art !== 'Frage' && x.art !== 'FrageAntwort' && x.art !== 'Minus');
+const termineEcht = () => Object.values(D.termine).filter((x) => x.art !== 'Alltag' && x.art !== 'Tank' && x.art !== 'Tausch' && x.art !== 'Fahrfreigabe' && x.art !== 'FahrAntwort' && x.art !== 'Frage' && x.art !== 'FrageAntwort' && x.art !== 'Minus' && x.art !== 'Zubehoer');
 // «Nicht verfuegbar» (Minus-Termin): art 'Minus' in 'termine', jede Person nur fuer sich, nur Warnung.
 const minusListe = () => Object.values(D.termine).filter((x) => x.art === 'Minus');
 // Tausch von Nutzungstagen (Vertrag Ziffer 7 a): Eintraege mit art 'Tausch' in der Sammlung 'termine' (keine neue Datenbankregel noetig).
@@ -1388,6 +1388,7 @@ const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot
 function wunschliste() {
   if (famAnsicht === 'fragen') return fragenSeite();
   if (famAnsicht === 'fahrer') return fahrerSeite();
+  if (famAnsicht === 'zubehoer') return zubehoerSeite();
   const t = heute();
   const alle = wunschListe().map((w) => ({ w, s: wunschStandVon(w) })).sort((a, b) => (a.w.datum < b.w.datum ? 1 : a.w.datum > b.w.datum ? -1 : 0));
   const pille = ({ w, s }) => {
@@ -1424,7 +1425,7 @@ function wunschliste() {
     ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu();
-  document.getElementById('wneu').onclick = wunschForm; bindSeg();
+  document.getElementById('wneu').onclick = () => wunschForm(); bindSeg();
   app.querySelectorAll('[data-wid]').forEach((b) => b.onclick = () => wunschDetail(b.dataset.wid));
 }
 
@@ -1471,7 +1472,7 @@ const waTextWunsch = (w) => mitLink(`⭐ Womo-Wunsch von ${D.personen[w.erfasstV
 const waTextFrage = (f) => mitLink(`❓ Womo-Frage von ${D.personen[f.erfasstVon]?.name || '?'}: ${f.titel}${f.groesse ? ' (Grösse: ' + f.groesse + ')' : ''} Bitte in der Womo-App bis ${fmt(frageStandVon(f).frist)} mit Ja oder Nein antworten. Es müssen alle Ja sagen.`, 'f', f.id);
 // Nach dem Speichern WhatsApp mit fertigem Text öffnen; Gruppe oder Person wählt man dort selbst, gesendet wird erst dort.
 const waAuto = (text) => setTimeout(() => { try { location.href = waLink(text); } catch {} }, 900);
-function wunschForm() {
+function wunschForm(vor = {}) {
   sheet(`<h3>Neuer Wunsch</h3>
   <label for="w_titel">Was soll gekauft werden?</label><input id="w_titel" maxlength="100" placeholder="Konkretes Produkt, z. B. Leselampe mit Clip, weiss">
   <div class="zwei"><div><label for="w_preis">Preis pro Stück, CHF</label><input id="w_preis" inputmode="decimal" placeholder="z. B. 24.90"></div>
@@ -1484,6 +1485,8 @@ function wunschForm() {
   <p class="info">Höchstens CHF 200 pro Stück, gleichartige Stücke zusammen höchstens CHF 200. Darüber: Familienrat. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit zum Antworten.</p>
   <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Vorschlagen</button></div>`);
   document.getElementById('abb').onclick = schliessen;
+  if (vor.titel) document.getElementById('w_titel').value = vor.titel;
+  if (vor.notiz) document.getElementById('w_notiz').value = vor.notiz;
   let foto = '';
   const vorschau = () => { document.getElementById('w_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><button type="button" class="kl" id="w_fweg">Foto entfernen</button></div><p class="info" style="margin:4px 0 0">Das Foto wird verkleinert gespeichert (${Math.round(foto.length / 1024)} KB).</p>` : ''; const wg = document.getElementById('w_fweg'); if (wg) wg.onclick = () => { foto = ''; document.getElementById('w_foto').value = ''; vorschau(); }; document.getElementById('w_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
   document.getElementById('w_foto').onchange = async (e) => {
@@ -1563,7 +1566,7 @@ function wunschDetail(id) {
 // Einstimmig: alle müssen Ja sagen, ein Nein genügt zur Ablehnung, Schweigen zählt nicht als Ja, keine Frist.
 // Gespeichert in der Sammlung «termine» (art «Frage» und «FrageAntwort»), damit keine neue Datenbankregel nötig ist.
 // =====================================================================
-let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'wunsch', 'fragen' oder 'fahrer'
+let famAnsicht = 'wunsch';   // Umschalter in diesem Tab: 'wunsch', 'fragen', 'fahrer' oder 'zubehoer'
 const FRAGE_ICON = '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M10 9.500a2 2 0 1 1 3 1.700c-.7.400-1 .800-1 1.500M12 14.500v.01"/>';
 const frageListe = () => Object.values(D.termine).filter((x) => x.art === 'Frage');
 const frageAntworten = () => Object.values(D.termine).filter((x) => x.art === 'FrageAntwort');
@@ -1578,9 +1581,97 @@ function famSeg() {
   const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
   const nFa = freigabeListe().wartet;
   const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
-  return `<div class="seg" role="tablist">${b('wunsch', 'Anschaffung', nW)}${b('fragen', 'Idee', nF)}${b('fahrer', 'Fahrer', nFa)}</div>`;
+  return `<div class="seg" role="tablist">${b('wunsch', 'Anschaffung', nW)}${b('fragen', 'Idee', nF)}${b('fahrer', 'Fahrer', nFa)}${b('zubehoer', 'Zubehör', 0)}</div>`;
 }
 function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
+
+
+// =====================================================================
+// Zubehoer: Auswahlliste (Katalog in regeln.js) plus eigene Eintraege. Haken «haben wir» gilt fuer alle.
+// =====================================================================
+let zbRang = 'alle', zbFehlt = false, zbSuche = '';
+function zubehoerSeite() {
+  const liste = zubehoerListe(D.termine), nH = liste.filter((z) => z.haben).length;
+  const gruppen = [...new Set([...ZUBEHOER_GRUPPEN, ...liste.map((z) => z.gruppe)])];
+  const zeile = (z) => `<button class="t-z ${z.haben ? 'ok' : 'blau'}" data-zid="${h(z.id)}" data-r="${z.rang}" data-h="${z.haben ? 1 : 0}" data-t="${h((z.titel + ' ' + z.hinweis + ' ' + z.gruppe).toLowerCase())}"><span class="t-sq ${z.haben ? 'ok' : 'blau'}"><b class="zb-r">${z.rang}</b></span><span class="t-zt"><strong>${h(z.titel)}${z.eigen ? '<span class="neu">eigen</span>' : ''}</strong>${z.hinweis ? `<small>${h(z.hinweis)}</small>` : ''}</span>${z.haben ? '<span class="t-pl ok" aria-label="haben wir">✓</span>' : '<span class="t-pf" aria-hidden="true">›</span>'}</button>`;
+  const block = (g) => { const xs = liste.filter((z) => z.gruppe === g); return `<details class="sek zb-g"><summary><span>${h(g)}</span><b>${xs.filter((z) => z.haben).length}/${xs.length}</b></summary><div class="sek-in">${xs.map(zeile).join('')}</div></details>`; };
+  const chip = (k, txt) => `<button type="button" class="zb-c ${zbRang === k ? 'aktiv' : ''}" data-zr="${k}">${txt}</button>`;
+  app.innerHTML = rahmen(`${seitenkopf('Zubehör', 'zneu', '＋ Eintrag')}${famSeg()}
+    <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Eine Auswahlliste für Dinge, die wir fürs Womo kaufen könnten. <strong>A</strong> = fast immer sinnvoll, <strong>B</strong> = je nach Reise, <strong>C</strong> = Luxus. Tippe auf einen Eintrag: Mit «Haben wir» markierst du ihn für alle als vorhanden. Mit «Als Wunsch vorschlagen» startet der normale Wunsch (bis CHF 200 pro Stück, die anderen stimmen ab).</p>
+      <p class="info" style="margin:8px 0 0">Was das Fahrzeug schon mitbringt (zum Beispiel Markise, Fahrradträger, Rückfahrkamera, Auffahrkeile), steht nicht in der Liste. Mit «＋ Eintrag» ergänzt du eigene Dinge. Einen eigenen Eintrag ändert oder löscht nur, wer ihn erfasst hat.</p></details></div>
+    <div class="karte" style="padding:12px"><input id="zb_such" class="zb-such" type="search" placeholder="Suchen, z. B. Kabel" value="${h(zbSuche)}" autocomplete="off">
+      <div class="zb-chips">${chip('alle', 'Alle')}${chip('A', 'A')}${chip('B', 'B')}${chip('C', 'C')}<button type="button" class="zb-c ${zbFehlt ? 'aktiv' : ''}" id="zb_fehlt">Nur fehlende</button></div>
+      <p class="info" style="margin:10px 0 0" id="zb_anz">Vorhanden: ${nH} von ${liste.length}</p></div>
+    <div id="zb_leer" class="karte" hidden><p class="leer-t" style="margin:6px 0">Nichts gefunden. Mit «＋ Eintrag» ergänzt du es selbst.</p></div>
+    ${gruppen.map(block).join('')}`);
+  bindRahmen(); bindNeu(); bindSeg();
+  const filtern = () => {
+    zbSuche = document.getElementById('zb_such').value.trim().toLowerCase();
+    const aktiv = zbSuche !== '' || zbRang !== 'alle' || zbFehlt; let sichtbar = 0;
+    app.querySelectorAll('.zb-g').forEach((g) => {
+      let n = 0;
+      g.querySelectorAll('[data-zid]').forEach((b) => { const zeigen = (zbRang === 'alle' || b.dataset.r === zbRang) && (!zbFehlt || b.dataset.h === '0') && (zbSuche === '' || b.dataset.t.includes(zbSuche)); b.hidden = !zeigen; if (zeigen) n++; });
+      g.hidden = n === 0; if (aktiv && n > 0) g.open = true; sichtbar += n;
+    });
+    document.getElementById('zb_leer').hidden = sichtbar > 0;
+    app.querySelectorAll('[data-zr]').forEach((c) => c.classList.toggle('aktiv', c.dataset.zr === zbRang));
+    document.getElementById('zb_fehlt').classList.toggle('aktiv', zbFehlt);
+  };
+  document.getElementById('zb_such').oninput = filtern;
+  app.querySelectorAll('[data-zr]').forEach((c) => c.onclick = () => { zbRang = c.dataset.zr; filtern(); });
+  document.getElementById('zb_fehlt').onclick = () => { zbFehlt = !zbFehlt; filtern(); };
+  document.getElementById('zneu').onclick = () => zubehoerForm();
+  app.querySelectorAll('[data-zid]').forEach((b) => b.onclick = () => zubehoerDetail(b.dataset.zid));
+  filtern();
+}
+
+function zubehoerDetail(id) {
+  const z = zubehoerListe(D.termine).find((x) => x.id === id); if (!z) return;
+  const von = z.eigen ? `<br>Eigener Eintrag von ${h(D.personen[z.erfasstVon]?.name || '?')}` : '';
+  sheet(`<h3>${h(z.titel)}</h3><p class="info" style="margin:0 0 10px">${h(z.gruppe)} · Rang ${z.rang}${z.hinweis ? '<br>' + h(z.hinweis) : ''}${von}</p>
+  <div id="msg"></div>
+  <div class="t-akt2">
+    <button class="gross-btn pri" id="zb_h">${z.haben ? 'Nicht mehr vorhanden' : '✓ Haben wir'}</button>
+    ${z.haben ? '' : '<button class="gross-btn" id="zb_w">Als Wunsch vorschlagen</button>'}
+    ${z.eigen && eigener({ erfasstVon: z.erfasstVon }) ? '<button class="gross-btn" id="zb_e">Bearbeiten</button>' : ''}
+    <button class="gross-btn" id="abb">Schliessen</button>
+  </div>`);
+  document.getElementById('abb').onclick = schliessen;
+  document.getElementById('zb_h').onclick = () => sicher(async () => {
+    await S.speichern(D, 'termine', 'zb_' + z.id, { art: 'Zubehoer', typ: 'haben', katId: z.id, haben: !z.haben, titel: z.titel.slice(0, 80), faelligAm: heute(), erfasstVon: ich });
+    schliessen(); zubehoerSeite(); hinweis(z.haben ? 'Als nicht vorhanden markiert.' : 'Als vorhanden markiert.');
+  });
+  const w = document.getElementById('zb_w'); if (w) w.onclick = () => { schliessen(); famAnsicht = 'wunsch'; wunschliste(); wunschForm({ titel: z.titel.slice(0, 100), notiz: z.hinweis }); };
+  const e = document.getElementById('zb_e'); if (e) e.onclick = () => zubehoerForm(z.id);
+}
+
+function zubehoerForm(id) {
+  const alt = id ? D.termine[id] : null;
+  if (alt && !eigener(alt)) return nurEigene();
+  const gruppen = [...new Set([...ZUBEHOER_GRUPPEN, ...Object.values(D.termine).filter((x) => x.art === 'Zubehoer' && x.typ === 'eigen').map((x) => x.gruppe)])];
+  sheet(`<h3>${alt ? 'Eintrag ändern' : 'Neuer Zubehör-Eintrag'}</h3>
+  <label for="zf_titel">Was?</label><input id="zf_titel" maxlength="80" placeholder="z. B. Klappbarer Wäscheständer" value="${h(alt ? alt.titel : '')}">
+  <label for="zf_gruppe">Gruppe</label><select id="zf_gruppe">${gruppen.map((g) => `<option${alt && alt.gruppe === g ? ' selected' : ''}>${h(g)}</option>`).join('')}<option value="__neu">Neue Gruppe …</option></select>
+  <input id="zf_gneu" maxlength="40" placeholder="Name der neuen Gruppe" style="display:none">
+  <label for="zf_rang">Rang</label><select id="zf_rang">${ZUBEHOER_RAENGE.map((r) => `<option value="${r}"${(alt ? alt.rang : 'B') === r ? ' selected' : ''}>${r}${r === 'A' ? ' (fast immer sinnvoll)' : r === 'B' ? ' (je nach Reise)' : ' (Luxus)'}</option>`).join('')}</select>
+  <label for="zf_notiz">Notiz</label><input id="zf_notiz" maxlength="200" placeholder="optional, z. B. wofür" value="${h(alt ? alt.notiz || '' : '')}">
+  <div id="msg"></div><div class="aktion"><button id="abb">Abbrechen</button><button class="primaer" id="spei">Speichern</button></div>
+  ${alt ? '<div class="t-akt2" style="margin-top:10px"><button class="gross-btn rot" id="zf_del">Eintrag löschen</button></div>' : ''}`);
+  document.getElementById('abb').onclick = schliessen;
+  const sel = document.getElementById('zf_gruppe');
+  sel.onchange = () => { document.getElementById('zf_gneu').style.display = sel.value === '__neu' ? '' : 'none'; };
+  document.getElementById('spei').onclick = async () => {
+    const gruppe = sel.value === '__neu' ? val('zf_gneu').trim() : sel.value;
+    const z = { titel: val('zf_titel').trim(), gruppe, rang: val('zf_rang'), notiz: val('zf_notiz').trim() };
+    const p = pruefeZubehoer(z); if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => {
+      await S.speichern(D, 'termine', id || null, { ...(alt || {}), ...z, art: 'Zubehoer', typ: 'eigen', faelligAm: alt ? alt.faelligAm : heute(), erfasstVon: alt ? alt.erfasstVon : ich });
+      schliessen(); zubehoerSeite(); hinweis('Eintrag gespeichert.');
+    });
+  };
+  const del = document.getElementById('zf_del');
+  if (del) del.onclick = async () => { if (await wirklich('Eintrag')) await sicher(async () => { if (D.termine['zb_' + id]) await S.loeschen(D, 'termine', 'zb_' + id); await S.loeschen(D, 'termine', id); schliessen(); zubehoerSeite(); hinweis('Eintrag gelöscht.'); }); };
+}
 
 function fragenSeite() {
   const alle = frageListe().map((f) => ({ f, s: frageStandVon(f) })).sort((a, b) => (a.f.erfasstAm < b.f.erfasstAm ? 1 : a.f.erfasstAm > b.f.erfasstAm ? -1 : 0));

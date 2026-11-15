@@ -279,3 +279,12 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 /* Kein Netz: Streifen ueber der Tab-Leiste */
 .offl{position:fixed;left:12px;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));max-width:596px;margin:0 auto;z-index:35;background:#b45309;color:#fff;border-radius:14px;padding:10px 14px;font-size:13.5px;line-height:1.35;box-shadow:0 4px 16px rgba(0,0,0,.25)}
 .offl[hidden]{display:none}
+/* Zubehoer */
+.seg{grid-template-columns:repeat(4,1fr)}
+.seg button{font-size:12.5px}
+.zb-r{font-size:16px;font-weight:800;line-height:1}
+.zb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.zb-c{border:0;background:var(--soft);color:var(--muted);font:inherit;font-size:14px;font-weight:700;min-height:44px;padding:0 14px;border-radius:12px}
+.zb-c.aktiv{background:var(--acc);color:#fff}
+.zb-g[hidden],[data-zid][hidden]{display:none}
+.zb-such{display:block;width:100%;box-sizing:border-box;min-height:44px;margin:0 0 10px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--soft);color:var(--fg);font:inherit;font-size:16px}
