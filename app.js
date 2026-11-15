@@ -8,8 +8,8 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116b';
-import * as S from './speicher.js?v=20261116b';
+} from './regeln.js?v=20261116c';
+import * as S from './speicher.js?v=20261116c';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -324,8 +324,7 @@ function unterwegs() {
     const m = n.match(/^(.*?)\s*\((.*)\)\s*$/), name = m ? m[1] : n, note = m ? m[2] : '';
     return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
-  app.innerHTML = rahmen(`${seitenkopf('Reisen')}<div class="u-ban slim"><span class="u-bic">${SVG('<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>')}</span>
-    <div><strong>Keine Übernachtung auf Autobahnraststätten</strong></div></div>
+  app.innerHTML = rahmen(`${seitenkopf('Reisen')}${verboteBox()}
   ${orteKarte()}
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
@@ -728,6 +727,12 @@ const ICON_ALK = '<circle cx="12" cy="12" r="10"/><path d="M8.500 6.500h7l-.6 4a
 const ICON_RAUCH = '<circle cx="12" cy="12" r="10"/><path d="M5.500 14.500h9v3h-9zM12.500 14.500v3M16.500 14.500c0-1.500 1.500-1.500 1.500-3.200S16.500 9.700 16.500 8"/><path d="M4.900 4.900l14.200 14.200"/>';
 const FAHRT_ICON = '<path d="M3 17V8a2 2 0 0 1 2-2h9l5 5v6M3 17h2M9 17h6M19 17h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>';
 const KOSTEN_ICON = '<circle cx="12" cy="12" r="9"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6v2M12 16v2"/>';
+const ICON_RAST = '<circle cx="12" cy="12" r="10"/><path d="M6.5 15.5V9M6.5 13h11v2.5M17.5 15.5v-2a2 2 0 0 0-2-2H11v2"/><circle cx="9" cy="11" r=".6"/><path d="M5 5l14 14"/>';
+// Ein Kasten mit den drei Verboten (Entscheid HP77, 16.11.2026), oben in Fahrten und Reisen. Zu: drei Symbole und «Verboten!», Tipp klappt auf.
+function verboteBox() {
+  const z = (ic, t) => `<div><span class="u-bic">${SVG(ic)}</span>${t}</div>`;
+  return `<details class="vb"><summary><span class="vb-ic">${SVG(ICON_ALK)}${SVG(ICON_RAUCH)}${SVG(ICON_RAST)}</span><span class="vb-t">Verboten!</span><i aria-hidden="true">›</i></summary><div class="vb-l">${z(ICON_ALK, 'Fahren unter Alkohol')}${z(ICON_RAUCH, 'Rauchen')}${z(ICON_RAST, 'Übernachtung auf Autobahnraststätten')}</div></details>`;
+}
 function reiseText(b, kurz) {
   const [j1, m1, d1] = b.von.split('-').map(Number), [j2, m2, d2] = b.bis.split('-').map(Number);
   const mo = (m) => kurz ? MONATE[m - 1].slice(0, 3) + '.' : MONATE[m - 1], jahr = j2 === new Date().getFullYear() ? '' : ' ' + j2;
@@ -768,8 +773,7 @@ function fahrten() {
   };
   const zeile = (b) => { const f = fahrtInfo(b, st), [k, txt] = pilleFuer(b); return `<button class="t-z ${k}" data-reise="${h(b.id)}"><span class="t-sq blau"><svg viewBox="0 0 24 24" aria-hidden="true">${FAHRT_ICON}</svg></span><span class="t-zt"><strong>${reiseText(b, true)}${neuPille(b)}${neuPille(f.ab)}${neuPille(f.rk)}</strong><small>${h(f.wer)}${b.ziel ? ' · ' + h(b.ziel) : ''}</small></span><span class="t-pl ${k}">${txt}</span></button>`; };
   app.innerHTML = rahmen(`${seitenkopf('Fahrten', elternIch ? 'aneu' : null, '＋ Alltagsfahrt')}
-  <div class="u-ban slim"><span class="u-bic">${SVG(ICON_ALK)}</span><div><strong>Fahren unter Alkohol ist verboten</strong></div></div>
-  <div class="u-ban slim"><span class="u-bic">${SVG(ICON_RAUCH)}</span><div><strong>Rauchen und Tiere sind verboten</strong></div></div>
+  ${verboteBox()}
   ${karte}
   ${kommend.length > 1 ? `<p class="t-lab2">Weitere Reisen</p>${kommend.slice(1).map(zeile).join('')}` : ''}
   <div class="karte km-karte" style="margin-top:14px"><div><p class="titel" style="margin:0 0 4px">Kilometerstand</p>
