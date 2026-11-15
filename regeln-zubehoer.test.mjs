@@ -37,3 +37,14 @@ test('Pruefung: Name, Rang, Gruppe, Laengen', () => {
   assert.ok(!pruefeZubehoer({ ...ok, gruppe: 'g'.repeat(41) }).ok); assert.ok(!pruefeZubehoer({ ...ok, notiz: 'n'.repeat(201) }).ok);
 });
 console.log(n + ' Tests bestanden');
+import { zubehoerGeloescht } from './regeln.js';
+{
+  const t = { zb_z003: { id: 'zb_z003', art: 'Zubehoer', typ: 'haben', katId: 'z003', haben: false, weg: true }, zb_z004: { id: 'zb_z004', art: 'Zubehoer', typ: 'haben', katId: 'z004', haben: true, weg: true } };
+  const l = zubehoerListe(t), g = zubehoerGeloescht(t);
+  assert.equal(l.length, ZUBEHOER_KATALOG.length - 2); assert.ok(!l.some((x) => x.id === 'z003' || x.id === 'z004'));
+  assert.deepEqual(g.map((x) => x.id).sort(), ['z003', 'z004']);
+  const t2 = { ...t, zb_z003: { ...t.zb_z003, weg: false } };
+  assert.equal(zubehoerListe(t2).length, ZUBEHOER_KATALOG.length - 1); assert.deepEqual(zubehoerGeloescht(t2).map((x) => x.id), ['z004']);
+  assert.equal(zubehoerGeloescht({}).length, 0);
+  console.log('OK   Loeschen und Wiederherstellen von Katalogeintraegen');
+}

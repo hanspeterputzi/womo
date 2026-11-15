@@ -1251,9 +1251,15 @@ export function pruefeZubehoer(z) {
 // Liste fuer die Anzeige: Katalog plus eigene Eintraege, mit Haben-Markierung. termine = Sammlung 'termine'.
 export function zubehoerListe(termine) {
   const alle = Object.values(termine || {}).filter((x) => x && x.art === 'Zubehoer');
-  const haben = new Set(alle.filter((x) => x.typ === 'haben' && x.haben).map((x) => x.katId));
+  const haben = new Set(alle.filter((x) => x.typ === 'haben' && x.haben && !x.weg).map((x) => x.katId));
+  const weg = new Set(alle.filter((x) => x.typ === 'haben' && x.weg).map((x) => x.katId));
   const eigene = alle.filter((x) => x.typ === 'eigen');
-  const katalog = ZUBEHOER_KATALOG.map(([id, gruppe, rang, titel, hinweis]) => ({ id, gruppe, rang, titel, hinweis, eigen: false, haben: haben.has(id) }));
+  const katalog = ZUBEHOER_KATALOG.filter((x) => !weg.has(x[0])).map(([id, gruppe, rang, titel, hinweis]) => ({ id, gruppe, rang, titel, hinweis, eigen: false, haben: haben.has(id) }));
   const eig = eigene.map((x) => ({ id: x.id, gruppe: x.gruppe, rang: x.rang, titel: x.titel, hinweis: x.notiz || '', eigen: true, haben: haben.has(x.id), erfasstVon: x.erfasstVon }));
   return [...katalog, ...eig];
+}
+// Geloeschte Katalog-Eintraege (Markierung weg in zb_<Katalog-Id>): lassen sich wiederherstellen.
+export function zubehoerGeloescht(termine) {
+  const weg = new Set(Object.values(termine || {}).filter((x) => x && x.art === 'Zubehoer' && x.typ === 'haben' && x.weg).map((x) => x.katId));
+  return ZUBEHOER_KATALOG.filter((x) => weg.has(x[0])).map(([id, gruppe, rang, titel, hinweis]) => ({ id, gruppe, rang, titel, hinweis }));
 }
