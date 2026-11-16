@@ -8,8 +8,9 @@ import {
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116k';
-import * as S from './speicher.js?v=20261116k';
+} from './regeln.js?v=20261116l';
+import * as S from './speicher.js?v=20261116l';
+import * as PV from './preise.js?v=20261116l';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1389,6 +1390,7 @@ function wunschliste() {
   if (famAnsicht === 'fragen') return fragenSeite();
   if (famAnsicht === 'fahrer') return fahrerSeite();
   if (famAnsicht === 'zubehoer') return zubehoerSeite();
+  if (famAnsicht === 'preise') return preiseSeite();
   const t = heute();
   const alle = wunschListe().map((w) => ({ w, s: wunschStandVon(w) })).sort((a, b) => (a.w.datum < b.w.datum ? 1 : a.w.datum > b.w.datum ? -1 : 0));
   const pille = ({ w, s }) => {
@@ -1580,7 +1582,7 @@ function famSeg() {
   const nF = frageListe().filter((f) => frageWartet(f, frageStandVon(f))).length;
   const nW = wunschListe().filter((w) => { const st = wunschStandVon(w); return st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]; }).length;
   const nFa = freigabeListe().wartet;
-  const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
+  const b = (k, txt, n) => `<button type="button" data-fa="${k}" class="${famAnsicht === k || (k === 'zubehoer' && famAnsicht === 'preise') ? 'aktiv' : ''}">${txt}${n ? `<i>${n}</i>` : ''}</button>`;
   return `<div class="seg" role="tablist">${b('wunsch', 'Anschaffung', nW)}${b('fragen', 'Idee', nF)}${b('fahrer', 'Fahrer', nFa)}${b('zubehoer', 'Zubehör', 0)}</div>`;
 }
 function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclick = () => { famAnsicht = b.dataset.fa; wunschliste(); window.scrollTo(0, 0); }); }
@@ -1599,6 +1601,7 @@ function zubehoerSeite() {
   app.innerHTML = rahmen(`${seitenkopf('Zubehör', 'zneu', '＋ Eintrag')}${famSeg()}
     <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Eine Auswahlliste für Dinge, die wir fürs Womo kaufen könnten. <strong>A</strong> = fast immer sinnvoll, <strong>B</strong> = je nach Reise, <strong>C</strong> = Luxus. Tippe auf einen Eintrag: Mit «Haben wir» markierst du ihn für alle als vorhanden. Mit «Als Wunsch vorschlagen» startet der normale Wunsch (bis CHF 200 pro Stück, die anderen stimmen ab).</p>
       <p class="info" style="margin:8px 0 0">Was das Fahrzeug schon mitbringt (zum Beispiel Markise, Fahrradträger, Rückfahrkamera, Auffahrkeile), steht nicht in der Liste. Mit «＋ Eintrag» ergänzt du eigene Dinge. Jeden Eintrag kann jede Person ändern oder löschen. Gelöscht ist für immer gelöscht.</p></details></div>
+    <button type="button" class="karte pv-ein" id="pv_ein"><span><strong>Preise vergleichen</strong><small>Produkt eingeben, in 8 Schweizer Shops suchen, Gesamtkosten mit Versand sehen</small></span><span aria-hidden="true">›</span></button>
     <div class="karte" style="padding:12px"><input id="zb_such" class="zb-such" type="search" placeholder="Suchen, z. B. Kabel" value="${h(zbSuche)}" autocomplete="off">
       <div class="zb-chips">${chip('alle', 'Alle')}${chip('A', 'A')}${chip('B', 'B')}${chip('C', 'C')}<button type="button" class="zb-c ${zbFehlt ? 'aktiv' : ''}" id="zb_fehlt">Nur fehlende</button></div>
       <p class="info" style="margin:10px 0 0" id="zb_anz">Vorhanden: ${nH} von ${liste.length}</p></div>
@@ -1621,8 +1624,65 @@ function zubehoerSeite() {
   app.querySelectorAll('[data-zr]').forEach((c) => c.onclick = () => { zbRang = c.dataset.zr; filtern(); });
   document.getElementById('zb_fehlt').onclick = () => { zbFehlt = !zbFehlt; filtern(); };
   document.getElementById('zneu').onclick = () => zubehoerForm();
+  document.getElementById('pv_ein').onclick = () => { famAnsicht = 'preise'; wunschliste(); window.scrollTo(0, 0); };
   app.querySelectorAll('[data-zid]').forEach((b) => b.onclick = () => zubehoerDetail(b.dataset.zid));
   filtern();
+}
+
+// =====================================================================
+// Preise vergleichen (Zubehoer): Produkt eintippen, pro Shop suchen, Preis eintippen, die App rechnet Versand und Gesamtkosten.
+// Die App liest keine Shop-Seiten aus (das geht ohne Server nicht). Die Liste bleibt nur in diesem Handy (localStorage), nichts in der Datenbank.
+// =====================================================================
+const PV_KEY = 'womo-preise';
+let pvPosten = (() => { try { return PV.bereinige(JSON.parse(localStorage.getItem(PV_KEY))); } catch { return []; } })();
+const pvMerken = () => { try { localStorage.setItem(PV_KEY, JSON.stringify(pvPosten)); } catch {} };
+const pvChf = (n) => n.toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function pvKarte(r, rang, best) {
+  const s = r.shop;
+  return `<div class="karte pv-shop${best ? ' best' : ''}${r.voll ? '' : ' dim'}"><div class="pv-top"><span class="pv-rang">${rang}</span><div class="pv-nm"><strong>${h(s.n)}</strong></div><div class="pv-tot"><b>CHF ${pvChf(r.total)}</b><small>netto</small></div></div>
+    <dl class="pv-dl"><dt>Artikel</dt><dd>CHF ${pvChf(r.ware)}</dd><dt>Versand</dt><dd>${r.versand === 0 ? 'gratis' : 'CHF ' + pvChf(r.versand)}</dd>${r.minder ? `<dt>Mindermengenzuschlag</dt><dd>CHF ${pvChf(r.minder)}</dd>` : ''}<dt class="sum">Netto</dt><dd class="sum">CHF ${pvChf(r.total)}</dd></dl>
+    ${r.next && r.next.fee < r.versand ? `<p class="pv-h ok">Ab CHF ${pvChf(r.next.bis + 0.01)} Bestellwert ${r.next.fee === 0 ? 'ist der Versand gratis' : 'kostet der Versand nur noch CHF ' + pvChf(r.next.fee)}.</p>` : ''}
+    ${r.fehlt.length ? `<p class="pv-h b">Kein Preis eingetragen für: ${r.fehlt.map(h).join(', ')}. Die Summe zählt nur die vorhandenen Artikel.</p>` : ''}
+    ${s.hinweis ? `<p class="pv-h i">${h(s.hinweis)}</p>` : ''}</div>`;
+}
+function pvErgebnis() {
+  const el = document.getElementById('pv_erg'); if (!el) return;
+  if (!pvPosten.length) { el.innerHTML = '<div class="karte"><p class="leer-t" style="margin:6px 0">Gib oben ein Produkt ein.</p></div>'; return; }
+  const v = PV.vergleich(pvPosten);
+  if (!v.voll.length && !v.teil.length) { el.innerHTML = '<div class="karte"><p class="leer-t" style="margin:6px 0">Tippe bei den Shops die Preise ein, die du gefunden hast. Dann erscheint hier der Vergleich.</p></div>'; return; }
+  el.innerHTML = v.voll.map((r, i) => pvKarte(r, i + 1, i === 0)).join('') + v.teil.map((r) => pvKarte(r, '–', false)).join('')
+    + (v.keine.length ? `<div class="karte"><p class="info" style="margin:0"><strong>Ohne Preis:</strong> ${v.keine.map((r) => h(r.shop.n)).join(', ')}</p></div>` : '');
+}
+function preiseSeite() {
+  const posten = (p) => `<div class="karte pv-p" data-pid="${h(p.id)}"><div class="pv-pk"><strong>${h(p.name)}</strong>
+      <div class="pv-step"><button type="button" data-pd="-1" aria-label="weniger: ${h(p.name)}">−</button><output>${p.menge}</output><button type="button" data-pd="1" aria-label="mehr: ${h(p.name)}">+</button></div>
+      <button type="button" class="pv-x" data-pdel="1" aria-label="Produkt entfernen: ${h(p.name)}">✕</button></div>
+    ${PV.SHOPS.map((s) => `<div class="pv-z"><span class="pv-zn">${h(s.n)}</span><a class="pv-such" href="${h(PV.suchLink(s, p.name))}" target="_blank" rel="noopener noreferrer">Suchen ↗</a><input class="pv-in" inputmode="decimal" autocomplete="off" placeholder="CHF" aria-label="Preis ${h(s.n)}: ${h(p.name)}" data-s="${s.id}" value="${h(p.preise[s.id] || '')}"></div>`).join('')}</div>`;
+  app.innerHTML = rahmen(`${seitenkopf('Preise', 'pv_zur', '‹ Zubehör')}${famSeg()}
+    <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">1. Produkt eintippen, zum Beispiel «Fiamma Level Pro». 2. Bei jedem Shop auf «Suchen» tippen, den Preis ablesen (inkl. MwSt, in CHF) und hier eintragen. 3. Die App rechnet Versand, Gratisgrenzen und die Gesamtkosten pro Shop und zeigt den günstigsten zuoberst.</p>
+      <p class="info" style="margin:8px 0 0">Die App kann die Preise nicht selbst holen, die Shops lassen das nicht zu. Leeres Feld heisst: der Shop führt es nicht oder du hast nicht nachgeschaut. Die Liste bleibt nur in diesem Handy. Alle Shops liefern aus der Schweiz, es gibt keinen Zoll. Mehrere Produkte: die App rechnet mit einer Bestellung pro Shop.</p></details></div>
+    <div class="karte" style="padding:12px"><form id="pv_form" class="pv-neu"><input id="pv_name" class="zb-such" type="text" maxlength="${PV.NAME_MAX}" placeholder="Produkt eintippen" autocomplete="off" style="margin:0"><button class="t-plus lang" type="submit">＋ Produkt</button></form></div>
+    ${pvPosten.map(posten).join('')}
+    <h3 class="pv-ueb">Nettokosten pro Shop</h3><div id="pv_erg"></div>
+    <details class="sek"><summary><span>Versandgrenzen aller Shops</span><b>${PV.SHOPS.length}</b></summary><div class="sek-in">${PV.SHOPS.map((s) => `<div class="pv-g"><strong>${h(s.n)}</strong><dl class="pv-dl"><dt>Versand</dt><dd>${h(s.versand)}</dd><dt>Gratis</dt><dd><b>${h(s.gratis)}</b></dd><dt>Besonderes</dt><dd>${h(s.besonders)}</dd></dl></div>`).join('')}<p class="info" style="margin:8px 0 0">Stand der Versandbedingungen: ${PV.STAND}, von den Shop-Seiten abgelesen. Sie ändern sich. Der Warenkorb im Shop entscheidet.</p></div></details>`);
+  bindRahmen(); bindSeg();
+  document.getElementById('pv_zur').onclick = () => { famAnsicht = 'zubehoer'; wunschliste(); window.scrollTo(0, 0); };
+  document.getElementById('pv_form').onsubmit = (e) => {
+    e.preventDefault(); const f = document.getElementById('pv_name'), name = f.value.trim();
+    if (!name) { hinweis('Bitte ein Produkt eintippen.'); return; }
+    if (pvPosten.length >= PV.MAX_POSTEN) { hinweis(`Höchstens ${PV.MAX_POSTEN} Produkte. Entferne zuerst eines.`); return; }
+    pvPosten.push({ id: 'p' + Date.now().toString(36) + pvPosten.length, name: name.slice(0, PV.NAME_MAX), menge: 1, preise: {} }); pvMerken(); preiseSeite();
+  };
+  app.querySelectorAll('.pv-p').forEach((el) => {
+    const p = pvPosten.find((x) => x.id === el.dataset.pid); if (!p) return;
+    el.querySelectorAll('[data-pd]').forEach((b) => b.onclick = () => { p.menge = Math.max(1, Math.min(PV.MAX_MENGE, p.menge + Number(b.dataset.pd))); pvMerken(); el.querySelector('output').textContent = p.menge; pvErgebnis(); });
+    el.querySelector('[data-pdel]').onclick = () => { pvPosten = pvPosten.filter((x) => x !== p); pvMerken(); preiseSeite(); };
+    el.querySelectorAll('.pv-in').forEach((i) => {
+      i.oninput = () => { const t = i.value.trim(); if (t) p.preise[i.dataset.s] = t.slice(0, 12); else delete p.preise[i.dataset.s]; i.classList.toggle('pv-bad', t !== '' && PV.parsePreis(t) == null); pvMerken(); pvErgebnis(); };
+      i.classList.toggle('pv-bad', i.value.trim() !== '' && PV.parsePreis(i.value) == null);
+    });
+  });
+  pvErgebnis();
 }
 
 // Markierung zu einem Katalogeintrag (haben / geloescht): ein gemeinsames Dokument zb_<Id>.
