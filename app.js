@@ -1,15 +1,15 @@
 import {
   SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, tagesSperre, datumGueltig, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
-  ZUBEHOER_GRUPPEN, ZUBEHOER_RAENGE, pruefeZubehoer, zubehoerListe, zubehoerGeloescht, KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
+  ZUBEHOER_GRUPPEN, ZUBEHOER_RAENGE, pruefeZubehoer, zubehoerListe, KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
   WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261116j';
-import * as S from './speicher.js?v=20261116j';
+} from './regeln.js?v=20261116k';
+import * as S from './speicher.js?v=20261116k';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -1591,22 +1591,20 @@ function bindSeg() { app.querySelectorAll('.seg button').forEach((b) => b.onclic
 // =====================================================================
 let zbRang = 'alle', zbFehlt = false, zbSuche = '';
 function zubehoerSeite() {
-  const liste = zubehoerListe(D.termine), geloescht = zubehoerGeloescht(D.termine), nH = liste.filter((z) => z.haben).length;
+  const liste = zubehoerListe(D.termine), nH = liste.filter((z) => z.haben).length;
   const gruppen = [...new Set([...ZUBEHOER_GRUPPEN, ...liste.map((z) => z.gruppe)])].filter((g) => liste.some((z) => z.gruppe === g));
-  const zeile = (z) => `<button class="t-z ${z.haben ? 'ok' : 'blau'}" data-zid="${h(z.id)}" data-r="${z.rang}" data-h="${z.haben ? 1 : 0}" data-t="${h((z.titel + ' ' + z.hinweis + ' ' + z.gruppe).toLowerCase())}"><span class="t-sq ${z.haben ? 'ok' : 'blau'}"><b class="zb-r">${z.rang}</b></span><span class="t-zt"><strong>${h(z.titel)}${z.eigen ? '<span class="neu">eigen</span>' : ''}</strong>${z.hinweis ? `<small>${h(z.hinweis)}</small>` : ''}</span>${z.haben ? '<span class="t-pl ok" aria-label="haben wir">✓</span>' : '<span class="t-pf" aria-hidden="true">›</span>'}</button>`;
+  const zeile = (z) => `<button class="t-z ${z.haben ? 'ok' : 'blau'}" data-zid="${h(z.id)}" data-r="${z.rang}" data-h="${z.haben ? 1 : 0}" data-t="${h((z.titel + ' ' + z.hinweis + ' ' + z.gruppe).toLowerCase())}"><span class="t-sq ${z.haben ? 'ok' : 'blau'}"><b class="zb-r">${z.rang}</b></span><span class="t-zt"><strong>${h(z.titel)}</strong>${z.hinweis ? `<small>${h(z.hinweis)}</small>` : ''}</span>${z.haben ? '<span class="t-pl ok" aria-label="haben wir">✓</span>' : '<span class="t-pf" aria-hidden="true">›</span>'}</button>`;
   const block = (g) => { const xs = liste.filter((z) => z.gruppe === g); return `<details class="sek zb-g"><summary><span>${h(g)}</span><b>${xs.filter((z) => z.haben).length}/${xs.length}</b></summary><div class="sek-in">${xs.map(zeile).join('')}</div></details>`; };
   const chip = (k, txt) => `<button type="button" class="zb-c ${zbRang === k ? 'aktiv' : ''}" data-zr="${k}">${txt}</button>`;
   app.innerHTML = rahmen(`${seitenkopf('Zubehör', 'zneu', '＋ Eintrag')}${famSeg()}
     <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Eine Auswahlliste für Dinge, die wir fürs Womo kaufen könnten. <strong>A</strong> = fast immer sinnvoll, <strong>B</strong> = je nach Reise, <strong>C</strong> = Luxus. Tippe auf einen Eintrag: Mit «Haben wir» markierst du ihn für alle als vorhanden. Mit «Als Wunsch vorschlagen» startet der normale Wunsch (bis CHF 200 pro Stück, die anderen stimmen ab).</p>
-      <p class="info" style="margin:8px 0 0">Was das Fahrzeug schon mitbringt (zum Beispiel Markise, Fahrradträger, Rückfahrkamera, Auffahrkeile), steht nicht in der Liste. Mit «＋ Eintrag» ergänzt du eigene Dinge. Jeden Katalog-Eintrag kannst du löschen (unten in der Liste wiederherstellbar). Einen eigenen Eintrag ändert oder löscht nur, wer ihn erfasst hat.</p></details></div>
+      <p class="info" style="margin:8px 0 0">Was das Fahrzeug schon mitbringt (zum Beispiel Markise, Fahrradträger, Rückfahrkamera, Auffahrkeile), steht nicht in der Liste. Mit «＋ Eintrag» ergänzt du eigene Dinge. Jeden Eintrag kann jede Person ändern oder löschen. Gelöscht ist für immer gelöscht.</p></details></div>
     <div class="karte" style="padding:12px"><input id="zb_such" class="zb-such" type="search" placeholder="Suchen, z. B. Kabel" value="${h(zbSuche)}" autocomplete="off">
       <div class="zb-chips">${chip('alle', 'Alle')}${chip('A', 'A')}${chip('B', 'B')}${chip('C', 'C')}<button type="button" class="zb-c ${zbFehlt ? 'aktiv' : ''}" id="zb_fehlt">Nur fehlende</button></div>
       <p class="info" style="margin:10px 0 0" id="zb_anz">Vorhanden: ${nH} von ${liste.length}</p></div>
     <div id="zb_leer" class="karte" hidden><p class="leer-t" style="margin:6px 0">Nichts gefunden. Mit «＋ Eintrag» ergänzt du es selbst.</p></div>
-    ${gruppen.map(block).join('')}
-    ${geloescht.length ? `<details class="sek" style="margin-top:20px"><summary><span>Gelöschte Einträge</span><b>${geloescht.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Diese Einträge sind aus der Liste entfernt. Mit «Wiederherstellen» kommen sie zurück.</p>${geloescht.map((z) => `<div class="karte" style="padding:12px;margin:0 0 8px"><strong>${h(z.titel)}</strong><br><small style="color:var(--muted)">${h(z.gruppe)} · Rang ${z.rang}</small><button type="button" class="gross-btn" style="margin-top:10px" data-zback="${h(z.id)}">Wiederherstellen</button></div>`).join('')}</div></details>` : ''}`);
+    ${gruppen.map(block).join('')}`);
   bindRahmen(); bindNeu(); bindSeg();
-  app.querySelectorAll('[data-zback]').forEach((b) => b.onclick = () => sicher(async () => { const z = geloescht.find((x) => x.id === b.dataset.zback); await zbMarke(z.id, z.titel, { weg: false }); zubehoerSeite(); hinweis('Eintrag wiederhergestellt.'); }));
   const filtern = () => {
     zbSuche = document.getElementById('zb_such').value.trim().toLowerCase();
     const aktiv = zbSuche !== '' || zbRang !== 'alle' || zbFehlt; let sichtbar = 0;
@@ -1629,42 +1627,41 @@ function zubehoerSeite() {
 
 // Markierung zu einem Katalogeintrag (haben / geloescht): ein gemeinsames Dokument zb_<Id>.
 const zbMarke = (katId, titel, aend) => S.speichern(D, 'termine', 'zb_' + katId, { ...(D.termine['zb_' + katId] || {}), art: 'Zubehoer', typ: 'haben', katId, titel: String(titel).slice(0, 80), faelligAm: D.termine['zb_' + katId]?.faelligAm || heute(), erfasstVon: D.termine['zb_' + katId]?.erfasstVon || ich, ...aend });
-// Loeschen: Katalogeintraege darf jede Person loeschen (sie haben keinen Verfasser, Wiederherstellen unten in der Liste). Eigene Eintraege nur der Verfasser.
+// Loeschen: jede Person darf jeden Eintrag loeschen, endgueltig. Katalogeintraege bekommen eine unsichtbare Markierung «weg», damit sie nicht wiederkehren.
 async function zubehoerLoeschen(z) {
-  if (z.eigen && !eigener({ erfasstVon: z.erfasstVon })) return nurEigene();
   if (!(await wirklich('Eintrag «' + z.titel + '»'))) return;
   await sicher(async () => {
-    if (z.eigen) { if (D.termine['zb_' + z.id]) await S.loeschen(D, 'termine', 'zb_' + z.id); await S.loeschen(D, 'termine', z.id); }
+    if (z.eigenDoc) { if (D.termine['zb_' + z.id]) await S.loeschen(D, 'termine', 'zb_' + z.id); await S.loeschen(D, 'termine', z.id); }
     else await zbMarke(z.id, z.titel, { weg: true, haben: false });
-    schliessen(); zubehoerSeite(); hinweis('Eintrag gelöscht.' + (z.eigen ? '' : ' Unten in der Liste kannst du ihn wiederherstellen.'));
+    schliessen(); zubehoerSeite(); hinweis('Eintrag gelöscht.');
   });
 }
 function zubehoerDetail(id) {
   const z = zubehoerListe(D.termine).find((x) => x.id === id); if (!z) return;
-  const von = z.eigen ? `<br>Eigener Eintrag von ${h(D.personen[z.erfasstVon]?.name || '?')}` : '';
-  sheet(`<h3>${h(z.titel)}</h3><p class="info" style="margin:0 0 10px">${h(z.gruppe)} · Rang ${z.rang}${z.hinweis ? '<br>' + h(z.hinweis) : ''}${von}</p>
+  sheet(`<h3>${h(z.titel)}</h3><p class="info" style="margin:0 0 10px">${h(z.gruppe)} · Rang ${z.rang}${z.hinweis ? '<br>' + h(z.hinweis) : ''}</p>
   <div id="msg"></div>
   <div class="t-akt2">
     <button class="gross-btn pri" id="zb_h">${z.haben ? 'Nicht mehr vorhanden' : '✓ Haben wir'}</button>
     ${z.haben ? '' : '<button class="gross-btn" id="zb_w">Als Wunsch vorschlagen</button>'}
-    ${z.eigen && eigener({ erfasstVon: z.erfasstVon }) ? '<button class="gross-btn" id="zb_e">Bearbeiten</button>' : ''}
+    <button class="gross-btn" id="zb_e">Bearbeiten</button>
     <button class="gross-btn" id="abb">Schliessen</button>
-    ${!z.eigen || eigener({ erfasstVon: z.erfasstVon }) ? '<button class="gross-btn rot" id="zb_d">Eintrag löschen</button>' : ''}
+    <button class="gross-btn rot" id="zb_d">Eintrag löschen</button>
   </div>`);
   document.getElementById('abb').onclick = schliessen;
-  const dl = document.getElementById('zb_d'); if (dl) dl.onclick = () => zubehoerLoeschen(z);
+  document.getElementById('zb_d').onclick = () => zubehoerLoeschen(z);
   document.getElementById('zb_h').onclick = () => sicher(async () => {
     await zbMarke(z.id, z.titel, { haben: !z.haben });
     schliessen(); zubehoerSeite(); hinweis(z.haben ? 'Als nicht vorhanden markiert.' : 'Als vorhanden markiert.');
   });
   const w = document.getElementById('zb_w'); if (w) w.onclick = () => { schliessen(); famAnsicht = 'wunsch'; wunschliste(); wunschForm({ titel: z.titel.slice(0, 100), notiz: z.hinweis }); };
-  const e = document.getElementById('zb_e'); if (e) e.onclick = () => zubehoerForm(z.id);
+  document.getElementById('zb_e').onclick = () => zubehoerForm(z.id);
 }
 
 function zubehoerForm(id) {
-  const alt = id ? D.termine[id] : null;
-  if (alt && !eigener(alt)) return nurEigene();
-  const gruppen = [...new Set([...ZUBEHOER_GRUPPEN, ...Object.values(D.termine).filter((x) => x.art === 'Zubehoer' && x.typ === 'eigen').map((x) => x.gruppe)])];
+  const liste = zubehoerListe(D.termine), z0 = id ? liste.find((x) => x.id === id) : null;
+  if (id && !z0) return;
+  const alt = z0 ? { titel: z0.titel, gruppe: z0.gruppe, rang: z0.rang, notiz: z0.hinweis || '' } : null;
+  const gruppen = [...new Set([...ZUBEHOER_GRUPPEN, ...liste.map((x) => x.gruppe)])];
   sheet(`<h3>${alt ? 'Eintrag ändern' : 'Neuer Zubehör-Eintrag'}</h3>
   <label for="zf_titel">Was?</label><input id="zf_titel" maxlength="80" placeholder="z. B. Klappbarer Wäscheständer" value="${h(alt ? alt.titel : '')}">
   <label for="zf_gruppe">Gruppe</label><select id="zf_gruppe">${gruppen.map((g) => `<option${alt && alt.gruppe === g ? ' selected' : ''}>${h(g)}</option>`).join('')}<option value="__neu">Neue Gruppe …</option></select>
@@ -1681,12 +1678,13 @@ function zubehoerForm(id) {
     const z = { titel: val('zf_titel').trim(), gruppe, rang: val('zf_rang'), notiz: val('zf_notiz').trim() };
     const p = pruefeZubehoer(z); if (!p.ok) { fehler(p.fehler); return; }
     await sicher(async () => {
-      await S.speichern(D, 'termine', id || null, { ...(alt || {}), ...z, art: 'Zubehoer', typ: 'eigen', faelligAm: alt ? alt.faelligAm : heute(), erfasstVon: alt ? alt.erfasstVon : ich });
+      if (z0 && !z0.eigenDoc) await zbMarke(id, z.titel, { ueber: z });
+      else { const d0 = id ? D.termine[id] : null; await S.speichern(D, 'termine', id || null, { ...(d0 || {}), ...z, art: 'Zubehoer', typ: 'eigen', faelligAm: d0 ? d0.faelligAm : heute(), erfasstVon: d0 ? d0.erfasstVon : ich }); }
       schliessen(); zubehoerSeite(); hinweis('Eintrag gespeichert.');
     });
   };
   const del = document.getElementById('zf_del');
-  if (del) del.onclick = () => zubehoerLoeschen({ id, eigen: true, titel: alt.titel, erfasstVon: alt.erfasstVon });
+  if (del) del.onclick = () => zubehoerLoeschen(z0);
 }
 
 function fragenSeite() {
