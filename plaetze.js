@@ -20,6 +20,6 @@ export const PLAETZE = [
     text: 'Einfaches Camp auf der Bergwiese auf 1895 m mit Aussicht auf die Berge, neben dem Restaurant Muntanela. Ruhe, Sonne, Wander- und Bikewege. Gästekarte Val Surses inklusive (Bergbahnen gratis).',
     preis: 'ab CHF 42 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-25', strom: 'nein', wc: 'ja', dusche: 'ja',
     hinweis: 'Kein Strom. 8 Plätze für Campervans. Im Mai Restaurant zu, Sanitär nur sporadisch kontrolliert. Warmwasser begrenzt. Keine Entsorgung von Grau- und Schwarzwasser.',
-    link: 'https://nomady.camp/cabin/camp-muntanela-fur-campervans-467', lat: 46.5585, lon: 9.5506,
+    link: 'https://nomady.camp/cabin/camp-muntanela-fur-campervans-467', foto: 'platz-muntanela.jpg', lat: 46.5585, lon: 9.5506,
   },
 ];
