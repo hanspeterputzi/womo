@@ -347,3 +347,4 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .pl-auf[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
 .pl-reg{border-top:1px solid var(--line)}
 .pl-reg .ort-liste{padding:2px 0 12px}
+.pl-warn{display:block;color:var(--rot-t);font-weight:800;font-size:15px;line-height:1.35;margin:0 0 6px}

@@ -9,10 +9,10 @@ import {
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   PLATZ_ARTEN, PLATZ_REGIONEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125l';
-import * as S from './speicher.js?v=20261125l';
-import { PLAETZE } from './plaetze.js?v=20261125l';
-import * as PV from './preise.js?v=20261125l';
+} from './regeln.js?v=20261125m';
+import * as S from './speicher.js?v=20261125m';
+import { PLAETZE } from './plaetze.js?v=20261125m';
+import * as PV from './preise.js?v=20261125m';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2117,10 +2117,11 @@ const plSym = (ok, art) => `<span class="pl-sym ${ok === 'ja' ? 'ja' : 'nein'}" 
 const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.titel)}` : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${p.titel} ${p.ort} ${p.land}`);
 const platzStart = () => { try { return (localStorage.getItem('womo-start') || '').trim(); } catch { return ''; } };
 const platzRouteLink = (p) => 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(platzStart() || 'Chur, Schweiz') + '&destination=' + encodeURIComponent(p.lat != null && p.lon != null ? `${p.lat},${p.lon}` : `${p.titel}, ${p.ort}, ${p.land}`) + '&travelmode=driving';
+const plWarn = (p) => (p.warnung ? `<span class="pl-warn">${h(p.warnung)}</span>` : '');
 function platzKarte() {
   const l = platzListe();
   const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
-    <span class="ort-tx"><strong>${h(p.titel)}${p.fest ? '' : neuPille(p)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
+    <span class="ort-tx">${plWarn(p)}<strong>${h(p.titel)}${p.fest ? '' : neuPille(p)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
   let offen = true; try { offen = localStorage.getItem('womo-pl-auf') !== '0'; } catch {}
   return `<details class="karte ort-karte pl-auf" id="pl_auf" ${offen ? 'open' : ''}><summary><span class="titel">Highlights für 2–3 Nächte</span><b>${l.length}</b></summary>
     ${darfPlatz() ? '<div style="margin:8px 0 0"><button class="t-plus lang" id="pl_neu">＋ Platz</button></div>' : ''}
@@ -2175,7 +2176,7 @@ function platzDetail(id) {
   const p = platzListe().find((x) => x.id === id); if (!p) return;
   const eigen = !p.fest && darfPlatz();
   sheet(`${p.foto ? `<img class="w-foto ort-gross" id="pl_fbig" src="${h(p.foto)}" alt="Foto: ${h(p.titel)}">` : ''}
-  <h3 style="margin-top:4px">${h(p.titel)}</h3>
+  ${plWarn(p)}<h3 style="margin-top:4px">${h(p.titel)}</h3>
   <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.region || p.land)} · ${h(p.art)}</p>
   <p style="margin:0 0 10px;font-size:17px">${h(p.text)}</p>
   <p class="pl-preis" style="margin:0 0 2px">${h(p.preis)}</p><p class="info" style="margin:0 0 8px">Preis pro Nacht, Stand ${h(fmt(p.preisStand))}. Vor der Reise beim Platz prüfen.</p>
