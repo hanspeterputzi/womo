@@ -1273,3 +1273,29 @@ export function zubehoerListe(termine) {
   const eig = alle.filter((x) => x.typ === 'eigen').map((x) => ({ id: x.id, gruppe: x.gruppe, rang: x.rang, titel: x.titel, hinweis: x.notiz || '', eigenDoc: true, haben: haben.has(x.id) }));
   return [...katalog, ...eig];
 }
+
+// =====================================================================
+// Highlights: besonders schoene Plaetze fuer 2-3 Naechte (Sammlung 'plaetze'). Nur HP traegt ein (in der App), Foto freiwillig.
+// =====================================================================
+export const PLATZ_ARTEN = ['Campingplatz', 'Stellplatz'];
+export const PLATZ_TEXT_MIN = 20, PLATZ_TEXT_MAX = 300, PLATZ_PREIS_MAX = 120, PLATZ_HINWEIS_MAX = 200, PLATZ_FOTO_MAX = 250000;
+export function pruefePlatz(p) {
+  const f = [], titel = (p.titel || '').trim(), ort = (p.ort || '').trim(), text = (p.text || '').trim(), preis = (p.preis || '').trim();
+  if (titel.length < 3 || titel.length > 60) f.push('Bitte den Namen des Platzes angeben (3 bis 60 Zeichen).');
+  if (ort.length < 2 || ort.length > 60) f.push('Bitte den Ort angeben.');
+  if (!ORT_LAENDER.includes(p.land)) f.push('Bitte das Land wählen.');
+  if (!PLATZ_ARTEN.includes(p.art)) f.push('Bitte die Art wählen (Campingplatz oder Stellplatz).');
+  if (text.length < PLATZ_TEXT_MIN) f.push(`Bitte kurz beschreiben, was den Platz besonders macht (mindestens ${PLATZ_TEXT_MIN} Zeichen, du hast ${text.length}).`);
+  if (text.length > PLATZ_TEXT_MAX) f.push(`Die Beschreibung ist zu lang (höchstens ${PLATZ_TEXT_MAX} Zeichen).`);
+  if (preis.length < 1 || preis.length > PLATZ_PREIS_MAX) f.push(`Bitte den Preis pro Nacht angeben (höchstens ${PLATZ_PREIS_MAX} Zeichen).`);
+  if (!['ja', 'nein'].includes(p.strom)) f.push('Bitte angeben: Strom ja oder nein.');
+  if (!['ja', 'nein'].includes(p.wc)) f.push('Bitte angeben: WC ja oder nein.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.preisStand || '')) f.push('Das Datum «Preis Stand» fehlt.');
+  if ((p.hinweis || '').length > PLATZ_HINWEIS_MAX) f.push(`Der Hinweis ist zu lang (höchstens ${PLATZ_HINWEIS_MAX} Zeichen).`);
+  if (p.link && !/^https:\/\/\S+$/.test(p.link)) f.push('Der Link muss mit https:// beginnen.');
+  if ((p.link || '').length > 300) f.push('Der Link ist zu lang.');
+  if (p.foto && !/^platz-[a-z0-9-]+\.jpg$/.test(p.foto)) f.push('Das Foto muss eine Datei platz-….jpg sein.');
+  const hat = (p.lat !== undefined && p.lat !== null) || (p.lon !== undefined && p.lon !== null);
+  if (hat && !(Number.isFinite(p.lat) && p.lat >= -90 && p.lat <= 90 && Number.isFinite(p.lon) && p.lon >= -180 && p.lon <= 180)) f.push('Der Standort ist ungültig.');
+  return { ok: f.length === 0, fehler: f };
+}

@@ -7,10 +7,12 @@ import {
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
+  PLATZ_ARTEN, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125a';
-import * as S from './speicher.js?v=20261125a';
-import * as PV from './preise.js?v=20261125a';
+} from './regeln.js?v=20261125c';
+import * as S from './speicher.js?v=20261125c';
+import { PLAETZE } from './plaetze.js?v=20261125c';
+import * as PV from './preise.js?v=20261125c';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -346,6 +348,7 @@ function unterwegs() {
     return `<a class="u-chip" href="${h(url)}" target="_blank" rel="noopener">${h(name)}${note ? `<em>${h(note)}</em>` : ''}</a>`;
   };
   app.innerHTML = rahmen(`${seitenkopf('Reisen')}${verboteBox()}
+  ${platzKarte()}
   ${orteKarte()}
   <div class="karte"><p class="titel">Wo übernachten?</p>${ORTE.map(([c, ic, t, w, hin, gruppen]) => {
       const kopf = `<span class="u-ic ${c}">${SVG(ic)}</span><div class="u-tx"><strong>${h(t)}</strong><span>${h(w)}</span><span class="u-hint ${c}">${h(hin)}</span></div>`;
@@ -2105,6 +2108,38 @@ function notfallForm() {
 }
 
 // =====================================================================
+// Highlights: besonders schoene Plaetze fuer 2-3 Naechte (nur HP traegt ein)
+// =====================================================================
+const platzListe = () => PLAETZE;
+const PL_BERG = '<path d="M2 20 9 7l4 7 3-4 6 10zM15 5.500h.01"/>';
+const plSym = (ok, art) => `<span class="pl-sym ${ok === 'ja' ? 'ja' : 'nein'}" title="${art}: ${ok}">${art === 'Strom' ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>' : ''}${art} ${ok === 'ja' ? 'ja' : 'nein'}</span>`;
+const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.titel)}` : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${p.titel} ${p.ort} ${p.land}`);
+function platzKarte() {
+  const l = platzListe();
+  const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
+    <span class="ort-tx"><strong>${h(p.titel)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
+  return `<div class="karte ort-karte"><div class="ort-kopf"><p class="titel" style="margin:0">Highlights für 2–3 Nächte</p></div>
+    <p class="info" style="margin:4px 0 10px">Besonders schöne Plätze, für die sich schon ein verlängertes Wochenende lohnt.</p>
+    ${l.length ? `<div class="ort-liste">${l.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Platz eingetragen.</p>'}
+    <p class="info" style="margin:10px 0 0">Preise ändern sich. Vor der Reise beim Platz prüfen.</p></div>`;
+}
+function platzDetail(id) {
+  const p = PLAETZE.find((x) => x.id === id); if (!p) return;
+  sheet(`${p.foto ? `<img class="w-foto ort-gross" id="pl_fbig" src="${h(p.foto)}" alt="Foto: ${h(p.titel)}">` : ''}
+  <h3 style="margin-top:4px">${h(p.titel)}</h3>
+  <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</p>
+  <p style="margin:0 0 10px;font-size:17px">${h(p.text)}</p>
+  <p class="pl-preis" style="margin:0 0 2px">${h(p.preis)}</p><p class="info" style="margin:0 0 8px">Preis pro Nacht, Stand ${h(fmt(p.preisStand))}. Vor der Reise beim Platz prüfen.</p>
+  <p class="pl-syms" style="margin:0 0 10px">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</p>
+  ${p.hinweis ? `<p class="info" style="margin:0 0 10px"><strong>Hinweis:</strong> ${h(p.hinweis)}</p>` : ''}
+  <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzKartenLink(p))}" target="_blank" rel="noopener">In der Karte öffnen</a>
+  ${p.link ? `<a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(p.link)}" target="_blank" rel="noopener">Webseite öffnen</a>` : ''}
+  <button class="gross-btn" id="abb">Schliessen</button></div><div id="msg"></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const fb = document.getElementById('pl_fbig'); if (fb) fb.onclick = () => fotoGross(p.foto);
+}
+
+// =====================================================================
 // Unsere Orte: nur das Allerbeste, mit Foto und kurzer Begruendung
 // =====================================================================
 const ortListe = () => Object.values(D.orte);
@@ -2125,6 +2160,7 @@ function bindNotfallOrte() {
   const e = document.getElementById('nf_edit'); if (e) e.onclick = notfallForm;
   const n = document.getElementById('ort_neu'); if (n) n.onclick = () => ortForm();
   app.querySelectorAll('[data-ort]').forEach((b) => b.onclick = () => ortDetail(b.dataset.ort));
+  app.querySelectorAll('[data-platz]').forEach((b) => b.onclick = () => platzDetail(b.dataset.platz));
   bindNeu();
 }
 function ortForm(id) {
