@@ -481,7 +481,7 @@ export function tagesSperre(b, alt, buchungen, personen, alltag, tausch) {
 export const WUNSCH_MAX_RAPPEN = 20000;     // CHF 200 pro Stueck bzw. fuer gleichartige Stuecke zusammen
 export const WUNSCH_FRIST_TAGE = 5;
 export const WUNSCH_FOTO_MAX = 250000;      // Zeichen des Fotos (JPEG als Text), ein Foto im Handy wird auf etwa 150 KB verkleinert; Firestore erlaubt 1 MiB pro Eintrag
-export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', abgelehnt: 'Abgelehnt', gekauft: 'Gekauft' };
+export const WUNSCH_STATUS = { offen: 'Antworten offen', freigegeben: 'Freigegeben', abgelehnt: 'Abgelehnt', bestellt: 'Bestellt', gekauft: 'Gekauft' };
 
 export const wunschTotal = (w) => (Number.isInteger(w.preis) ? w.preis : 0) * (Number.isInteger(w.menge) ? w.menge : 1);
 
@@ -516,7 +516,19 @@ export function wunschStand(w, aktionen, ids, heute) {
   if (w.gekauftAm) status = 'gekauft';
   else if (!entschieden) status = 'offen';
   else status = ja >= ids.length - 1 && ja > nein.length ? 'freigegeben' : 'abgelehnt';   // Gleichstand = abgelehnt
+  if (status === 'freigegeben' && w.bestelltAm) status = 'bestellt';   // freigegeben und bestellt, noch nicht als gekauft eingetragen
   return { frist, abgelaufen, antworten, ohneAntwort, nein, ja, erstattet, status };
+}
+
+// «Bestellt»: nur die vorschlagende Person meldet, dass bestellt wurde (ausserhalb der App). Lieferdatum und Bestellnummer sind freiwillig.
+export function pruefeBestellung(w, datum, liefer, nummer) {
+  const f = [];
+  const iso = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x || '');
+  if (!iso(datum)) f.push('Bestelldatum fehlt.');
+  else if (w.datum && datum < w.datum) f.push('Das Bestelldatum liegt vor dem Vorschlag.');
+  if ((liefer || '') !== '') { if (!iso(liefer)) f.push('Das Lieferdatum ist ungültig.'); else if (iso(datum) && liefer < datum) f.push('Die Lieferung liegt vor der Bestellung.'); }
+  if ((nummer || '').length > 40) f.push('Die Bestellnummer ist zu lang (höchstens 40 Zeichen).');
+  return { ok: f.length === 0, fehler: f };
 }
 
 export function pruefeKauf(w, betrag, datum) {

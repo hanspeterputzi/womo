@@ -2,15 +2,15 @@ import {
   SCHWELLE, schwellen, pruefeMinus, minusFuerReservierung, minusAmTag, pruefeTausch, TAUSCH_MAX_TAGE, dauer, konten, kontostaende, kontostaendeMitAlltag, pruefeAlltag, alltagTage, alltagKm, tankWarnung, tankOffen, stufe, kollision, ueberschneidungen, pruefeBuchung, kmZahl, vorschauBuchung, tagesSperre, datumGueltig, feiertagAm, feiertage, FEIERTAGE, naechsterFeiertag, feiertagStatistik, seltenstBlock,
   TANK, CHECKPUNKTE, pruefeUebergabe, kmStatistik,
   ZUBEHOER_GRUPPEN, ZUBEHOER_RAENGE, pruefeZubehoer, zubehoerListe, KOSTENARTEN, ZWECKE, TERMINARTEN, ANSCHAFFUNG_MAX_CHF, anschaffung, kostenAnteile, eingezahlt, vertragsJahr, zahlplan, faelligkeiten, VORLAUF_TAGE, addTage, zahlungsSperre, terminStufe, rueckgabeFertig, addJahre, chf,
-  WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, istNeu, neuZaehlen, NEU_BEREICHE,
+  WUNSCH_MAX_RAPPEN, WUNSCH_FOTO_MAX, WUNSCH_FRIST_TAGE, WUNSCH_STATUS, wunschTotal, pruefeWunsch, wunschStand, pruefeKauf, pruefeBestellung, istNeu, neuZaehlen, NEU_BEREICHE,
   FRAGE_ANHANG_MAX, FRAGE_BILD_MAX, FRAGE_ANHANG_SUMME, FRAGE_PDF_MAX, FRAGE_STATUS, FRAGE_TITEL_MAX, FRAGE_TEXT_MAX, FRAGE_GRUND_MAX, pruefeFrage, frageStand,
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261123a';
-import * as S from './speicher.js?v=20261123a';
-import * as PV from './preise.js?v=20261123a';
+} from './regeln.js?v=20261125a';
+import * as S from './speicher.js?v=20261125a';
+import * as PV from './preise.js?v=20261125a';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -476,7 +476,8 @@ function hinweiseHtml() {
     const st = wunschStandVon(w), titel = `«${h(w.titel)}» (${wunschPreisText(w)})`;
     const karte = (kl, text) => { out += `<div class="hinweiskarte ${kl}" data-neu="wunschliste" data-fa="wunsch" style="cursor:pointer">⭐ Wunschliste: ${text}</div>`; };
     if (st.status === 'offen' && w.erfasstVon !== ich && !st.antworten[ich]) karte('gelb', `${titel} wartet auf deine Antwort bis ${fmt(st.frist)}.`);
-    else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst kaufen.`);
+    else if (st.status === 'freigegeben' && w.erfasstVon === ich) karte('ok', `${titel} ist freigegeben, du kannst bestellen oder kaufen.`);
+    else if (st.status === 'bestellt') karte('ok', w.erfasstVon === ich ? `${titel} ist bestellt. Trage «Gekauft» ein, sobald du bezahlt hast.` : `${titel} wurde von ${h(D.personen[w.erfasstVon]?.name || '?')} bestellt${w.bestelltLiefer ? ', Lieferung ca. ' + fmt(w.bestelltLiefer) : ''}.`);
     else if (st.status === 'gekauft' && buchhalter() && !st.erstattet) karte('gelb', `${titel}: CHF ${chf(w.gekauftBetrag)} an ${h(D.personen[w.erfasstVon]?.name || '?')} erstatten.`);
   });
   if (buchhalter()) { const zb = zuBuchen(D.wuensche, D.wunschaktionen, D.journal, D.personen); if (zb.length) out += `<div class="hinweiskarte gelb" data-neu="kosten" style="cursor:pointer">📒 Buchhaltung: ${zb.length} ${zb.length === 1 ? 'Wunschbuchung ist' : 'Wunschbuchungen sind'} noch zu buchen.</div>`; }
@@ -1090,8 +1091,8 @@ function kosten() {
     <p class="info" style="margin-bottom:0">Gekaufte Wünsche kommen erst jetzt in die Buchhaltung. Beim Kauf wählst du das Aufwandskonto, die Gegenbuchung läuft über den Kreditor der Person, die ausgelegt hat.</p></div>`;
   // Anleitung (nur fuer die Buchhaltung: HP und Stellvertreterin). Bewusst ohne Namen, der Code der App ist oeffentlich.
   const schritte = [
-    ['Der Wunsch wird bewilligt', 'ok', 'Macht: die App', 'Es wird noch nichts gebucht. Die Person, die den Wunsch vorgeschlagen hat, sieht im Kalender «freigegeben, du kannst kaufen». Der Wunsch steht im Tab «Wünsche» und im Archiv.'],
-    ['Die Person kauft und bezahlt aus eigener Tasche', '', 'Ausserhalb der App', ''],
+    ['Der Wunsch wird bewilligt', 'ok', 'Macht: die App', 'Es wird noch nichts gebucht. Die Person, die den Wunsch vorgeschlagen hat, sieht im Kalender «freigegeben, du kannst bestellen oder kaufen». Der Wunsch steht im Tab «Wünsche» und im Archiv.'],
+    ['Die Person bestellt oder kauft und bezahlt aus eigener Tasche', '', 'Ausserhalb der App', 'Bei einer Bestellung tippt sie im Wunsch auf «Bestellt eintragen» (Datum, Lieferung und Bestellnummer sind freiwillig). Alle anderen sehen dann auf der Startseite «bestellt». Gebucht wird erst nach «Gekauft».'],
     ['Der Kauf wird eingetragen', '', 'Macht: die kaufende Person', 'Tab «Wünsche» → auf den Wunsch tippen → Betrag und Kaufdatum prüfen → «Gekauft eintragen». Das kann nur die Person, die den Wunsch vorgeschlagen hat. Danach erscheinen bei der Buchhaltung die orange Karte «Zu buchen: Wünsche» im Tab «Kosten» und ein Hinweis im Kalender.'],
     ['Den Kauf buchen', 'gelb', 'Macht: die Buchhaltung', 'Tab «Kosten» → orange Karte «Zu buchen» → «Buchen» → bei «Soll» das Aufwandskonto wählen (das entscheidet die Buchhaltung, alles andere ist schon ausgefüllt) → «Speichern».<br>Gebucht wird: Aufwand an das Kreditor-Konto der kaufenden Person. Das Womo schuldet ihr jetzt den Betrag.'],
     ['Das Geld zurückzahlen', '', 'Ausserhalb der App', 'Vom gemeinsamen Konto an die kaufende Person.'],
@@ -1384,7 +1385,7 @@ const WUNSCH_ICON = '<path d="M12 3l2.600 5.600 6.100.700-4.500 4.200 1.200 6L12
 const wunschListe = () => Object.values(D.wuensche);
 const wunschStandVon = (w) => wunschStand(w, Object.values(D.wunschaktionen), idsGeordnet(), heute());
 const wunschPreisText = (w) => w.menge > 1 ? `${w.menge} × CHF ${chf(w.preis)} = CHF ${chf(wunschTotal(w))}` : `CHF ${chf(w.preis)}`;
-const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', gekauft: 'ok' })[s];
+const wunschKlasse = (s) => ({ offen: 'blau', freigegeben: 'ok', abgelehnt: 'rot', bestellt: 'ok', gekauft: 'ok' })[s];
 
 function wunschliste() {
   if (famAnsicht === 'fragen') return fragenSeite();
@@ -1397,13 +1398,14 @@ function wunschliste() {
     if (s.status === 'offen') {
       return [wunschKlasse('offen'), 'bis ' + fmt(s.frist).slice(0, 6)];
     }
+    if (s.status === 'bestellt') return ['ok', 'bestellt'];
     if (s.status === 'gekauft') return s.erstattet ? ['ok', 'erstattet'] : ['gelb', 'Erstattung offen'];
     return [wunschKlasse(s.status), WUNSCH_STATUS[s.status]];
   };
   const zeile = (e) => {
     const { w, s } = e, [k, txt] = pille(e);
     const meinAntwortOffen = s.status === 'offen' && w.erfasstVon !== ich && !s.antworten[ich];
-    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum).slice(0, 6)}`;
+    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum).slice(0, 6)}${s.status === 'bestellt' && w.bestelltLiefer ? '<br>Lieferung ca. ' + fmt(w.bestelltLiefer) : ''}`;
     const bild = w.foto ? `<span class="t-sq ${k} mit-foto"><img src="${h(w.foto)}" alt=""></span>` : `<span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span>`;
     return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}${neuPille(w)}${meinAntwortOffen ? '<span class="neu gelb">Antwort fehlt</span>' : ''}</strong><small>${sub}</small></span><span class="t-pl ${k}">${txt}</span></button>`;
   };
@@ -1411,11 +1413,12 @@ function wunschliste() {
   const dein = alle.filter((e) => e.s.status === 'offen' && e.w.erfasstVon !== ich && !e.s.antworten[ich]);
   const laufend = alle.filter((e) => e.s.status === 'offen' && !dein.includes(e));
   const frei = alle.filter((e) => e.s.status === 'freigegeben');
+  const bestellt = alle.filter((e) => e.s.status === 'bestellt');
   const abgelehnt = alle.filter((e) => e.s.status === 'abgelehnt');
-  const archiv = alle.filter((e) => e.s.status === 'freigegeben' || e.s.status === 'gekauft');
+  const archiv = alle.filter((e) => ['freigegeben', 'bestellt', 'gekauft'].includes(e.s.status));
   const zeileArchiv = (e) => {
     const { w, s } = e, k = wunschKlasse(s.status);
-    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum)}<br>Abstimmung: ${s.ja} Ja, ${s.nein.length} Nein${w.gekauftAm ? `<br>Gekauft ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)}${s.erstattet ? ', erstattet' : ', noch nicht erstattet'}` : '<br>Noch nicht gekauft'}`;
+    const sub = `${wunschPreisText(w)} · ${h(D.personen[w.erfasstVon]?.name || '?')} · ${fmt(w.datum)}<br>Abstimmung: ${s.ja} Ja, ${s.nein.length} Nein${w.gekauftAm ? `<br>Gekauft ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)}${s.erstattet ? ', erstattet' : ', noch nicht erstattet'}` : w.bestelltAm ? `<br>Bestellt ${fmt(w.bestelltAm)}${w.bestelltLiefer ? ', Lieferung ca. ' + fmt(w.bestelltLiefer) : ''}, noch nicht gekauft` : '<br>Noch nicht gekauft'}`;
     const bild = w.foto ? `<span class="t-sq ${k} mit-foto"><img src="${h(w.foto)}" alt=""></span>` : `<span class="t-sq ${k}"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span>`;
     return `<button class="t-z ${k}" data-wid="${h(w.id)}">${bild}<span class="t-zt"><strong>${h(w.titel)}</strong><small>${sub}</small></span><span class="t-pf" aria-hidden="true">›</span></button>`;
   };
@@ -1423,7 +1426,7 @@ function wunschliste() {
   app.innerHTML = rahmen(`${seitenkopf('Wünsche', 'wneu', '＋ Wunsch')}${famSeg()}
     <div class="karte"><details class="rg-auf"><summary>So funktioniert's</summary><p class="info" style="margin:0">Einrichtung für das Womo: <strong>bis CHF 200 pro Stück</strong>. Vorher hier vorschlagen. Die anderen haben ${WUNSCH_FRIST_TAGE} Tage Zeit, wer nicht antwortet, stimmt zu. Bei Widerspruch gilt: höchstens ein Nein, sonst abgelehnt (qualifizierte Mehrheit, Ziffer 13). Bei 2 zu 2 ist der Kauf abgelehnt. Wer ohne Freigabe kauft, bezahlt selbst (Vertrag Ziffer 5).</p>
       <p class="info" style="margin:8px 0 0"><strong>Verbrauchsmaterial</strong> (Putzmittel, Spülmittel, Abfallsäcke, Salz, Pfeffer, Teebeutel usw.) braucht keinen Wunsch: einfach kaufen und unter «Kosten» erfassen.</p></details></div>
-    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann gekauft werden', frei)}${gruppe('Antworten laufen', laufend)}
+    ${leer}${gruppe('Wartet auf deine Antwort', dein)}${gruppe('Freigegeben, kann bestellt werden', frei)}${gruppe('Bestellt, noch nicht gekauft', bestellt)}${gruppe('Antworten laufen', laufend)}
     ${archiv.length ? `<details class="sek" style="margin-top:20px"><summary><span>Archiv: bewilligte Wünsche</span><b>${archiv.length}</b></summary><div class="sek-in"><p class="info" style="margin-top:0">Alle Wünsche, die eine Mehrheit bekommen haben (auch die schon gekauften). Sie bleiben dauerhaft erhalten und lassen sich nicht löschen. Ein Tipp zeigt, wer wie abgestimmt hat, den Kauf und die Erstattung.</p>${archiv.map(zeileArchiv).join('')}</div></details>` : ''}
     ${abgelehnt.length ? `<details class="sek"><summary><span>Abgelehnt</span><b>${abgelehnt.length}</b></summary><div class="sek-in">${abgelehnt.map(zeile).join('')}</div></details>` : ''}`);
   bindRahmen(); bindNeu();
@@ -1518,12 +1521,15 @@ function wunschDetail(id) {
   const zeilen = ids.map((i) => { const a = s.antworten[i]; return `<div class="z"><div class="l"><strong>${h(D.personen[i].name)}</strong>${a && a.stimme === 'nein' ? `<div class="meta">${a.grund ? 'Grund: ' + h(a.grund) : ''}${a.grund && a.alternative ? '<br>' : ''}${a.alternative ? 'Alternative: ' + h(a.alternative) : ''}</div>` : ''}</div><div class="r">${stimmeChip(i)}</div></div>`; }).join('');
   const gb = wunschGebucht(w, D.journal, D.personen, D.wuensche);
   const stand = s.status === 'offen' ? `Antworten bis ${fmt(s.frist)} (einschliesslich). Wer nicht antwortet, stimmt zu.`
-    : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst kaufen.' : 'Kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
+    : s.status === 'freigegeben' ? `Freigegeben: ${s.ja} Ja zu ${s.nein.length} Nein. ${mein ? 'Du kannst bestellen oder kaufen.' : 'Bestellen und kaufen darf, wer den Wunsch vorgeschlagen hat.'}`
     : s.status === 'abgelehnt' ? `Abgelehnt: ${s.ja} Ja zu ${s.nein.length} Nein${s.nein.length === s.ja ? ' (Gleichstand gilt als abgelehnt, Ziffer 13)' : ''}. Nicht kaufen.`
+    : s.status === 'bestellt' ? `Bestellt am ${fmt(w.bestelltAm)} von ${h(D.personen[w.erfasstVon]?.name || '?')}${w.bestelltLiefer ? ', Lieferung ca. ' + fmt(w.bestelltLiefer) : ''}${w.bestelltNr ? ', Bestellnummer ' + h(w.bestelltNr) : ''}. ${mein ? 'Trage «Gekauft» ein, sobald du bezahlt hast.' : 'Noch nicht als gekauft eingetragen.'}`
     : `Gekauft am ${fmt(w.gekauftAm)} für CHF ${chf(w.gekauftBetrag)} von ${h(D.personen[w.erfasstVon]?.name || '?')}. ${s.erstattet ? 'Erstattet am ' + fmt((s.erstattet.datum || s.erstattet.erfasstAm || '').slice(0, 10)) + '.' : 'Der Vater erstattet den Betrag vom gemeinsamen Konto (Ziffer 5).'}${buchhalter() ? ` Buchhaltung: ${gb.kauf ? 'Kauf gebucht' : 'Kauf noch nicht gebucht'}${s.erstattet ? (gb.erstattung ? ', Erstattung gebucht' : ', Erstattung noch nicht gebucht') : ''}.` : ''}`;
   const waText = waTextWunsch(w);
   const meinAntwort = s.status === 'offen' && !mein;
-  const kaufen = s.status === 'freigegeben' && mein;
+  const kaufen = ['freigegeben', 'bestellt'].includes(s.status) && mein;
+  const bestellen = s.status === 'freigegeben' && mein;
+  const kaufFelder = `<div class="zwei"><div><label for="w_betrag">Bezahlt, CHF</label><input id="w_betrag" inputmode="decimal" value="${chf(wunschTotal(w)).replace(/[’' ]/g, '')}"></div><div><label for="w_kdatum">Kaufdatum</label><input type="date" id="w_kdatum" value="${heute()}"></div></div>`;
   const erstatten = s.status === 'gekauft' && halter && !s.erstattet;
   sheet(`<div class="t-sk"><span class="t-sq ${k} gross"><svg viewBox="0 0 24 24" aria-hidden="true">${WUNSCH_ICON}</svg></span><div><h3 style="margin:0">${h(w.titel)}</h3><div class="info" style="margin:2px 0 0">${wunschPreisText(w)} · von ${h(D.personen[w.erfasstVon]?.name || '?')}, ${fmt(w.datum)}</div></div></div>
     <p class="hinweiskarte ${k === 'blau' ? 'gelb' : k}" style="margin:12px 0 8px">${stand}</p>
@@ -1531,10 +1537,14 @@ function wunschDetail(id) {
     ${w.link ? `<p class="info" style="margin:0 0 6px"><a class="u-chip" href="${h(w.link)}" target="_blank" rel="noopener">Produkt ansehen<em>Link</em></a></p>` : ''}${w.groesse ? `<p class="info" style="margin:0 0 6px"><strong>Grösse:</strong> ${h(w.groesse)}</p>` : ''}${w.notiz ? `<p class="info" style="margin:0 0 6px">${h(w.notiz)}</p>` : ''}
     <div class="zeilen">${zeilen}</div>
     ${meinAntwort ? `<label for="w_grund">Nur bei Nein: Grund</label><input id="w_grund" maxlength="200" placeholder="Warum nicht?"><label for="w_alt">Nur bei Nein: Alternative (Produkt, Preis)</label><input id="w_alt" maxlength="200" placeholder="Was wäre besser?">` : ''}
-    ${kaufen ? `<div class="zwei"><div><label for="w_betrag">Bezahlt, CHF</label><input id="w_betrag" inputmode="decimal" value="${chf(wunschTotal(w)).replace(/[’' ]/g, '')}"></div><div><label for="w_kdatum">Kaufdatum</label><input type="date" id="w_kdatum" value="${heute()}"></div></div>` : ''}
+    ${bestellen ? `<div class="zwei"><div><label for="w_bdatum">Bestelldatum</label><input type="date" id="w_bdatum" value="${heute()}"></div><div><label for="w_liefer">Lieferung ca. (freiwillig)</label><input type="date" id="w_liefer"></div></div><label for="w_bnr">Bestellnummer (freiwillig)</label><input id="w_bnr" maxlength="40">` : ''}
+    ${kaufen && !bestellen ? kaufFelder : ''}
+    ${bestellen ? `<details class="rg-auf" style="margin-top:10px"><summary>Direkt gekauft (zum Beispiel im Laden)</summary>${kaufFelder}<button class="gross-btn" id="w_kauf">Gekauft eintragen</button></details>` : ''}
     <div id="msg"></div>
     <div class="t-akt2">${meinAntwort ? `<button class="gross-btn pri" id="w_ja">${s.antworten[ich] ? 'Antwort ändern: Ja' : 'Ja, einverstanden'}</button><button class="gross-btn rot" id="w_nein">${s.antworten[ich] ? 'Antwort ändern: Nein' : 'Nein'}</button>` : ''}
-      ${kaufen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
+      ${bestellen ? '<button class="gross-btn pri" id="w_best">Bestellt eintragen</button>' : ''}
+      ${kaufen && !bestellen ? '<button class="gross-btn pri" id="w_kauf">Gekauft eintragen</button>' : ''}
+      ${kaufen && !bestellen ? '<button class="gross-btn" id="w_unbest">Bestellung zurücknehmen</button>' : ''}
       ${erstatten ? '<button class="gross-btn pri" id="w_erst">Betrag erstattet</button>' : ''}
       ${s.status === 'offen' ? `<a class="gross-btn" style="text-align:center;text-decoration:none" href="${waLink(waText)}" target="_blank" rel="noopener">Familie per WhatsApp informieren</a>` : ''}
       <button class="gross-btn" id="abb">Schliessen</button>${mein && ['offen', 'abgelehnt'].includes(s.status) ? '<button class="gross-btn rot" id="w_del">Wunsch löschen</button>' : ''}</div>`);
@@ -1550,6 +1560,19 @@ function wunschDetail(id) {
       aktion(`${w.id}_a_${ich}`, { art: 'antwort', personId: ich, stimme: 'nein', grund, alternative: alt }, 'Danke, dein Nein ist gespeichert.');
     };
   }
+  if (bestellen) document.getElementById('w_best').onclick = async () => {
+    const datum = val('w_bdatum'), liefer = val('w_liefer'), nr = val('w_bnr').trim(), p = pruefeBestellung(w, datum, liefer, nr);
+    if (!p.ok) { fehler(p.fehler); return; }
+    await sicher(async () => {
+      await S.speichern(D, 'wuensche', w.id, { ...w, bestelltAm: datum, bestelltLiefer: liefer || undefined, bestelltNr: nr || undefined });
+      schliessen(); wunschliste(); hinweis('Bestellt eingetragen. Die anderen sehen es auf der Startseite.');
+    });
+  };
+  if (kaufen && !bestellen) document.getElementById('w_unbest').onclick = () => sicher(async () => {
+    const { bestelltAm, bestelltLiefer, bestelltNr, ...rest } = w;
+    await S.speichern(D, 'wuensche', w.id, rest);
+    schliessen(); wunschliste(); hinweis('Bestellung zurückgenommen. Der Wunsch ist wieder freigegeben.');
+  });
   if (kaufen) document.getElementById('w_kauf').onclick = async () => {
     const betrag = rappen(val('w_betrag')), datum = val('w_kdatum'), p = pruefeKauf(w, betrag, datum);
     if (!p.ok) { fehler(p.fehler); return; }

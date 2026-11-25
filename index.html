@@ -201,7 +201,7 @@ details.sek[open] summary::after{transform:rotate(-90deg)}
 .sheet h3{margin:0 0 4px;font-size:20px}
 .sheet label{display:block;margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--muted)}
 .sheet input,.sheet select{width:100%;font:inherit;font-size:16px;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--soft);color:var(--fg);appearance:none;-webkit-appearance:none}
-.sheet .zwei{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .zwei{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.sheet .zwei input{min-width:0;max-width:100%}
 .mitw{display:flex;gap:8px;flex-wrap:wrap}
 .mitw .chk{position:relative}
 .mitw .chk input{position:absolute;opacity:0;width:0;height:0}
