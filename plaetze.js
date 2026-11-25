@@ -24,10 +24,10 @@ export const PLAETZE = [
   },
   {
     id: 'sankt-martin', titel: 'Walsersiedlung Sankt Martin', ort: 'St. Martin (Calfeisental)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Stellplatz',
-    warnung: 'Für unseren Pössl zu hoch: Tunnel höchstens 2,60 m. Nicht durchfahren!',
+    warnung: 'Für unseren Pössl vielleicht zu hoch? Tunnel höchstens 2,60 m.',
     text: 'Camp unterhalb der 700 Jahre alten Walsersiedlung am Gigerwaldsee, direkt an der Tamina. Restaurant, eigene Feuerstelle mit Brennholz, Strom, WC und Dusche.',
     preis: 'ab CHF 58 (1 Person, ohne Kurtaxe), Halbpension Pflicht', preisStand: '2026-11-25', strom: 'ja', wc: 'ja', dusche: 'ja',
-    hinweis: 'Pössl mit Aufstelldach: ca. 2,74 m oder höher. Halbpension CHF 70 pro Erwachsene vor Ort. Saison laut Infoseite Mai–Oktober.',
+    hinweis: 'Vor der Reise Höhe im Fahrzeugausweis prüfen. Halbpension CHF 70 pro Erwachsene vor Ort. Saison laut Infoseite Mai–Oktober.',
     link: 'https://nomady.camp/cabin/walsersiedlung-sankt-martin-191', foto: 'platz-sankt-martin.jpg', lat: 46.9207, lon: 9.3576,
   },
 ];
