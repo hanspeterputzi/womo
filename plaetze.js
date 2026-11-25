@@ -22,4 +22,11 @@ export const PLAETZE = [
     hinweis: 'Kein Strom. 8 Plätze für Campervans. Im Mai Restaurant zu, Sanitär nur sporadisch kontrolliert. Warmwasser begrenzt. Keine Entsorgung von Grau- und Schwarzwasser.',
     link: 'https://nomady.camp/cabin/camp-muntanela-fur-campervans-467', foto: 'platz-muntanela.jpg', lat: 46.5585, lon: 9.5506,
   },
+  {
+    id: 'lauerzersee', titel: 'Bauernhof Camping über dem Lauerzersee', ort: 'Lauerz (SZ)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Stellplatz',
+    text: 'Stellplatz auf der Wiese eines Bauernhofs auf 900 m, hoch über dem Lauerzersee. Weite Aussicht, kein Durchgangsverkehr. Grill, Feuerstelle und Picknicktisch.',
+    preis: 'ab CHF 43 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-25', strom: 'ja', wc: 'ja', dusche: 'nein',
+    hinweis: 'Strom CHF 3 pro Nacht, Verlängerungskabel mitbringen. Komposttoilette, keine Dusche, keine Entsorgung auf dem Hof. 4 Plätze, Check-in 16–19.30 Uhr.',
+    link: 'https://nomady.camp/cabin/bauernhof-camping-uber-dem-lauerzersee-4362', foto: 'platz-lauerzersee.jpg',
+  },
 ];
