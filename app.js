@@ -9,10 +9,10 @@ import {
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   PLATZ_ARTEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125f';
-import * as S from './speicher.js?v=20261125f';
-import { PLAETZE } from './plaetze.js?v=20261125f';
-import * as PV from './preise.js?v=20261125f';
+} from './regeln.js?v=20261125g';
+import * as S from './speicher.js?v=20261125g';
+import { PLAETZE } from './plaetze.js?v=20261125g';
+import * as PV from './preise.js?v=20261125g';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2118,7 +2118,7 @@ const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.ap
 function platzKarte() {
   const l = platzListe();
   const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
-    <span class="ort-tx"><strong>${h(p.titel)}${p.fest ? '' : neuPille(p)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
+    <span class="ort-tx"><strong>${h(p.titel)}${p.fest ? '' : neuPille(p)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
   let offen = true; try { offen = localStorage.getItem('womo-pl-auf') !== '0'; } catch {}
   return `<details class="karte ort-karte pl-auf" id="pl_auf" ${offen ? 'open' : ''}><summary><span class="titel">Highlights für 2–3 Nächte</span><b>${l.length}</b></summary>
     ${darfPlatz() ? '<div style="margin:8px 0 0"><button class="t-plus lang" id="pl_neu">＋ Platz</button></div>' : ''}
@@ -2139,6 +2139,7 @@ function platzForm(id) {
   <label for="p_preis">Preis pro Nacht</label><input id="p_preis" maxlength="${PLATZ_PREIS_MAX}" placeholder="z. B. ca. CHF 50 (Womo, 2 Erwachsene, mit Strom)" value="${h(ex?.preis || '')}">
   <div class="zwei"><div><label for="p_strom">Strom</label><select id="p_strom">${['ja', 'nein'].map((v) => `<option value="${v}" ${v === (ex?.strom || 'ja') ? 'selected' : ''}>${v === 'ja' ? 'Ja' : 'Nein'}</option>`).join('')}</select></div>
   <div><label for="p_wc">WC</label><select id="p_wc">${['ja', 'nein'].map((v) => `<option value="${v}" ${v === (ex?.wc || 'ja') ? 'selected' : ''}>${v === 'ja' ? 'Ja' : 'Nein'}</option>`).join('')}</select></div></div>
+  <label for="p_dusche">Dusche <span style="font-weight:500">(beim Campingplatz normalerweise ja, beim Stellplatz bitte prüfen)</span></label><select id="p_dusche"><option value="" ${ex?.dusche ? '' : 'selected'}>Bitte wählen</option>${['ja', 'nein'].map((v) => `<option value="${v}" ${v === (ex?.dusche || (ex ? '' : 'ja')) ? 'selected' : ''}>${v === 'ja' ? 'Ja' : 'Nein'}</option>`).join('')}</select>
   <label for="p_hinweis">Hinweis (freiwillig)</label><input id="p_hinweis" maxlength="${PLATZ_HINWEIS_MAX}" placeholder="z. B. beste Zeit, Reservieren nötig, Mindestaufenthalt" value="${h(ex?.hinweis || '')}">
   <label for="p_link">Link zur Webseite (freiwillig)</label><input id="p_link" maxlength="300" inputmode="url" placeholder="https://" value="${h(ex?.link || '')}">
   <label>Foto (freiwillig)</label><div id="p_fprev"></div><label class="foto-wahl" for="p_foto" id="p_fwahl">📷 Foto aufnehmen oder auswählen</label><input type="file" id="p_foto" accept="image/*" style="display:none">
@@ -2146,6 +2147,8 @@ function platzForm(id) {
   document.getElementById('abb').onclick = schliessen;
   const zaehl = () => { document.getElementById('p_zaehl').textContent = `(${val('p_text').trim().length} von ${PLATZ_TEXT_MAX})`; };
   document.getElementById('p_text').oninput = zaehl; zaehl();
+  document.getElementById('p_art').onchange = () => { const d = document.getElementById('p_dusche'); if (document.getElementById('p_art').value === 'Campingplatz') { if (!d.value) d.value = 'ja'; } else if (!ex) d.value = ''; };
+  if (!ex) document.getElementById('p_dusche').value = document.getElementById('p_art').value === 'Campingplatz' ? 'ja' : '';
   const vor = () => { document.getElementById('p_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><span class="info" style="margin:0">${Math.round(foto.length / 1024)} KB</span></div>` : '<p class="info" style="margin:0">Noch kein Foto.</p>'; document.getElementById('p_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
   vor();
   document.getElementById('p_foto').onchange = async (ev) => {
@@ -2156,7 +2159,7 @@ function platzForm(id) {
   };
   document.getElementById('p_ok').onclick = () => sicher(async () => {
     const preisGeaendert = !ex || val('p_preis').trim() !== ex.preis;
-    const p = { titel: val('p_titel').trim(), ort: val('p_ort').trim(), land: val('p_land'), art: val('p_art'), text: val('p_text').trim(), preis: val('p_preis').trim(), preisStand: preisGeaendert ? heute() : ex.preisStand, strom: val('p_strom'), wc: val('p_wc'),
+    const p = { titel: val('p_titel').trim(), ort: val('p_ort').trim(), land: val('p_land'), art: val('p_art'), text: val('p_text').trim(), preis: val('p_preis').trim(), preisStand: preisGeaendert ? heute() : ex.preisStand, strom: val('p_strom'), wc: val('p_wc'), dusche: val('p_dusche'),
       hinweis: val('p_hinweis').trim() || undefined, link: val('p_link').trim() || undefined, foto: foto || undefined, lat: ex?.lat, lon: ex?.lon, erfasstVon: ex ? ex.erfasstVon : ich, erfasstAm: ex?.erfasstAm || new Date().toISOString(), id };
     const c = pruefePlatz(p);
     if (!c.ok) { fehler(c.fehler); return; }
@@ -2171,7 +2174,7 @@ function platzDetail(id) {
   <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</p>
   <p style="margin:0 0 10px;font-size:17px">${h(p.text)}</p>
   <p class="pl-preis" style="margin:0 0 2px">${h(p.preis)}</p><p class="info" style="margin:0 0 8px">Preis pro Nacht, Stand ${h(fmt(p.preisStand))}. Vor der Reise beim Platz prüfen.</p>
-  <p class="pl-syms" style="margin:0 0 10px">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</p>
+  <p class="pl-syms" style="margin:0 0 10px">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</p>
   ${p.hinweis ? `<p class="info" style="margin:0 0 10px"><strong>Hinweis:</strong> ${h(p.hinweis)}</p>` : ''}
   <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzKartenLink(p))}" target="_blank" rel="noopener">In der Karte öffnen</a>
   ${p.link ? `<a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(p.link)}" target="_blank" rel="noopener">Webseite öffnen</a>` : ''}

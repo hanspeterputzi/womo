@@ -1290,6 +1290,7 @@ export function pruefePlatz(p) {
   if (preis.length < 1 || preis.length > PLATZ_PREIS_MAX) f.push(`Bitte den Preis pro Nacht angeben (höchstens ${PLATZ_PREIS_MAX} Zeichen).`);
   if (!['ja', 'nein'].includes(p.strom)) f.push('Bitte angeben: Strom ja oder nein.');
   if (!['ja', 'nein'].includes(p.wc)) f.push('Bitte angeben: WC ja oder nein.');
+  if (!['ja', 'nein'].includes(p.dusche)) f.push('Bitte angeben: Dusche ja oder nein. Beim Stellplatz ist das besonders wichtig.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.preisStand || '')) f.push('Das Datum «Preis Stand» fehlt.');
   if ((p.hinweis || '').length > PLATZ_HINWEIS_MAX) f.push(`Der Hinweis ist zu lang (höchstens ${PLATZ_HINWEIS_MAX} Zeichen).`);
   if (p.link && !/^https:\/\/\S+$/.test(p.link)) f.push('Der Link muss mit https:// beginnen.');
