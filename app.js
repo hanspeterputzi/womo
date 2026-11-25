@@ -9,10 +9,10 @@ import {
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   PLATZ_ARTEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125g';
-import * as S from './speicher.js?v=20261125g';
-import { PLAETZE } from './plaetze.js?v=20261125g';
-import * as PV from './preise.js?v=20261125g';
+} from './regeln.js?v=20261125h';
+import * as S from './speicher.js?v=20261125h';
+import { PLAETZE } from './plaetze.js?v=20261125h';
+import * as PV from './preise.js?v=20261125h';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2115,6 +2115,8 @@ const darfPlatz = () => !!ich && ich === D.adminId;
 const PL_BERG = '<path d="M2 20 9 7l4 7 3-4 6 10zM15 5.500h.01"/>';
 const plSym = (ok, art) => `<span class="pl-sym ${ok === 'ja' ? 'ja' : 'nein'}" title="${art}: ${ok}">${art === 'Strom' ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>' : ''}${art} ${ok === 'ja' ? 'ja' : 'nein'}</span>`;
 const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.titel)}` : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${p.titel} ${p.ort} ${p.land}`);
+const platzStart = () => { try { return (localStorage.getItem('womo-start') || '').trim(); } catch { return ''; } };
+const platzRouteLink = (p) => 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(platzStart() || 'Chur, Schweiz') + '&destination=' + encodeURIComponent(p.lat != null && p.lon != null ? `${p.lat},${p.lon}` : `${p.titel}, ${p.ort}, ${p.land}`) + '&travelmode=driving';
 function platzKarte() {
   const l = platzListe();
   const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
@@ -2178,9 +2180,14 @@ function platzDetail(id) {
   ${p.hinweis ? `<p class="info" style="margin:0 0 10px"><strong>Hinweis:</strong> ${h(p.hinweis)}</p>` : ''}
   <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzKartenLink(p))}" target="_blank" rel="noopener">In der Karte öffnen</a>
   ${p.link ? `<a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(p.link)}" target="_blank" rel="noopener">Webseite öffnen</a>` : ''}
+  <a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzRouteLink(p))}" target="_blank" rel="noopener">Route ab ${platzStart() ? 'meiner Startadresse' : 'Chur'} (Google Maps)</a>
   ${eigen ? '<button class="gross-btn" id="pl_edit">Ändern</button><button class="gross-btn rot" id="pl_del">Löschen</button>' : ''}
-  <button class="gross-btn" id="abb">Schliessen</button></div><div id="msg"></div>`);
+  <button class="gross-btn" id="abb">Schliessen</button></div>
+  <details class="rg-auf"><summary>Startadresse für die Route ändern</summary>
+    <p class="info" style="margin:6px 0">Ohne Eintrag startet die Route in Chur. Die Adresse bleibt nur auf diesem Gerät und steht nicht in der App.</p>
+    <input id="pl_start" maxlength="120" placeholder="Strasse, Nummer, PLZ Ort" value="${h(platzStart())}"><div class="t-akt2"><button class="gross-btn" id="pl_start_ok">Startadresse speichern</button></div></details><div id="msg"></div>`);
   document.getElementById('abb').onclick = schliessen;
+  document.getElementById('pl_start_ok').onclick = () => { const v = val('pl_start').trim(); try { if (v) localStorage.setItem('womo-start', v); else localStorage.removeItem('womo-start'); } catch {} platzDetail(id); hinweis(v ? 'Startadresse gespeichert (nur auf diesem Gerät).' : 'Startadresse entfernt: Die Route startet wieder in Chur.'); };
   const fb = document.getElementById('pl_fbig'); if (fb) fb.onclick = () => fotoGross(p.foto);
   const ed = document.getElementById('pl_edit'), del = document.getElementById('pl_del');
   if (ed) ed.onclick = () => platzForm(id);

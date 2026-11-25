@@ -9,7 +9,7 @@ export const PLAETZE = [
     link: 'https://www.camping-morteratsch.ch/', foto: 'platz-morteratsch.jpg', lat: 46.4616, lon: 9.9355,
   },
   {
-    id: 'ustaria-la-stalla', titel: 'Ustaria la Stalla', ort: 'Scuol (Unterengadin)', land: 'Schweiz', art: 'Stellplatz',
+    id: 'ustaria-la-stalla', titel: 'Ustaria la Stalla', ort: 'Ardez (Unterengadin)', land: 'Schweiz', art: 'Stellplatz',
     text: 'Bauernhof mit Restaurant. Stellplatz auf der Wiese mit Sicht auf Wald, Berge und Himmel. Nationalpark, Naturbadesee Ftan, Bike-, Wander- und Kletterwege in der Nähe.',
     preis: 'ab CHF 46 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-25', strom: 'ja', wc: 'ja', dusche: 'ja',
     hinweis: 'Verlängerungskabel mitbringen. WC und Dusche im Restaurant, bis 5 Minuten zu Fuss. 3 Plätze, Check-in 14–24 Uhr selbständig. Keine Entsorgung von Grau- und Schwarzwasser.',
