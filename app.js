@@ -9,10 +9,10 @@ import {
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   PLATZ_ARTEN, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125c';
-import * as S from './speicher.js?v=20261125c';
-import { PLAETZE } from './plaetze.js?v=20261125c';
-import * as PV from './preise.js?v=20261125c';
+} from './regeln.js?v=20261125d';
+import * as S from './speicher.js?v=20261125d';
+import { PLAETZE } from './plaetze.js?v=20261125d';
+import * as PV from './preise.js?v=20261125d';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2118,10 +2118,11 @@ function platzKarte() {
   const l = platzListe();
   const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
     <span class="ort-tx"><strong>${h(p.titel)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
-  return `<div class="karte ort-karte"><div class="ort-kopf"><p class="titel" style="margin:0">Highlights für 2–3 Nächte</p></div>
-    <p class="info" style="margin:4px 0 10px">Besonders schöne Plätze, für die sich schon ein verlängertes Wochenende lohnt.</p>
+  let offen = true; try { offen = localStorage.getItem('womo-pl-auf') !== '0'; } catch {}
+  return `<details class="karte ort-karte pl-auf" id="pl_auf" ${offen ? 'open' : ''}><summary><span class="titel">Highlights für 2–3 Nächte</span><b>${l.length}</b></summary>
+    <p class="info" style="margin:8px 0 10px">Besonders schöne Plätze, für die sich schon ein verlängertes Wochenende lohnt.</p>
     ${l.length ? `<div class="ort-liste">${l.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Platz eingetragen.</p>'}
-    <p class="info" style="margin:10px 0 0">Preise ändern sich. Vor der Reise beim Platz prüfen.</p></div>`;
+    <p class="info" style="margin:10px 0 0">Preise ändern sich. Vor der Reise beim Platz prüfen.</p></details>`;
 }
 function platzDetail(id) {
   const p = PLAETZE.find((x) => x.id === id); if (!p) return;
@@ -2161,6 +2162,7 @@ function bindNotfallOrte() {
   const n = document.getElementById('ort_neu'); if (n) n.onclick = () => ortForm();
   app.querySelectorAll('[data-ort]').forEach((b) => b.onclick = () => ortDetail(b.dataset.ort));
   app.querySelectorAll('[data-platz]').forEach((b) => b.onclick = () => platzDetail(b.dataset.platz));
+  const pa = document.getElementById('pl_auf'); if (pa) pa.ontoggle = () => { try { localStorage.setItem('womo-pl-auf', pa.open ? '1' : '0'); } catch {} };
   bindNeu();
 }
 function ortForm(id) {
