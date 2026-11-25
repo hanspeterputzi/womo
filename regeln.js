@@ -1294,7 +1294,7 @@ export function pruefePlatz(p) {
   if ((p.hinweis || '').length > PLATZ_HINWEIS_MAX) f.push(`Der Hinweis ist zu lang (höchstens ${PLATZ_HINWEIS_MAX} Zeichen).`);
   if (p.link && !/^https:\/\/\S+$/.test(p.link)) f.push('Der Link muss mit https:// beginnen.');
   if ((p.link || '').length > 300) f.push('Der Link ist zu lang.');
-  if (p.foto && !/^platz-[a-z0-9-]+\.jpg$/.test(p.foto)) f.push('Das Foto muss eine Datei platz-….jpg sein.');
+  if (p.foto) { if (/^platz-[a-z0-9-]+\.jpg$/.test(p.foto)) { /* feste Datei */ } else if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(p.foto)) f.push('Das Foto ist ungültig. Bitte ein Foto neu auswählen.'); else if (p.foto.length > PLATZ_FOTO_MAX) f.push('Das Foto ist zu gross.'); }
   const hat = (p.lat !== undefined && p.lat !== null) || (p.lon !== undefined && p.lon !== null);
   if (hat && !(Number.isFinite(p.lat) && p.lat >= -90 && p.lat <= 90 && Number.isFinite(p.lon) && p.lon >= -180 && p.lon <= 180)) f.push('Der Standort ist ungültig.');
   return { ok: f.length === 0, fehler: f };

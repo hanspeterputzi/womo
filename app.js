@@ -7,12 +7,12 @@ import {
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
-  PLATZ_ARTEN, pruefePlatz,
+  PLATZ_ARTEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125d';
-import * as S from './speicher.js?v=20261125d';
-import { PLAETZE } from './plaetze.js?v=20261125d';
-import * as PV from './preise.js?v=20261125d';
+} from './regeln.js?v=20261125e';
+import * as S from './speicher.js?v=20261125e';
+import { PLAETZE } from './plaetze.js?v=20261125e';
+import * as PV from './preise.js?v=20261125e';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2110,22 +2110,62 @@ function notfallForm() {
 // =====================================================================
 // Highlights: besonders schoene Plaetze fuer 2-3 Naechte (nur HP traegt ein)
 // =====================================================================
-const platzListe = () => PLAETZE;
+const platzListe = () => [...PLAETZE.map((p) => ({ ...p, fest: true })), ...Object.values(D.plaetze).sort((x, y) => (x.erfasstAm < y.erfasstAm ? 1 : -1))];
+const darfPlatz = () => !!ich && ich === D.adminId;
 const PL_BERG = '<path d="M2 20 9 7l4 7 3-4 6 10zM15 5.500h.01"/>';
 const plSym = (ok, art) => `<span class="pl-sym ${ok === 'ja' ? 'ja' : 'nein'}" title="${art}: ${ok}">${art === 'Strom' ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>' : ''}${art} ${ok === 'ja' ? 'ja' : 'nein'}</span>`;
 const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.titel)}` : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${p.titel} ${p.ort} ${p.land}`);
 function platzKarte() {
   const l = platzListe();
   const kachel = (p) => `<button class="ort" data-platz="${h(p.id)}"><span class="ort-bild">${p.foto ? `<img src="${h(p.foto)}" alt="" loading="lazy">` : `<span class="pl-leer"><svg viewBox="0 0 24 24" aria-hidden="true">${PL_BERG}</svg></span>`}</span>
-    <span class="ort-tx"><strong>${h(p.titel)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
+    <span class="ort-tx"><strong>${h(p.titel)}${p.fest ? '' : neuPille(p)}</strong><small>${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</small><span class="pl-preis">${h(p.preis)}</span><span class="pl-syms">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}</span><span class="ort-bes">${h(p.text)}</span></span></button>`;
   let offen = true; try { offen = localStorage.getItem('womo-pl-auf') !== '0'; } catch {}
   return `<details class="karte ort-karte pl-auf" id="pl_auf" ${offen ? 'open' : ''}><summary><span class="titel">Highlights für 2–3 Nächte</span><b>${l.length}</b></summary>
+    ${darfPlatz() ? '<div style="margin:8px 0 0"><button class="t-plus lang" id="pl_neu">＋ Platz</button></div>' : ''}
     <p class="info" style="margin:8px 0 10px">Besonders schöne Plätze, für die sich schon ein verlängertes Wochenende lohnt.</p>
     ${l.length ? `<div class="ort-liste">${l.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Platz eingetragen.</p>'}
     <p class="info" style="margin:10px 0 0">Preise ändern sich. Vor der Reise beim Platz prüfen.</p></details>`;
 }
+function platzForm(id) {
+  const ex = id ? D.plaetze[id] : null;
+  if (!darfPlatz()) return hinweis('Plätze trägt nur ' + (D.personen[D.adminId]?.name || 'HP') + ' ein.');
+  let foto = ex?.foto || '';
+  sheet(`<h3>${ex ? 'Platz ändern' : 'Neuer Platz'}</h3>
+  <label for="p_titel">Name des Platzes</label><input id="p_titel" maxlength="60" placeholder="z. B. Camping Morteratsch" value="${h(ex?.titel || '')}">
+  <div class="zwei"><div><label for="p_ort">Ort</label><input id="p_ort" maxlength="60" placeholder="z. B. Pontresina" value="${h(ex?.ort || '')}"></div>
+  <div><label for="p_land">Land</label><select id="p_land">${ORT_LAENDER.map((l) => `<option ${l === (ex?.land || 'Schweiz') ? 'selected' : ''}>${h(l)}</option>`).join('')}</select></div></div>
+  <label for="p_art">Art</label><select id="p_art">${PLATZ_ARTEN.map((a) => `<option ${a === (ex?.art || 'Campingplatz') ? 'selected' : ''}>${h(a)}</option>`).join('')}</select>
+  <label for="p_text">Was macht den Platz besonders? <span id="p_zaehl" style="font-weight:500"></span></label><textarea id="p_text" maxlength="${PLATZ_TEXT_MAX}" placeholder="Lage, Aussicht, See, Umgebung">${h(ex?.text || '')}</textarea>
+  <label for="p_preis">Preis pro Nacht</label><input id="p_preis" maxlength="${PLATZ_PREIS_MAX}" placeholder="z. B. ca. CHF 50 (Womo, 2 Erwachsene, mit Strom)" value="${h(ex?.preis || '')}">
+  <div class="zwei"><div><label for="p_strom">Strom</label><select id="p_strom">${['ja', 'nein'].map((v) => `<option value="${v}" ${v === (ex?.strom || 'ja') ? 'selected' : ''}>${v === 'ja' ? 'Ja' : 'Nein'}</option>`).join('')}</select></div>
+  <div><label for="p_wc">WC</label><select id="p_wc">${['ja', 'nein'].map((v) => `<option value="${v}" ${v === (ex?.wc || 'ja') ? 'selected' : ''}>${v === 'ja' ? 'Ja' : 'Nein'}</option>`).join('')}</select></div></div>
+  <label for="p_hinweis">Hinweis (freiwillig)</label><input id="p_hinweis" maxlength="${PLATZ_HINWEIS_MAX}" placeholder="z. B. beste Zeit, Reservieren nötig, Mindestaufenthalt" value="${h(ex?.hinweis || '')}">
+  <label for="p_link">Link zur Webseite (freiwillig)</label><input id="p_link" maxlength="300" inputmode="url" placeholder="https://" value="${h(ex?.link || '')}">
+  <label>Foto (freiwillig)</label><div id="p_fprev"></div><label class="foto-wahl" for="p_foto" id="p_fwahl">📷 Foto aufnehmen oder auswählen</label><input type="file" id="p_foto" accept="image/*" style="display:none">
+  <div id="msg"></div><div class="t-akt2"><button class="gross-btn pri" id="p_ok">Speichern</button><button class="gross-btn" id="abb">Abbrechen</button></div>`);
+  document.getElementById('abb').onclick = schliessen;
+  const zaehl = () => { document.getElementById('p_zaehl').textContent = `(${val('p_text').trim().length} von ${PLATZ_TEXT_MAX})`; };
+  document.getElementById('p_text').oninput = zaehl; zaehl();
+  const vor = () => { document.getElementById('p_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><span class="info" style="margin:0">${Math.round(foto.length / 1024)} KB</span></div>` : '<p class="info" style="margin:0">Noch kein Foto.</p>'; document.getElementById('p_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
+  vor();
+  document.getElementById('p_foto').onchange = async (ev) => {
+    const f = ev.target.files && ev.target.files[0]; if (!f) return;
+    document.getElementById('p_fprev').innerHTML = '<p class="info" style="margin:0">Foto wird verkleinert …</p>';
+    try { foto = await fotoVerkleinern(f); } catch (x) { fehler('Das Foto konnte nicht verarbeitet werden: ' + (x.message || x)); }
+    vor();
+  };
+  document.getElementById('p_ok').onclick = () => sicher(async () => {
+    const preisGeaendert = !ex || val('p_preis').trim() !== ex.preis;
+    const p = { titel: val('p_titel').trim(), ort: val('p_ort').trim(), land: val('p_land'), art: val('p_art'), text: val('p_text').trim(), preis: val('p_preis').trim(), preisStand: preisGeaendert ? heute() : ex.preisStand, strom: val('p_strom'), wc: val('p_wc'),
+      hinweis: val('p_hinweis').trim() || undefined, link: val('p_link').trim() || undefined, foto: foto || undefined, lat: ex?.lat, lon: ex?.lon, erfasstVon: ex ? ex.erfasstVon : ich, erfasstAm: ex?.erfasstAm || new Date().toISOString(), id };
+    const c = pruefePlatz(p);
+    if (!c.ok) { fehler(c.fehler); return; }
+    const nid = await S.speichern(D, 'plaetze', id, p); schliessen(); unterwegs(); hinweis('Platz gespeichert.'); platzDetail(nid);
+  });
+}
 function platzDetail(id) {
-  const p = PLAETZE.find((x) => x.id === id); if (!p) return;
+  const p = platzListe().find((x) => x.id === id); if (!p) return;
+  const eigen = !p.fest && darfPlatz();
   sheet(`${p.foto ? `<img class="w-foto ort-gross" id="pl_fbig" src="${h(p.foto)}" alt="Foto: ${h(p.titel)}">` : ''}
   <h3 style="margin-top:4px">${h(p.titel)}</h3>
   <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</p>
@@ -2135,9 +2175,13 @@ function platzDetail(id) {
   ${p.hinweis ? `<p class="info" style="margin:0 0 10px"><strong>Hinweis:</strong> ${h(p.hinweis)}</p>` : ''}
   <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzKartenLink(p))}" target="_blank" rel="noopener">In der Karte öffnen</a>
   ${p.link ? `<a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(p.link)}" target="_blank" rel="noopener">Webseite öffnen</a>` : ''}
+  ${eigen ? '<button class="gross-btn" id="pl_edit">Ändern</button><button class="gross-btn rot" id="pl_del">Löschen</button>' : ''}
   <button class="gross-btn" id="abb">Schliessen</button></div><div id="msg"></div>`);
   document.getElementById('abb').onclick = schliessen;
   const fb = document.getElementById('pl_fbig'); if (fb) fb.onclick = () => fotoGross(p.foto);
+  const ed = document.getElementById('pl_edit'), del = document.getElementById('pl_del');
+  if (ed) ed.onclick = () => platzForm(id);
+  if (del) del.onclick = async () => { if (await wirklich('Platz «' + p.titel + '».')) await sicher(async () => { await S.loeschen(D, 'plaetze', id); schliessen(); unterwegs(); }); };
 }
 
 // =====================================================================
@@ -2162,6 +2206,7 @@ function bindNotfallOrte() {
   const n = document.getElementById('ort_neu'); if (n) n.onclick = () => ortForm();
   app.querySelectorAll('[data-ort]').forEach((b) => b.onclick = () => ortDetail(b.dataset.ort));
   app.querySelectorAll('[data-platz]').forEach((b) => b.onclick = () => platzDetail(b.dataset.platz));
+  const pn = document.getElementById('pl_neu'); if (pn) pn.onclick = () => platzForm();
   const pa = document.getElementById('pl_auf'); if (pa) pa.ontoggle = () => { try { localStorage.setItem('womo-pl-auf', pa.open ? '1' : '0'); } catch {} };
   bindNeu();
 }

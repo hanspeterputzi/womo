@@ -1,11 +1,11 @@
 // Speicherschicht. Mit Code im Link (#CODE): Firestore (familien/{code}/...).
 // Ohne Code: lokaler Testmodus im Browser (nur auf localhost). Mit ?emulator: Firestore-Emulator (nur Tests).
 import { firebaseConfig } from './firebase-config.js';
-import { tageListe } from './regeln.js?v=20261125d';
+import { tageListe } from './regeln.js?v=20261125e';
 
 const V = '11.0.2';
 const KEY = 'womo-test-v1';
-export const SAMMLUNGEN = ['buchungen', 'uebergaben', 'kosten', 'einzahlungen', 'journal', 'termine', 'zahlstatus', 'wuensche', 'wunschaktionen', 'notfall', 'orte', 'ortstimmen'];
+export const SAMMLUNGEN = ['buchungen', 'uebergaben', 'kosten', 'einzahlungen', 'journal', 'termine', 'zahlstatus', 'wuensche', 'wunschaktionen', 'notfall', 'orte', 'ortstimmen', 'plaetze'];
 
 // Code aus dem Link; wird auf dem Geraet gemerkt, falls der Startbildschirm-Icon ohne Code oeffnet.
 const KEY_CODE = 'womo-code';
