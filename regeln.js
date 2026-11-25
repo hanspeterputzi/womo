@@ -1278,6 +1278,7 @@ export function zubehoerListe(termine) {
 // Highlights: besonders schoene Plaetze fuer 2-3 Naechte (Sammlung 'plaetze'). Nur HP traegt ein (in der App), Foto freiwillig.
 // =====================================================================
 export const PLATZ_ARTEN = ['Campingplatz', 'Stellplatz'];
+export const PLATZ_REGIONEN = ['Engadin', 'Mittelbünden', 'Surselva', 'Tessin', 'übrige Schweiz']; // Plätze im Ausland tragen die Region «Ausland»
 export const PLATZ_TEXT_MIN = 20, PLATZ_TEXT_MAX = 300, PLATZ_PREIS_MAX = 120, PLATZ_HINWEIS_MAX = 200, PLATZ_FOTO_MAX = 250000;
 export function pruefePlatz(p) {
   const f = [], titel = (p.titel || '').trim(), ort = (p.ort || '').trim(), text = (p.text || '').trim(), preis = (p.preis || '').trim();
@@ -1290,6 +1291,7 @@ export function pruefePlatz(p) {
   if (preis.length < 1 || preis.length > PLATZ_PREIS_MAX) f.push(`Bitte den Preis pro Nacht angeben (höchstens ${PLATZ_PREIS_MAX} Zeichen).`);
   if (!['ja', 'nein'].includes(p.strom)) f.push('Bitte angeben: Strom ja oder nein.');
   if (!['ja', 'nein'].includes(p.wc)) f.push('Bitte angeben: WC ja oder nein.');
+  if (p.land === 'Schweiz' ? !PLATZ_REGIONEN.includes(p.region) : p.region !== 'Ausland') f.push(p.land === 'Schweiz' ? 'Bitte die Region wählen.' : 'Plätze im Ausland haben die Region «Ausland».');
   if (!['ja', 'nein'].includes(p.dusche)) f.push('Bitte angeben: Dusche ja oder nein. Beim Stellplatz ist das besonders wichtig.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.preisStand || '')) f.push('Das Datum «Preis Stand» fehlt.');
   if ((p.hinweis || '').length > PLATZ_HINWEIS_MAX) f.push(`Der Hinweis ist zu lang (höchstens ${PLATZ_HINWEIS_MAX} Zeichen).`);

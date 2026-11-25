@@ -345,3 +345,5 @@ input.rg-gross{font-size:26px!important;font-weight:800;padding:16px 14px!import
 .pl-auf>summary b{margin-left:auto;font-size:12px;background:var(--soft);color:var(--muted);padding:2px 9px;border-radius:999px}
 .pl-auf>summary::after{content:"";width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:-4px 4px 0 2px;transition:transform .2s;flex:none}
 .pl-auf[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+.pl-reg{border-top:1px solid var(--line)}
+.pl-reg .ort-liste{padding:2px 0 12px}

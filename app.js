@@ -7,12 +7,12 @@ import {
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
-  PLATZ_ARTEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
+  PLATZ_ARTEN, PLATZ_REGIONEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125h';
-import * as S from './speicher.js?v=20261125h';
-import { PLAETZE } from './plaetze.js?v=20261125h';
-import * as PV from './preise.js?v=20261125h';
+} from './regeln.js?v=20261125i';
+import * as S from './speicher.js?v=20261125i';
+import { PLAETZE } from './plaetze.js?v=20261125i';
+import * as PV from './preise.js?v=20261125i';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2125,7 +2125,8 @@ function platzKarte() {
   return `<details class="karte ort-karte pl-auf" id="pl_auf" ${offen ? 'open' : ''}><summary><span class="titel">Highlights für 2–3 Nächte</span><b>${l.length}</b></summary>
     ${darfPlatz() ? '<div style="margin:8px 0 0"><button class="t-plus lang" id="pl_neu">＋ Platz</button></div>' : ''}
     <p class="info" style="margin:8px 0 10px">Besonders schöne Plätze, für die sich schon ein verlängertes Wochenende lohnt.</p>
-    ${l.length ? `<div class="ort-liste">${l.map(kachel).join('')}</div>` : '<p class="leer-t" style="margin:6px 0 0">Noch kein Platz eingetragen.</p>'}
+    ${(() => { let reg = {}; try { reg = JSON.parse(localStorage.getItem('womo-pl-reg') || '{}'); } catch {} const namen = [...PLATZ_REGIONEN, ...(l.some((p) => p.region === 'Ausland') ? ['Ausland'] : [])];
+      return namen.map((n) => { const m = l.filter((p) => (p.region || 'übrige Schweiz') === n); return `<details class="u-det pl-reg" data-reg="${h(n)}" ${reg[n] ? 'open' : ''}><summary><span>${h(n)}</span><b>${m.length}</b></summary>${m.length ? `<div class="ort-liste">${m.map(kachel).join('')}</div>` : '<p class="info" style="margin:0 0 12px">Noch kein Platz in dieser Region.</p>'}</details>`; }).join(''); })()}
     <p class="info" style="margin:10px 0 0">Preise ändern sich. Vor der Reise beim Platz prüfen.</p></details>`;
 }
 function platzForm(id) {
@@ -2136,6 +2137,7 @@ function platzForm(id) {
   <label for="p_titel">Name des Platzes</label><input id="p_titel" maxlength="60" placeholder="z. B. Camping Morteratsch" value="${h(ex?.titel || '')}">
   <div class="zwei"><div><label for="p_ort">Ort</label><input id="p_ort" maxlength="60" placeholder="z. B. Pontresina" value="${h(ex?.ort || '')}"></div>
   <div><label for="p_land">Land</label><select id="p_land">${ORT_LAENDER.map((l) => `<option ${l === (ex?.land || 'Schweiz') ? 'selected' : ''}>${h(l)}</option>`).join('')}</select></div></div>
+  <div id="p_regwrap"><label for="p_region">Region</label><select id="p_region"><option value="" ${PLATZ_REGIONEN.includes(ex?.region) ? '' : 'selected'}>Bitte wählen</option>${PLATZ_REGIONEN.map((x) => `<option ${x === ex?.region ? 'selected' : ''}>${h(x)}</option>`).join('')}</select></div>
   <label for="p_art">Art</label><select id="p_art">${PLATZ_ARTEN.map((a) => `<option ${a === (ex?.art || 'Campingplatz') ? 'selected' : ''}>${h(a)}</option>`).join('')}</select>
   <label for="p_text">Was macht den Platz besonders? <span id="p_zaehl" style="font-weight:500"></span></label><textarea id="p_text" maxlength="${PLATZ_TEXT_MAX}" placeholder="Lage, Aussicht, See, Umgebung">${h(ex?.text || '')}</textarea>
   <label for="p_preis">Preis pro Nacht</label><input id="p_preis" maxlength="${PLATZ_PREIS_MAX}" placeholder="z. B. ca. CHF 50 (Womo, 2 Erwachsene, mit Strom)" value="${h(ex?.preis || '')}">
@@ -2149,6 +2151,7 @@ function platzForm(id) {
   document.getElementById('abb').onclick = schliessen;
   const zaehl = () => { document.getElementById('p_zaehl').textContent = `(${val('p_text').trim().length} von ${PLATZ_TEXT_MAX})`; };
   document.getElementById('p_text').oninput = zaehl; zaehl();
+  const regSicht = () => { document.getElementById('p_regwrap').style.display = val('p_land') === 'Schweiz' ? '' : 'none'; }; document.getElementById('p_land').onchange = regSicht; regSicht();
   document.getElementById('p_art').onchange = () => { const d = document.getElementById('p_dusche'); if (document.getElementById('p_art').value === 'Campingplatz') { if (!d.value) d.value = 'ja'; } else if (!ex) d.value = ''; };
   if (!ex) document.getElementById('p_dusche').value = document.getElementById('p_art').value === 'Campingplatz' ? 'ja' : '';
   const vor = () => { document.getElementById('p_fprev').innerHTML = foto ? `<div class="foto-vor"><img src="${h(foto)}" alt="Vorschau"><span class="info" style="margin:0">${Math.round(foto.length / 1024)} KB</span></div>` : '<p class="info" style="margin:0">Noch kein Foto.</p>'; document.getElementById('p_fwahl').textContent = foto ? '📷 Anderes Foto wählen' : '📷 Foto aufnehmen oder auswählen'; };
@@ -2161,7 +2164,7 @@ function platzForm(id) {
   };
   document.getElementById('p_ok').onclick = () => sicher(async () => {
     const preisGeaendert = !ex || val('p_preis').trim() !== ex.preis;
-    const p = { titel: val('p_titel').trim(), ort: val('p_ort').trim(), land: val('p_land'), art: val('p_art'), text: val('p_text').trim(), preis: val('p_preis').trim(), preisStand: preisGeaendert ? heute() : ex.preisStand, strom: val('p_strom'), wc: val('p_wc'), dusche: val('p_dusche'),
+    const p = { titel: val('p_titel').trim(), ort: val('p_ort').trim(), land: val('p_land'), region: val('p_land') === 'Schweiz' ? val('p_region') : 'Ausland', art: val('p_art'), text: val('p_text').trim(), preis: val('p_preis').trim(), preisStand: preisGeaendert ? heute() : ex.preisStand, strom: val('p_strom'), wc: val('p_wc'), dusche: val('p_dusche'),
       hinweis: val('p_hinweis').trim() || undefined, link: val('p_link').trim() || undefined, foto: foto || undefined, lat: ex?.lat, lon: ex?.lon, erfasstVon: ex ? ex.erfasstVon : ich, erfasstAm: ex?.erfasstAm || new Date().toISOString(), id };
     const c = pruefePlatz(p);
     if (!c.ok) { fehler(c.fehler); return; }
@@ -2173,7 +2176,7 @@ function platzDetail(id) {
   const eigen = !p.fest && darfPlatz();
   sheet(`${p.foto ? `<img class="w-foto ort-gross" id="pl_fbig" src="${h(p.foto)}" alt="Foto: ${h(p.titel)}">` : ''}
   <h3 style="margin-top:4px">${h(p.titel)}</h3>
-  <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.land)} · ${h(p.art)}</p>
+  <p class="info" style="margin:2px 0 8px">${h(p.ort)} · ${h(p.region || p.land)} · ${h(p.art)}</p>
   <p style="margin:0 0 10px;font-size:17px">${h(p.text)}</p>
   <p class="pl-preis" style="margin:0 0 2px">${h(p.preis)}</p><p class="info" style="margin:0 0 8px">Preis pro Nacht, Stand ${h(fmt(p.preisStand))}. Vor der Reise beim Platz prüfen.</p>
   <p class="pl-syms" style="margin:0 0 10px">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</p>
@@ -2217,6 +2220,7 @@ function bindNotfallOrte() {
   app.querySelectorAll('[data-ort]').forEach((b) => b.onclick = () => ortDetail(b.dataset.ort));
   app.querySelectorAll('[data-platz]').forEach((b) => b.onclick = () => platzDetail(b.dataset.platz));
   const pn = document.getElementById('pl_neu'); if (pn) pn.onclick = () => platzForm();
+  app.querySelectorAll('.pl-reg').forEach((d) => d.ontoggle = () => { try { const r = JSON.parse(localStorage.getItem('womo-pl-reg') || '{}'); r[d.dataset.reg] = d.open; localStorage.setItem('womo-pl-reg', JSON.stringify(r)); } catch {} });
   const pa = document.getElementById('pl_auf'); if (pa) pa.ontoggle = () => { try { localStorage.setItem('womo-pl-auf', pa.open ? '1' : '0'); } catch {} };
   bindNeu();
 }
