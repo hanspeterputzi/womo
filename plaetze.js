@@ -44,4 +44,12 @@ export const PLAETZE = [
     hinweis: 'Standard-Platz 50–80 m². «Standard Comfort» nur bis 6 m Länge, ohne Wasseranschluss. Saison 25.3.–17.10. (PiNCAMP). Ab 14 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-gordevio-valle-maggia/', foto: 'platz-gordevio.jpg', lat: 46.2214, lon: 8.7428,
   },
+  {
+    id: 'imschlacht', titel: 'Campadi Imschlacht', ort: 'Valendas, oberhalb Brün', land: 'Schweiz', region: 'Surselva', art: 'Stellplatz',
+    warnung: 'Ab Brün nur mit Fahrbewilligung (CHF 10, TWINT oder Parkingpay).',
+    text: 'Maiensäss-Beizli etwa 100 m oberhalb. Wanderweg Brün–Versam und Gravel-Velotour ab Ilanz führen über Imschlacht. Kein See oder Badefluss am Platz. Ruhige Wiese hoch über der Rheinschlucht, weite Bergsicht, Feuerstelle mit Holz.',
+    preis: 'ab CHF 46 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-26', strom: 'nein', wc: 'ja', dusche: 'nein',
+    hinweis: 'Geteerte Bergstrasse. 1 Platz, max. 5 Gäste. Trinkwasser, keine Entsorgung, Abfall mitnehmen. Check-in 14–22 Uhr selbständig, bis 13 Uhr abreisen. Beizli laut Nomady ab 21. Juni.',
+    link: 'https://nomady.camp/cabin/campadi-imschlacht-390', foto: 'platz-imschlacht.jpg', lat: 46.777, lon: 9.3169,
+  },
 ];
