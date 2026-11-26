@@ -9,10 +9,10 @@ import {
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
   PLATZ_ARTEN, PLATZ_REGIONEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261125p';
-import * as S from './speicher.js?v=20261125p';
-import { PLAETZE } from './plaetze.js?v=20261125p';
-import * as PV from './preise.js?v=20261125p';
+} from './regeln.js?v=20261126a';
+import * as S from './speicher.js?v=20261126a';
+import { PLAETZE } from './plaetze.js?v=20261126a';
+import * as PV from './preise.js?v=20261126a';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}

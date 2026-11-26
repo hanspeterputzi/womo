@@ -29,4 +29,12 @@ export const PLAETZE = [
     hinweis: 'Strom CHF 3 pro Nacht, Verlängerungskabel mitbringen. Komposttoilette, keine Dusche, keine Entsorgung auf dem Hof. 4 Plätze, Check-in 16–19.30 Uhr.',
     link: 'https://nomady.camp/cabin/bauernhof-camping-uber-dem-lauerzersee-4362', foto: 'platz-lauerzersee.jpg',
   },
+  {
+    id: 'sempach', titel: 'TCS Camping Sempach', ort: 'Sempach (LU)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
+    warnung: 'Beim Buchen: «Regular», «Premium Comfort See» und Plätze bis 3 t passen nicht für den Pössl (3,5 t).',
+    text: '4-Sterne-Camping direkt am Sempachersee mit freiem Seebad. Pedalos, Beachvolleyball, Spielplatz, Feuerstelle, Restaurant nebenan.',
+    preis: 'ab CHF 53.60 (Nebensaison) bzw. 73.60 (Hochsaison), 2 Personen, 2027 laut PiNCAMP', preisStand: '2026-11-26', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: 'Passt: Standard oder Premium See (max. 5 t). Saison 25.3.–17.10. (PiNCAMP). Ab 13.30 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation. Max. 2 Hunde.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-sempach/', foto: 'platz-sempach.jpg', lat: 47.1242, lon: 8.1881,
+  },
 ];
