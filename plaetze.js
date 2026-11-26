@@ -32,9 +32,9 @@ export const PLAETZE = [
   {
     id: 'sempach', titel: 'TCS Camping Sempach', ort: 'Sempach (LU)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
     warnung: 'Beim Buchen: «Regular», «Premium Comfort See» und Plätze bis 3 t passen nicht für den Pössl (3,5 t).',
-    text: '4-Sterne-Camping direkt am Sempachersee mit freiem Seebad. Pedalos, Beachvolleyball, Spielplatz, Feuerstelle, Restaurant nebenan.',
+    text: 'Direkt am Sempachersee mit freiem Seebad. Restaurant Seeland am See gleich nebenan. Velowege: Tour rund um den See (31,6 km), Herzroute 99. Spazieren ins Städtli Sempach und zur Vogelwarte.',
     preis: 'ab CHF 53.60 (Nebensaison) bzw. 73.60 (Hochsaison), 2 Personen, 2027 laut PiNCAMP', preisStand: '2026-11-26', strom: 'ja', wc: 'ja', dusche: 'ja',
-    hinweis: 'Passt: Standard oder Premium See (max. 5 t). Saison 25.3.–17.10. (PiNCAMP). Ab 13.30 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation. Max. 2 Hunde.',
+    hinweis: 'Passt: Standard (gekiest) oder Premium See (max. 5 t). Saison 25.3.–17.10. (PiNCAMP). Ab 13.30 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-sempach/', foto: 'platz-sempach.jpg', lat: 47.1242, lon: 8.1881,
   },
 ];
