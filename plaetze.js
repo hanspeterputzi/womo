@@ -37,4 +37,11 @@ export const PLAETZE = [
     hinweis: 'Passt: Standard (gekiest) oder Premium See (max. 5 t). Saison 25.3.–17.10. (PiNCAMP). Ab 13.30 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-sempach/', foto: 'platz-sempach.jpg', lat: 47.1242, lon: 8.1881,
   },
+  {
+    id: 'gordevio', titel: 'TCS Camping Gordevio', ort: 'Gordevio, Valle Maggia', land: 'Schweiz', region: 'Tessin', art: 'Campingplatz',
+    text: 'Direkt an der Maggia mit Badestelle im Fluss. Restaurant Bella Riva (Pizza, Tessiner Küche). Veloweg Vallemaggia (Route 31) nach Locarno und talaufwärts, Velovermietung. Spazieren in der Flusslandschaft. Pool.',
+    preis: 'ab CHF 59.20 (Nebensaison) bzw. 78.20 (Hochsaison), 2 Personen, 2027 laut PiNCAMP', preisStand: '2026-11-26', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: 'Standard-Platz 50–80 m². «Standard Comfort» nur bis 6 m Länge, ohne Wasseranschluss. Saison 25.3.–17.10. (PiNCAMP). Ab 14 Uhr, Reservation bis 18 Uhr garantiert. Entsorgungsstation.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-gordevio-valle-maggia/', foto: 'platz-gordevio.jpg', lat: 46.2214, lon: 8.7428,
+  },
 ];
