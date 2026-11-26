@@ -1302,3 +1302,18 @@ export function pruefePlatz(p) {
   if (hat && !(Number.isFinite(p.lat) && p.lat >= -90 && p.lat <= 90 && Number.isFinite(p.lon) && p.lon >= -180 && p.lon <= 180)) f.push('Der Standort ist ungültig.');
   return { ok: f.length === 0, fehler: f };
 }
+
+// SchweizMobil-Karte (Wander- und Velorouten). Ohne Standort: Karte der ganzen Schweiz.
+export function wgsZuLv95(lat, lon) {
+  const b = (lat * 3600 - 169028.66) / 10000, l = (lon * 3600 - 26782.5) / 10000;
+  return { e: Math.round(2600072.37 + 211455.93 * l - 10938.51 * l * b - 0.36 * l * b * b - 44.54 * l ** 3),
+    n: Math.round(1200147.07 + 308807.95 * b + 3745.25 * l * l + 76.63 * b * b - 194.56 * l * l * b + 119.79 * b ** 3) };
+}
+export function schweizmobilLink(p) {
+  const basis = 'https://schweizmobil.ch/de/map?bgLayer=pk&layers=wanderland%2Cveloland&season=summer';
+  if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return basis;
+  const { e, n } = wgsZuLv95(p.lat, p.lon);
+  return `${basis}&resolution=10&E=${e}&N=${n}`;
+}
+// Ortsangabe fuer die Ortssuche: «Ardez (Unterengadin)» oder «Valendas, oberhalb Brün» wird zum Ortsnamen.
+export const ortsname = (ort) => String(ort || '').split(/[(,]/)[0].trim();

@@ -27,7 +27,7 @@ export const PLAETZE = [
     text: 'Stellplatz auf der Wiese eines Bauernhofs auf 900 m, hoch über dem Lauerzersee. Weite Aussicht, kein Durchgangsverkehr. Grill, Feuerstelle und Picknicktisch.',
     preis: 'ab CHF 43 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-25', strom: 'ja', wc: 'ja', dusche: 'nein',
     hinweis: 'Strom CHF 3 pro Nacht, Verlängerungskabel mitbringen. Komposttoilette, keine Dusche, keine Entsorgung auf dem Hof. 4 Plätze, Check-in 16–19.30 Uhr.',
-    link: 'https://nomady.camp/cabin/bauernhof-camping-uber-dem-lauerzersee-4362', foto: 'platz-lauerzersee.jpg',
+    link: 'https://nomady.camp/cabin/bauernhof-camping-uber-dem-lauerzersee-4362', foto: 'platz-lauerzersee.jpg', lat: 47.0192, lon: 8.5933,
   },
   {
     id: 'sempach', titel: 'TCS Camping Sempach', ort: 'Sempach (LU)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',

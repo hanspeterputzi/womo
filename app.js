@@ -7,12 +7,12 @@ import {
   rundgangSchritte, pruefeSchritt, naechsterOffener, uebergabeAusRundgang, pruefeRundgang, ueFotoName, UE_FOTO_PFLICHT, UE_SCHADEN_FOTOS, UE_MANGEL_MAX, UE_SCHADEN_MAX,
   NOTFALL_FELDER, NOTFALL_DOKUMENTE, NOTFALL_WERT_MAX, NOTFALL_TEL_MAX, NOTFALL_MED_MAX, NOTFALL_DOK_MAX, pruefeNotfallTel, notfallFehlt, notfallAuszug,
   ORT_PRO_JAHR, ORT_TEXT_MIN, ORT_TEXT_MAX, ORT_PRAKTISCH_MAX, ORT_ARTEN, ORT_LAENDER, ORT_FAVORIT_AB, pruefeOrt, ortStand, ortReihenfolge,
-  PLATZ_ARTEN, PLATZ_REGIONEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz,
+  PLATZ_ARTEN, PLATZ_REGIONEN, PLATZ_TEXT_MAX, PLATZ_PREIS_MAX, PLATZ_HINWEIS_MAX, pruefePlatz, schweizmobilLink, ortsname,
   achtJahrePlan, pruefeFahrfreigabe, fahrfreigabeStand, jahreSeit, FAHRFREIGABE_STATUS, ERLASS_CHF, zahlungenAusJournal, zuBuchen, wunschGebucht, kontenListe, buchVorlagen, BUCH_TEXT_MAX, pruefeBuchsatz, kontoSalden, erfolgsrechnung, bilanz, kontoblatt,
-} from './regeln.js?v=20261126e';
-import * as S from './speicher.js?v=20261126e';
-import { PLAETZE } from './plaetze.js?v=20261126e';
-import * as PV from './preise.js?v=20261126e';
+} from './regeln.js?v=20261126f';
+import * as S from './speicher.js?v=20261126f';
+import { PLAETZE } from './plaetze.js?v=20261126f';
+import * as PV from './preise.js?v=20261126f';
 const VER = (() => { try { return new URL(import.meta.url).searchParams.get('v') || '0'; } catch { return '0'; } })();
 // Offline-Speicher: haelt die Notfallkarte bereit, auch ohne Netz (sw.js).
 try { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => fetch('notfall.html?v=' + VER).catch(() => {})).catch(() => {}); } catch {}
@@ -2117,6 +2117,13 @@ const plSym = (ok, art) => `<span class="pl-sym ${ok === 'ja' ? 'ja' : 'nein'}" 
 const platzKartenLink = (p) => p.lat != null && p.lon != null ? `https://maps.apple.com/?ll=${p.lat},${p.lon}&q=${encodeURIComponent(p.titel)}` : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${p.titel} ${p.ort} ${p.land}`);
 const platzStart = () => { try { return (localStorage.getItem('womo-start') || '').trim(); } catch { return ''; } };
 const platzRouteLink = (p) => 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(platzStart() || 'Chur, Schweiz') + '&destination=' + encodeURIComponent(p.lat != null && p.lon != null ? `${p.lat},${p.lon}` : `${p.titel}, ${p.ort}, ${p.land}`) + '&travelmode=driving';
+// Knopf zu SchweizMobil (nur Schweiz). Ohne gespeicherten Standort sucht die App den Ort beim Bund (geo.admin.ch).
+const smKnopf = (p) => (p.land === 'Schweiz' ? `<a class="gross-btn" id="sm_link" style="display:flex;align-items:center;justify-content:center;text-decoration:none;text-align:center" href="${h(schweizmobilLink(p))}" target="_blank" rel="noopener">Wander- und Velorouten (SchweizMobil)</a>` : '');
+async function smOrten(p) {
+  const a = document.getElementById('sm_link'); if (!a || (p.lat != null && p.lon != null) || !ortsname(p.ort)) return;
+  try { const r = await fetch('https://api3.geo.admin.ch/rest/services/api/SearchServer?type=locations&origins=zipcode,gg25,gazetteer&limit=1&searchText=' + encodeURIComponent(ortsname(p.ort)));
+    const t = (await r.json()).results?.[0]?.attrs; if (t) a.href = schweizmobilLink(t); } catch {}
+}
 const plWarn = (p) => (p.warnung ? `<span class="pl-warn">${h(p.warnung)}</span>` : '');
 function platzKarte() {
   const l = platzListe();
@@ -2183,6 +2190,7 @@ function platzDetail(id) {
   <p class="pl-syms" style="margin:0 0 10px">${plSym(p.strom, 'Strom')}${plSym(p.wc, 'WC')}${plSym(p.dusche, 'Dusche')}</p>
   ${p.hinweis ? `<p class="info" style="margin:0 0 10px"><strong>Hinweis:</strong> ${h(p.hinweis)}</p>` : ''}
   <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzKartenLink(p))}" target="_blank" rel="noopener">In der Karte öffnen</a>
+  ${smKnopf(p)}
   ${p.link ? `<a class="gross-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(p.link)}" target="_blank" rel="noopener">Webseite öffnen</a>` : ''}
   <a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(platzRouteLink(p))}" target="_blank" rel="noopener">Route ab ${platzStart() ? 'meiner Startadresse' : 'Chur'} (Google Maps)</a>
   ${eigen ? '<button class="gross-btn" id="pl_edit">Ändern</button><button class="gross-btn rot" id="pl_del">Löschen</button>' : ''}
@@ -2192,6 +2200,7 @@ function platzDetail(id) {
     <input id="pl_start" maxlength="120" placeholder="Strasse, Nummer, PLZ Ort" value="${h(platzStart())}"><div class="t-akt2"><button class="gross-btn" id="pl_start_ok">Startadresse speichern</button></div></details><div id="msg"></div>`);
   document.getElementById('abb').onclick = schliessen;
   document.getElementById('pl_start_ok').onclick = () => { const v = val('pl_start').trim(); try { if (v) localStorage.setItem('womo-start', v); else localStorage.removeItem('womo-start'); } catch {} platzDetail(id); hinweis(v ? 'Startadresse gespeichert (nur auf diesem Gerät).' : 'Startadresse entfernt: Die Route startet wieder in Chur.'); };
+  smOrten(p);
   const fb = document.getElementById('pl_fbig'); if (fb) fb.onclick = () => fotoGross(p.foto);
   const ed = document.getElementById('pl_edit'), del = document.getElementById('pl_del');
   if (ed) ed.onclick = () => platzForm(id);
@@ -2292,11 +2301,13 @@ function ortDetail(id) {
   <p class="info" style="margin:0 0 4px">Eingetragen von ${h(D.personen[o.erfasstVon]?.name || '?')}${b ? ', Reise ' + h(reiseText(b)) : ''}.</p>
   <p class="info" style="margin:0">${s.anzahl ? `✓ War auch dort und bestätigt: ${s.bestaetigt.map((i) => h(D.personen[i]?.name || '?')).join(', ')}.` : 'Noch von niemandem bestätigt.'}</p>
   <div class="t-akt2"><a class="gross-btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${h(ortKartenLink(o))}" target="_blank" rel="noopener">In der Karte öffnen</a>
+  ${smKnopf(o)}
   ${!mein && !habe ? '<button class="gross-btn" id="ort_ja">✓ Ich war auch dort: bestätigen</button>' : ''}
   ${!mein && habe ? '<button class="gross-btn" id="ort_weg">Meine Bestätigung zurückziehen</button>' : ''}
   ${mein ? '<button class="gross-btn" id="ort_edit">Ändern</button><button class="gross-btn rot" id="ort_del">Löschen</button>' : ''}
   <button class="gross-btn" id="abb">Schliessen</button></div><div id="msg"></div>`);
   document.getElementById('abb').onclick = schliessen;
+  smOrten(o);
   document.getElementById('ort_fbig').onclick = () => fotoGross(o.foto);
   const ja = document.getElementById('ort_ja'), weg = document.getElementById('ort_weg'), ed = document.getElementById('ort_edit'), del = document.getElementById('ort_del');
   if (ja) ja.onclick = () => sicher(async () => { await S.speichern(D, 'ortstimmen', stimmeId, { ortId: id, personId: ich, erfasstVon: ich }); ortDetail(id); unterwegs(); hinweis('Danke, bestätigt.'); });
