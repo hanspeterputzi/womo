@@ -59,4 +59,11 @@ export const PLAETZE = [
     hinweis: '1 Platz. Kabel mitbringen, nur Grauwasser entsorgen, Abfall mitnehmen. Check-in 16–20, Abreise bis 14 Uhr. Gasthof zu: 26.10.–25.12.2026. Schmale Talstrasse mit Tunnels.',
     link: 'https://nomady.camp/cabin/gasslihof-camp-773', foto: 'platz-gasslihof.jpg', lat: 46.6315, lon: 9.2766,
   },
+  {
+    id: 'eymatt', titel: 'TCS Camping Bern Eymatt', ort: 'Hinterkappelen (Bern)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
+    text: 'An der Aare, Wohlensee rund 1 km. Restaurant und Gartenbeiz Eymatt 62 auf dem Platz. Radweg nach Bern, Frienisberg-Veloroute (890, 41 km) ab Hinterkappelen, Velovermietung. Spazierwege der Aare entlang. Bus nach Bern, Bern Ticket (ÖV) beim Check-in.',
+    preis: 'ab CHF 55.80 (Nebensaison) bzw. 69.80 (Hochsaison), 2 Personen, 2027 laut PiNCAMP', preisStand: '2026-11-26', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: '«Standard» oder «Standard Van» (bis 6 m). Saison 25.3.–31.10. (PiNCAMP). Ab 14 Uhr, Schranke 7–22 Uhr, Abreise bis 12 Uhr. Entsorgungsstation. Strasse je nach Wind hörbar.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-bern-eymatt/', foto: 'platz-eymatt.jpg', lat: 46.9639, lon: 7.3836,
+  },
 ];
