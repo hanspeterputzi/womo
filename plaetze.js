@@ -52,4 +52,11 @@ export const PLAETZE = [
     hinweis: 'Geteerte Bergstrasse. 1 Platz, max. 5 Gäste. Trinkwasser, keine Entsorgung, Abfall mitnehmen. Check-in 14–22 Uhr selbständig, bis 13 Uhr abreisen. Beizli laut Nomady ab 21. Juni.',
     link: 'https://nomady.camp/cabin/campadi-imschlacht-390', foto: 'platz-imschlacht.jpg', lat: 46.777, lon: 9.3169,
   },
+  {
+    id: 'gasslihof', titel: 'GassliHOF Camp', ort: 'Thalkirch, Safiental', land: 'Schweiz', region: 'Surselva', art: 'Stellplatz',
+    text: 'Am Fluss Rabiusa auf 1700 m beim Hof, mit Bergsicht. Restaurant im Gasthof mit eigenem Fleisch, Hofladen. Wanderung zum Wasserfall Z’Hinderst. E-Bike-Etappe Ilanz–Thalkirch (42 km, 1800 Höhenmeter).',
+    preis: 'ab CHF 39 (1 Person, ohne Kurtaxe)', preisStand: '2026-11-26', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: '1 Platz. Kabel mitbringen, nur Grauwasser entsorgen, Abfall mitnehmen. Check-in 16–20, Abreise bis 14 Uhr. Gasthof zu: 26.10.–25.12.2026. Schmale Talstrasse mit Tunnels.',
+    link: 'https://nomady.camp/cabin/gasslihof-camp-773', foto: 'platz-gasslihof.jpg', lat: 46.6315, lon: 9.2766,
+  },
 ];
