@@ -73,4 +73,11 @@ export const PLAETZE = [
     hinweis: '«Standard» oder «Premium». 25.3.–10.10. (PiNCAMP). Ab 13.30, Abreise bis 11 Uhr. Ein-/Ausfahrt nur bei offener Rezeption. 5.–7.6.2027 mind. 2 Nächte. Entsorgungsstation. Nahe Autobahn A2.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-luzern-horw/', foto: 'platz-horw.jpg', lat: 47.0122, lon: 8.3108,
   },
+  {
+    id: 'morges', titel: 'TCS Camping Morges', ort: 'Morges (Genfersee)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
+    text: 'Direkt am Genfersee mit Seebaden, Schwimmbad nebenan für Gäste gratis. Restaurant La Véranda auf dem Platz. Rhone-Route (Velo 1) durch Morges, Velovermietung. Spazieren an der Uferpromenade.',
+    preis: 'CHF 54–68 («Standard», 2 Personen, mit Strom, ohne Taxen), 2027 laut TCS', preisStand: '2026-11-27', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: 'Saison 25.3.–10.10.2027. Ab 15 Uhr (Hochsaison 14), Abreise bis 12 Uhr. Entsorgung für Wohnmobil und Chemie-WC. Max. 2 Hunde. Bad Mai bis Oktober.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-morges/', foto: 'platz-morges.jpg', lat: 46.5039, lon: 6.4892,
+  },
 ];
