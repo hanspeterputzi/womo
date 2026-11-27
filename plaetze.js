@@ -66,4 +66,11 @@ export const PLAETZE = [
     hinweis: '«Standard» oder «Standard Van» (bis 6 m). Saison 25.3.–31.10. (PiNCAMP). Ab 14 Uhr, Schranke 7–22 Uhr, Abreise bis 12 Uhr. Entsorgungsstation. Strasse je nach Wind hörbar.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-bern-eymatt/', foto: 'platz-eymatt.jpg', lat: 46.9639, lon: 7.3836,
   },
+  {
+    id: 'horw', titel: 'TCS Camping Luzern-Horw', ort: 'Horw (Luzern)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
+    text: 'Am Vierwaldstättersee, Seebad rund 100 m (laut TCS für Gäste gratis). Buvette auf dem Platz, Badirestaurant im Seebad (2026: 25.4.–13.9.). Velorunde Horwer Halbinsel (15 km) ab Camping, Veloweg am See nach Hergiswil. Naturweg am Naturschutzgebiet. Gratis-ÖV mit Gästekarte Luzern.',
+    preis: 'ab CHF 52.20 (Nebensaison) bzw. 66.20 (Hochsaison), 2 Personen, 2027 laut PiNCAMP', preisStand: '2026-11-27', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: '«Standard» oder «Premium». 25.3.–10.10. (PiNCAMP). Ab 13.30, Abreise bis 11 Uhr. Ein-/Ausfahrt nur bei offener Rezeption. 5.–7.6.2027 mind. 2 Nächte. Entsorgungsstation. Nahe Autobahn A2.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-luzern-horw/', foto: 'platz-horw.jpg', lat: 47.0122, lon: 8.3108,
+  },
 ];
