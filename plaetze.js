@@ -80,4 +80,11 @@ export const PLAETZE = [
     hinweis: 'Saison 25.3.–10.10.2027. Ab 15 Uhr (Hochsaison 14), Abreise bis 12 Uhr. Entsorgung für Wohnmobil und Chemie-WC. Max. 2 Hunde. Bad Mai bis Oktober.',
     link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-morges/', foto: 'platz-morges.jpg', lat: 46.5039, lon: 6.4892,
   },
+  {
+    id: 'flaach', titel: 'TCS Camping Flaach am Rhein', ort: 'Flaach (Zürcher Weinland)', land: 'Schweiz', region: 'übrige Schweiz', art: 'Campingplatz',
+    text: 'Direkt am Rhein mit Baden im Fluss. Nur rund 12 km (ca. 15 Min.) von unserem Womo-Verkäufer in Jestetten: gute Gelegenheit bei Service oder anderen Arbeiten. Restaurant Stäubis. Rhein-Velorouten, Wandern im Auenwald Thurauen. Freibad nebenan für Gäste gratis.',
+    preis: 'CHF 55 (April) bzw. 72 (Juli), «Standard», 2 Personen, ohne Taxen, 2027 laut TCS', preisStand: '2026-11-27', strom: 'ja', wc: 'ja', dusche: 'ja',
+    hinweis: '«Standard» (bis 6 m), Strom 3–6 A. Juli und teils Wochenende mind. 2 Nächte. Saison 25.3.–10.10.2027. Ab 14, Abreise bis 11.30 Uhr. Entsorgung. Max. 2 Hunde.',
+    link: 'https://camping.tcs.ch/de/campingplaetze/tcs-camping-flaach-am-rhein/', foto: 'platz-flaach.jpg', lat: 47.5789, lon: 8.5819,
+  },
 ];
